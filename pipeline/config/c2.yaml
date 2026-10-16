@@ -1,0 +1,120 @@
+# C2 configuration: every threshold, keyword list and judgement call lives here.
+# Nothing in the code hardcodes a URL, a date, or a decision that a judge might want to flip.
+
+# ---------------------------------------------------------------- Step 1: scope
+scope:
+  keep_market_types: [group]
+  keep_brands: [healthnet]            # compared after normalising (lowercase, letters/digits only)
+  target_state: CA
+  # Why each non-target brand is out. Used in the exclusion log.
+  brand_exclusion_reasons:
+    ambetter: "Ambetter is the individual (ACA marketplace) brand, not commercial group"
+    fidelis: "Fidelis is New York individual / Essential Plan, not California commercial group"
+    qualchoice: "QualChoice is Arkansas commercial group, not California"
+    mhn: "MHN has no index of its own; its commercial rates are inside the Health Net files"
+  default_brand_exclusion_reason: "Brand is not Health Net (the California commercial group book)"
+  # When a plan name / plan id / file name carries no state, fall back to the brand's home state.
+  # Health Net's index is the California commercial book, so un-prefixed names such as
+  # "Gold PPO 500/20" are treated as CA, flagged as inferred.
+  brand_default_state:
+    healthnet: CA
+    qualchoice: AR
+    fidelis: NY
+  # Set true to drop plans whose state was only inferred from the brand.
+  require_explicit_state: false
+
+# ---------------------------------------------------------- Step 2: name signals
+name_signals:
+  # Explicit network-type keywords (matched as whole words on the normalised name).
+  keywords:
+    PPO: ['\bPPO\b']
+    HMO: ['\bHMO\b']
+    EPO: ['\bEPO\b']
+    POS: ['\bPOS\b']
+    HSP: ['\bHSP\b']
+  # Product codes / product names that imply a network type.
+  product_codes:
+    HMO:
+      SC (SmartCare): '\bSC\b'
+      SMARTCARE: '\bSMART\s*CARE\b'
+      SAL (Salud y Mas): '\bSAL\b'
+      SALUD: '\bSALUD\b'
+      WHOLECARE: '\bWHOLE\s*CARE\b'
+      COMMUNITYCARE: '\bCOMMUNITY\s*CARE\b'
+      FULL NETWORK: '\bFULL\s+NETWORK\b'
+    HSP:
+      PURECARE: '\bPURE\s*CARE\b'
+  # EnhancedCare is a PPO product, but "EC" also shows up next to HMO (e.g. "CA L EC HMO ...").
+  # (Hypothesis) Only counted as PPO when no HMO keyword/product code is present.
+  enhancedcare_codes: ['\bEC\b', '\bENHANCED\s*CARE\b']
+  # (Hypothesis) weak hints. They are TESTED on plans with explicit keywords first, and only
+  # used for plans with no other name signal if they clear the precision/support gates below.
+  hint_patterns:
+    LIFE_ENTITY: {type: PPO, patterns: ['\bL&T\b', '\bLIFE\b']}
+  benefit_shapes:
+    COINSURANCE_TAIL: {type: PPO, pattern: '\d+(\.\d+)?%\s*$'}         # "30/500/4000/30%"
+    DEDUCTIBLE_D_STRING: {type: HMO, pattern: '\d+d/\d+'}               # "40/1500d/6500"
+  hypothesis_gate:
+    min_precision: 0.90
+    min_support: 10
+
+# ------------------------------------------------------- Step 3: file association
+file_vote:
+  label_threshold: 0.80        # share of decided plans needed to label a file PPO or NON_PPO
+  min_decided_votes: 1         # files with fewer decided plans get NO_VOTES
+  # Network types that count against PPO in the vote. POS is not PPO.
+  non_ppo_types: [HMO, EPO, HSP, POS]
+
+# ------------------------------------------------ Step 4: network_name in the file
+network_probe:
+  enabled: true
+  probe_scope: all_in_scope    # all_in_scope | vote_candidates (only files voted PPO/MIXED/NO_VOTES)
+  max_bytes: 200000000         # stop after this many (decompressed) bytes per file
+  max_provider_references: 20000
+  max_in_network_items: 200    # sampled for Step 5 payment-type evidence
+  max_location_fetches: 5      # provider_references given by URL ("location") fetched at most this many times
+  timeout_seconds: 60
+  workers: 4
+  retries: 3
+  user_agent: "hilabs-c2-pipeline/1.0"
+  # Ordered rules mapping a network_name to a label; first match wins.
+  # Explicit types are checked before product names so "HMO - Full Network" is HMO.
+  label_rules:
+    - {label: HMO,             pattern: '\bHMO\b'}
+    - {label: HSP,             pattern: '\bHSP\b|PURE\s*CARE'}
+    - {label: EPO,             pattern: '\bEPO\b'}
+    - {label: POS,             pattern: '\bPOS\b'}
+    - {label: PPO_ENHANCEDCARE, pattern: 'ENHANCED\s*CARE'}
+    - {label: PPO_FULL,        pattern: '\bPPO\b'}
+    - {label: HMO,             pattern: 'WHOLE\s*CARE|SMART\s*CARE|COMMUNITY\s*CARE|SALUD|\bFULL\s+NETWORK\b'}
+  # Decision: EnhancedCare PPO counts as part of "the PPO network" by default.
+  # It is a real PPO (Health Net Life Insurance Co., out-of-network benefits exist) inside the
+  # California commercial group book; it is narrower (preferred benefits in LA County only).
+  # We keep it in scope but tag every row with ppo_variant so C3/C4 can split or drop it.
+  include_enhancedcare_ppo: true
+
+# --------------------------------------------- Step 5: supporting (OON + payment)
+supporting:
+  oon_probe_enabled: true
+  oon_max_bytes: 20000000
+  oon_min_records_for_present: 1
+  payment:
+    ffs_share_ppo: 0.90          # >= this share of ffs suggests PPO
+    capitation_share_hmo: 0.20   # >= this share of capitation suggests HMO
+    min_items: 20                # need at least this many in_network items to say anything
+    min_distinct_tins_ppo: 50    # broad independent-TIN spread suggests PPO
+
+# --------------------------------------------------- Step 6: combine + confidence
+combine:
+  # Optional very weak tiebreaker: an unresolved plan copies the type of the same employer's
+  # other plans (same EIN plan id). Off by default.
+  employer_tiebreaker: false
+  placeholder_plan_ids: ['999999999', '000000000', '0']
+
+# --------------------------------------------------- Step 7: validation sample
+validation:
+  sample_size: 25
+  seed: 42
+
+context_notes:
+  - "Health Net is ending California commercial group plans; most policies end 2027-02-28 (notices from 2026-09-01)."
