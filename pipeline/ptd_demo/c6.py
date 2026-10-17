@@ -12,7 +12,7 @@ from ptd_c6 import cli as c6
 from .roster import DEFAULT_DEMO_CSV, load_demo_rows
 
 
-def _apply_pair_verdicts_to_outputs(out: Path, rows: list[dict]) -> None:
+def _apply_pair_verdicts_to_outputs(out: Path, db_path: Path, rows: list[dict]) -> None:
     """Keep demo PPO/unknown routing pair-specific in the exported files too."""
     statuses = {}
     for r in rows:
@@ -21,7 +21,7 @@ def _apply_pair_verdicts_to_outputs(out: Path, rows: list[dict]) -> None:
             "FOUND_PPO_BY_NPI", "FOUND_PPO_SAME_FACILITY_DIFFERENT_NPI",
             "NOT_FOUND_BY_NPI_SAME_TIN_OTHER_SITES_PPO"} else "UNRESOLVED")
     # C6's SQLite table contains the exact rate rows fanned out by NPI+TIN.
-    db = connect(out.parent.parent / "rates.sqlite")
+    db = connect(db_path)
     if not table_exists(db, "c6_rates"):
         db.close()
         return
@@ -86,7 +86,7 @@ def main(argv=None):
     if args.config:
         cmd += ["--config", args.config]
     c6.main(cmd)
-    _apply_pair_verdicts_to_outputs(Path(args.out), rows)
+    _apply_pair_verdicts_to_outputs(Path(args.out), db_path, rows)
     summary_path = Path(args.out) / "c6_run_summary.json"
     summary = json.loads(summary_path.read_text()) if summary_path.exists() else {}
     verdict_counts = {v: sum(r["verdict"] == v for r in rows) for v in sorted({r["verdict"] for r in rows})}
