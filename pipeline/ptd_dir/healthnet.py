@@ -196,6 +196,8 @@ def check(targets: list, out: Path, network: str = DEFAULT_NETWORK, year: str | 
                     body = resp.json()
                 except Exception:
                     return
+                if isinstance(body, dict):  # search facets ("aggs") are ~0.5 MB a response and never used
+                    body.pop("aggs", None)
                 rec = {"t": datetime.now(timezone.utc).isoformat(), "url": resp.url, "method": resp.request.method,
                        "status": resp.status, "network_name": net_label[0], "query_npi": npi,
                        "query_location": loc, "network_year": year, "query_kind": query["kind"], "body": body}
