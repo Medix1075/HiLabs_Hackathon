@@ -1,0 +1,109 @@
+# C5 configuration: which address (or addresses) each NPI + TIN practises at.
+# Every weight and rule used to score a candidate address lives here.
+
+scope_state: CA                  # the network is California; addresses elsewhere are penalised, not dropped
+
+# --------------------------------------------------------------- how much each source is trusted
+# The chance that one source's address, on its own, is a real current practice location.
+# Sources in the same family share their underlying data, so within a family only the best one
+# counts; across families the evidence combines as independent witnesses (noisy-OR):
+#     p(site) = 1 - prod over families (1 - best weight x recency in that family)
+sources:
+  weights:
+    directory: 0.75              # the payer's own directory, network-specific (Centene FHIR / roster)
+    dac: 0.70                    # CMS Doctors & Clinicians: Medicare enrolment must be current to get paid
+    npi_api_practice: 0.50       # NPI Registry API, same data as NPPES but read live
+    nppes_practice: 0.45         # NPPES practice location (self-reported, ~80% stale per the brief)
+    npi_api_secondary: 0.45
+    nppes_secondary: 0.40        # NPPES Practice Location Reference File
+    tin_org_site: 0.35           # practice address of a Type 2 (organisation) NPI billing under the same TIN
+    nppes_mailing: 0.10          # a mailing address is usually a billing office, rarely where care happens
+  families:
+    nppes: [nppes_practice, nppes_secondary, nppes_mailing, npi_api_practice, npi_api_secondary]
+    dac: [dac]
+    directory: [directory]
+    tin_roster: [tin_org_site]
+  # NPPES addresses lose weight with the record's age: factor = max(floor, 0.5 ^ (age / half_life))
+  recency:
+    half_life_years: 3
+    floor: 0.4
+
+# --------------------------------------------------------------- what the rate file adds
+# The rate file says which NPIs bill under each TIN (its roster). An address shared by many of
+# the TIN's other NPIs is very likely one of the TIN's real sites; this is what makes an address
+# specific to the (NPI, TIN) pair rather than just to the NPI.
+tin_consensus:
+  weight: 0.6                    # p = 1 - (1 - p) x (1 - weight x consensus share)
+  min_roster: 3                  # the TIN needs at least this many NPIs with any address
+  add_site_min_share: 0.5        # a TIN site shared by this share of the roster becomes a candidate
+                                 # for members with no address of their own ("tin_consensus_only")
+  # When the TIN clearly practises elsewhere (another site reaches add_site_min_share) and none of
+  # its other NPIs share this site, the site most likely belongs to the NPI's other affiliation.
+  absent_penalty: 0.5            # confidence x (1 - absent_penalty)
+# CMS groups NPIs by org_pac_id, not TIN. When most of a TIN's NPIs share one org_pac_id, that
+# group's addresses are the TIN's: they are boosted, and the NPI's addresses with other groups
+# (likely its other TINs) are discounted. The same holds for directory rows that carry a TIN.
+group_alignment:
+  min_share: 0.5
+  boost: 0.5
+  discount: 0.5
+
+penalties:                       # multiply the final confidence
+  out_of_state: 0.3
+  po_box: 0.1
+
+# --------------------------------------------------------------- choosing
+select:
+  max_addresses_per_pair: 3      # practitioners often work at several sites of one group
+  secondary_min_confidence: 0.5  # an extra address needs this confidence ...
+  secondary_min_ratio: 0.75      # ... and at least this share of the best address's confidence
+  drop_deactivated: true         # an NPI NPPES marks deactivated keeps its rates but gets no address
+
+# An address is "verified" when two independent families agree on it, or the payer directory
+# lists it, or its confidence reaches min_confidence.
+verified:
+  min_families: 2
+  directory_alone: true
+  min_confidence: 0.8
+
+# --------------------------------------------------------------- live lookups (optional)
+npi_api:
+  base_url: https://npiregistry.cms.hhs.gov/api/
+  max_lookups: 0                 # 0 = off; --npi-api N looks up at most N NPIs missing from the files
+  requests_per_second: 5
+  timeout_seconds: 20
+  stop_after_failures: 5
+  user_agent: "hilabs-c5-pipeline/1.0"
+
+# --------------------------------------------------------------- geography (used by C7's peer groups)
+# County comes from --zip-county (any CSV with zip and county columns, e.g. HUD's ZIP-COUNTY file).
+# Without it, the region is taken from the ZIP's first three digits, using the USPS sectional
+# centers below (approximate California market areas).
+regions:
+  "900-908": Los Angeles
+  "910-918": San Gabriel / San Fernando Valleys
+  "919-921": San Diego
+  "922-925": Inland Empire
+  "926-928": Orange County
+  "930-931": Ventura / Santa Barbara
+  "932-933": Bakersfield / Kern
+  "934": Central Coast
+  "935": High Desert
+  "936-938": Fresno / Central Valley
+  "939": Monterey Bay
+  "940": Peninsula
+  "941": San Francisco
+  "942": Sacramento
+  "943": Peninsula
+  "944": Peninsula
+  "945-948": East Bay
+  "949": North Bay
+  "950-951": San Jose / South Bay
+  "952-953": Stockton / Modesto
+  "954": North Bay
+  "955": North Coast
+  "956-958": Sacramento
+  "959-961": Northern California
+
+outputs:
+  candidates_csv: true           # every scored candidate, for audit (one row per pair x site)

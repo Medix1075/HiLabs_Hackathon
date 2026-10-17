@@ -1,0 +1,49 @@
+# C7 configuration: cost effectiveness of each provider against similar providers.
+
+# Which rates can be compared across providers at all. Percentage-of-charges rates can't (the
+# charge is unknown), so they are left out. Per diem rates are only ever compared with per diem
+# rates, because negotiated_type is part of the price variant below.
+exclude_negotiated_types: [percentage]
+
+# A price is only compared with prices for the same code AND the same variant: these columns
+# (from C6's headline rate) must match.
+variant: [negotiated_type, billing_class, setting, pos, modifier]
+
+# "Similar providers", most specific first. A rate is benchmarked against the first level whose
+# peer group has at least min_peers providers (hierarchical back-off), and the level used is kept.
+peer_levels:
+  - {name: specialty+region+type, keys: [specialty, region, npi_type]}
+  - {name: specialty+type (statewide), keys: [specialty, npi_type]}
+  - {name: type (statewide), keys: [npi_type]}
+  - {name: all providers (statewide), keys: []}
+min_peers: 5
+
+# Provider score: a volume-weighted geometric mean of (rate / peer median) over the provider's codes.
+provider_score:
+  # Weight of each code for a provider: its SPEC_PROC_WEIGHT within the provider's specialty
+  # (HiLabs workbook); codes outside that profile use the code's overall weight across specialties;
+  # without a workbook every code weighs the same.
+  weighting: workbook
+  # Empirical-Bayes shrinkage towards the market (index 1.0): the log index is multiplied by
+  # n_eff / (n_eff + k), where n_eff is the effective number of codes. One cheap code is weak
+  # evidence; twenty cheap codes are strong evidence.
+  shrinkage_k: 2.0
+  # The 0-100 score is the provider's percentile among similar providers (100 = cheapest),
+  # with the same back-off: specialty + region, then specialty, then everyone.
+  cohort_levels: [[specialty, region], [specialty], []]
+  min_cohort: 10
+  confidence:                   # how much evidence stands behind a provider's score
+    high: {min_n_eff: 8, min_coverage: 0.3}
+    medium: {min_n_eff: 3, min_coverage: 0.0}
+
+# Tiers on the shrunk cost index (1.00 = the peer median).
+tiers:
+  - {name: Highly cost-effective, max_index: 0.85}
+  - {name: Cost-effective, max_index: 0.95}
+  - {name: At market, max_index: 1.05}
+  - {name: Above market, max_index: 1.20}
+  - {name: High cost, max_index: null}
+
+outputs:
+  scored_rate_file: true        # rewrite the C6 rate file with the cost columns added
+  top_n_in_report: 10
