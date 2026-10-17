@@ -1,4 +1,4 @@
-# Centene price transparency pipeline (C1 + C2)
+# Centene price transparency pipeline (C1 + C2 + C3)
 
 This pipeline reads Centene's Transparency in Coverage files and finds the rate files and plans for Health Net's **California commercial group PPO network**.
 
@@ -7,8 +7,9 @@ This pipeline reads Centene's Transparency in Coverage files and finds the rate 
 | Step 0: scrape the index links | `ptd_pipeline/scraper.py` | `data/toc_urls.json` |
 | C1: parse the index files | `ptd_pipeline/index_parser.py` | `data/index_table.csv`, `data/rate_files.csv`, `data/raw/` |
 | C2: find the CA group PPO plans and files | `ptd_c2/` | `out/c2/` (classification, PPO rate-file list, logs) |
+| C3: grade each PPO rate file's data quality | `ptd_c3/` | `out/c3/` (score per file, metric justifications, examples) |
 
-C2 imports C1. By default it reads C1's outputs in `data/`, and `--run-c1` runs C1 first.
+C2 imports C1, and C3 imports C2. Each stage reads the previous stage's outputs by default, and `--run-c1` / `--run-c2` run the earlier stages first.
 
 ## Run it
 
@@ -17,8 +18,8 @@ cd pipeline
 python3 -m venv .venv && source .venv/bin/activate      # Windows: .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-python -m ptd_c2 run --run-c1          # Step 0 + C1 + C2 in one go
-pytest                                 # 51 offline tests
+python -m ptd_c3 run --run-c2 --run-c1 # Step 0 + C1 + C2 + C3 in one go
+pytest                                 # 64 offline tests
 ```
 
 You can also run the stages separately:
@@ -108,12 +109,65 @@ From `python -m ptd_c2 run --no-probe` on C1's output. Rate files were not reach
 - Plans with no state in their name, id or file name fall back to the brand's home state and are flagged. `require_explicit_state: true` drops them instead.
 - All thresholds, keyword lists and network-name rules are in the config. No URLs or dates are hardcoded.
 
+---
+
+## C3: grade each rate file's data quality
+
+`python -m ptd_c3 run` reads C2's hand-off (`out/c2/c2_ppo_rate_files.csv`) and streams every listed rate file once, start to end. Nothing is loaded whole: ijson builds one `provider_references` item or one `in_network` item at a time, measures it and drops it. Memory grows with the number of provider groups and distinct codes, not with file size. On a 61 MB synthetic file (240,000 price rows) a run takes 8 seconds and 80 MB of memory, about 7.5 MB/s, so the ~700 MB Health Net CA file takes a couple of minutes plus download time.
+
+```bash
+python -m ptd_c3 run                                   # grade C2's PPO rate files
+python -m ptd_c3 run --files a.json.gz https://.../b.json   # grade any files
+python -m ptd_c3 run --expected-codes specialty_codes.xlsx  # measure code coverage
+python -m ptd_c3 run --provider-tags tags.csv          # also grade each provider tag (e.g. PPO only)
+python -m ptd_c3 run --max-bytes 200000000             # quick sample of each file, flagged "sampled"
+python -m ptd_c3 run --as-of 2026-10-17                # fixed grading date, for reproducible runs
+```
+
+### The nine metrics
+
+Each metric gives a raw value, a 0-1 score and a one-line justification (`c3_metrics.csv`). "Share of bad rows" metrics score `1 - min(1, share / tolerance)`, so a share at or above its tolerance scores 0. Tolerances and weights are in `config/c3.yaml`. The unit is one price row (one `negotiated_prices` entry).
+
+| Metric | Weight | What it measures |
+|---|---|---|
+| `schema_validity` | 15 | Problems per record against CMS v2.0.0: required fields, enums (`negotiation_arrangement`, `negotiated_type`, `billing_class`, `setting`, `tin.type`, `billing_code_type`), code formats (CPT, HCPCS, MS-DRG, RC, CDT, NDC), date format, `service_code` on professional rows, bundles without codes, references to undefined `provider_group_id`s, blank `network_name`. Halved if a top-level field is missing. |
+| `code_coverage` | 15 | Share of expected billing codes present, from the HiLabs specialty to billing code Excel. That file hasn't been provided, so this is "not measured" until `--expected-codes` is passed, and its weight is spread over the rest. With a specialty column it also writes coverage per specialty. |
+| `provider_coverage` | 15 | Share of price rows tied to at least one provider group with a valid NPI (10 digits and a correct check digit). Also counts distinct NPIs and TINs. California-only counts need the NPPES extract (C5). |
+| `zero_rates` | 10 | Rows with a rate of 0 or less. |
+| `outliers` | 10 | Rates outside a log-IQR fence (k = 3) **and** at least 3x from the median of rates for the same code, `negotiated_type`, `billing_class`, `setting` and modifiers, plus percentages above 100. Those splits are legitimately different prices, so they are never compared with each other. Groups under 5 rates are not tested. |
+| `rate_type_mix` | 10 | Share of rows that are dollar amounts comparable across providers (`negotiated`, `fee schedule`, `derived`). The full mix, per diem and percentage included, is in the justification. |
+| `duplicates` | 10 | Rows repeating an earlier row exactly (same code, providers, type, rate, class, setting, service codes, modifiers, expiry). File-wide up to 5M rows, then per item, and the output says which. |
+| `staleness` | 10 | Average of the expired-row score (`9999-12-31` counts as evergreen, not expired) and a file-age score from `last_updated_on` (1 up to 45 days, 0 at 365). |
+| `junk` | 5 | TIN-only groups (`npi: []` or `[0]`), placeholder TINs (`999999999`, ...), NPIs failing the check digit, and rows on catch-all codes (`CSTM-ALL`, `CSTM-00`). |
+
+The final score is the weighted mean of the measured metrics on a 0-100 scale, graded A (90+), B (80+), C (70+), D (60+) or F.
+
+### The mixed Health Net file, and provider tags
+
+C2 found that all 1,312 CA group plans share one rate file whose `network_name` is blank, so PPO providers can't be separated from HMO providers by network name (`needs_network_filter = True`). **C3 therefore grades each file as a whole** (bucket `ALL`) and says so in the log. The blank `network_name` on every reference shows up as a schema problem.
+
+The hook for later: `--provider-tags` takes a CSV/XLSX with `npi` and/or `tin` and a `tag` column. In the same pass, every price row is also counted under the tags of the provider groups it references, and each tag gets its own score row (e.g. `PPO`, `HMO`, `untagged`). When a file puts `in_network` before `provider_references`, C3 reads the references first so the tags are known.
+
+### Outputs (`out/c3/`)
+
+| File | Contents |
+|---|---|
+| `c3_file_scores.csv` | One row per file and bucket: score, grade, each metric's score, rows, codes, NPIs, TINs, status (`ok`, `sampled` or `error`), and C2's `needs_network_filter` and network columns |
+| `c3_metrics.csv` | One row per file, bucket and metric: raw value, score, weight, justification |
+| `c3_schema_problems.csv` | Count of each schema problem per file |
+| `c3_examples.csv` | Up to 5 example rows per issue per file (zero rates, outliers, duplicates, expired, TIN-only groups, schema problems) |
+| `c3_code_coverage.csv` | Only with `--expected-codes`: coverage per specialty, with missing codes |
+| `c3_results.xlsx`, `c3_run_summary.json`, `c3_run_log.txt` | Workbook, counts, log |
+
+Rate files couldn't be reached from the build machine, so C3 has been run on synthetic files only. Run it locally on the real Health Net file.
+
 ## Tests
 
-`pytest` runs 51 offline tests.
+`pytest` runs 64 offline tests.
 
 - **C1 (9 tests):** scraper structure on a saved page, employee exclusion, date parsing, flattening, dedup, gzip.
 - **C2 (41 tests):** a miniature Centene world served over local HTTP. It covers gzip, `network_name` as string, list or blank, `in_network` before `provider_references`, `location` references, mixed and unreachable files, the scope traps, the EnhancedCare flag, and the real EOA/EC/CUSPPO name shapes.
+- **C3 (13 tests):** hand-built clean and dirty rate files with every problem counted in advance, NPI check digits, expected-code coverage, provider tags (including references after `in_network`), `location` references, byte-cap sampling, unreachable files and the CLI.
 - **Integration (1 test):** `--run-c1` going from a saved page through C1 into C2.
 
 ## Layout
@@ -121,6 +175,7 @@ From `python -m ptd_c2 run --no-probe` on C1's output. Rate files were not reach
 ```
 pipeline/
 ├── config/c2.yaml          # every C2 threshold, keyword and decision
+├── config/c3.yaml          # every C3 tolerance, weight and rule
 ├── ptd_pipeline/           # Step 0 + C1
 │   ├── __main__.py         # python -m ptd_pipeline
 │   ├── scraper.py
@@ -130,6 +185,11 @@ pipeline/
 │   ├── scope.py  name_signals.py  file_vote.py  network_probe.py
 │   ├── supporting.py  combine.py  validation.py
 │   └── loaders.py  normalize.py  stream.py  config.py
+├── ptd_c3/                 # C3 (imports ptd_c2)
+│   ├── cli.py              # python -m ptd_c3 run
+│   ├── scan.py             # the streaming pass
+│   ├── metrics.py          # scores and justifications
+│   └── tags.py  codes.py  config.py
 ├── tests/
 └── data/, out/             # generated, git-ignored
 ```

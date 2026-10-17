@@ -1,0 +1,100 @@
+# C3 configuration: how each rate file is graded.
+# Every threshold, weight and judgement call lives here; nothing in the code hardcodes a URL or a date.
+
+# --------------------------------------------------------------- reading the file
+stream:
+  max_bytes: null              # null = read the whole file (the real grade). A number = grade a sample, flagged.
+  timeout_seconds: 120
+  retries: 3
+  user_agent: "hilabs-c3-pipeline/1.0"
+  workers: 2                   # files graded in parallel
+  progress_every_items: 5000   # log a progress line every N in_network items
+  max_location_fetches: 50     # provider_references given by URL ("location") fetched at most this many times
+  dedup_max_keys: 5000000      # exact-duplicate check is file-wide up to this many price rows, then per item
+
+# Date the file is graded against (expired rates, file age). null = today (UTC).
+as_of: null
+
+# --------------------------------------------------------------- what counts as what
+rates:
+  # negotiated_type values that are dollar amounts you can compare across providers.
+  dollar_types: [negotiated, fee schedule, derived]
+  # Dollar amounts, but per day of a stay, so only comparable with other per-diem rates.
+  per_diem_types: [per diem]
+  percentage_types: [percentage]
+  # Expiration dates meaning "no end date". Counted as evergreen, never as expired.
+  evergreen_dates: ["9999-12-31"]
+  # A percentage above this is treated as an outlier (percent of billed charges).
+  max_percentage: 100
+
+outliers:
+  # Rates are compared only with rates for the same code, negotiated_type, billing_class, setting
+  # and modifiers inside the same in_network item: those are legitimately different prices otherwise.
+  min_group_size: 5            # smaller groups are not tested
+  iqr_k: 3.0                   # fence on log(rate): Q1 - k*IQR .. Q3 + k*IQR
+  min_ratio_to_median: 3.0     # and at least this many times above / below the group median
+
+junk:
+  placeholder_tins: ["000000000", "999999999", "111111111", "123456789"]
+  # Billing code types that are catch-alls rather than real codes.
+  catch_all_code_types: [CSTM-ALL]
+  catch_all_code_patterns: ['^CSTM-?0*$', '^0+$']
+
+# Billing code formats checked per billing_code_type. Types not listed are not format-checked.
+code_formats:
+  CPT: '^\d{4}[0-9A-Z]$'
+  HCPCS: '^[A-Z]\d{4}$'
+  MS-DRG: '^\d{3}$'
+  RC: '^\d{3,4}$'
+  CDT: '^D\d{4}$'
+  NDC: '^\d{10,11}$|^\d{4,5}-\d{3,4}-\d{1,2}$'
+
+# Enumerations from the CMS in-network schema (v2.0.0).
+schema:
+  top_required: [reporting_entity_name, reporting_entity_type, last_updated_on, version, in_network]
+  item_required: [negotiation_arrangement, name, billing_code_type, billing_code_type_version, billing_code,
+                  description, negotiated_rates]
+  price_required: [negotiated_type, negotiated_rate, expiration_date, billing_class]
+  arrangements: [ffs, bundle, capitation]
+  negotiated_types: [negotiated, derived, fee schedule, percentage, per diem]
+  billing_classes: [professional, institutional]
+  settings: [inpatient, outpatient, both]
+  tin_types: [ein, npi]
+  billing_code_types: [CPT, HCPCS, ICD, MS-DRG, R-DRG, S-DRG, APS-DRG, AP-DRG, APR-DRG, APC, NDC, HIPPS,
+                       LOCAL, EAPG, CDT, RC, CSTM-ALL]
+  # network_name is required in v2.0.0; a blank one is counted as a schema problem
+  # (Health Net's CA file has it blank on every reference, see C2).
+  network_name_required: true
+
+# --------------------------------------------------------------- scoring
+# Each metric gives a 0-1 score. For "share of bad rows" metrics the score is
+# 1 - min(1, share / tolerance): a share at or above the tolerance scores 0.
+tolerance:
+  schema_error_share: 0.05
+  zero_rate_share: 0.10
+  outlier_share: 0.05
+  duplicate_share: 0.20
+  expired_share: 0.20
+  junk_group_share: 0.20
+  catch_all_share: 0.05
+
+staleness:
+  fresh_days: 45               # last_updated_on within this many days scores 1 (files are monthly)
+  stale_days: 365              # this old or older scores 0, linear in between
+
+# Weights of the final 0-100 score. A metric that can't be measured (e.g. code coverage with
+# no expected-code list) is left out and the remaining weights are rescaled; the output says so.
+weights:
+  schema_validity: 15
+  code_coverage: 15
+  provider_coverage: 15
+  zero_rates: 10
+  outliers: 10
+  rate_type_mix: 10
+  duplicates: 10
+  staleness: 10
+  junk: 5
+
+grades: {A: 90, B: 80, C: 70, D: 60}   # below D is F
+
+examples_per_issue: 5          # example rows kept per issue per file, for the justification sheet
