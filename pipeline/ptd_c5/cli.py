@@ -171,12 +171,18 @@ def run(args) -> int:
     resolved = [r for r in best if r["address"]]
     npi_verified = {r["npi"] for r in kept_all if r["verified"]}
     npi_resolved = {r["npi"] for r in resolved}
+    tins = {p[1] for p in pairs}
+    tin_verified = {r["tin"] for r in kept_all if r["verified"]}
+    tin_resolved = {r["tin"] for r in resolved}
     stats = {
         "pairs": len(pairs), "npis": len(npis), "pairs_with_address": len(resolved),
         "pairs_with_verified_address": sum(1 for r in best if r["verified"]),
         "npis_with_address": len(npi_resolved), "npis_with_verified_address": len(npi_verified),
         "pct_npis_with_address": round(100 * len(npi_resolved) / len(npis), 2) if npis else 0,
         "pct_npis_with_verified_address": round(100 * len(npi_verified) / len(npis), 2) if npis else 0,
+        "tins": len(tins), "tins_with_address": len(tin_resolved), "tins_with_verified_address": len(tin_verified),
+        "pct_tins_with_address": round(100 * len(tin_resolved) / len(tins), 2) if tins else 0,
+        "pct_tins_with_verified_address": round(100 * len(tin_verified) / len(tins), 2) if tins else 0,
         "address_rows": len(kept_all), "multi_site_pairs": sum(1 for r in kept_all if r["rank"] == 2),
         "unresolved_reasons": dict(Counter(r["evidence"] for r in best if not r["address"])),
         "best_by_families": dict(Counter(r["families"] for r in resolved).most_common(15)),

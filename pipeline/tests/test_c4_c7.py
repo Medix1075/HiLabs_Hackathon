@@ -254,7 +254,15 @@ def test_runner_writes_summary_and_deliverables(world, tmp_path):
     text = (tmp_path / "out/summary.md").read_text()
     assert "% NPIs linked to a verified address (C5)" in text and "| Unique NPIs (C4) | 160 |" in text
     names = {p.name for p in (tmp_path / "out/deliverables").iterdir()}
-    assert {"1_provider_rate_file.xlsx", "2_logic_file.md", "3_cost_effectiveness_metrics.md", "4_summary.md"} <= names
+    assert {"1_provider_rate_file.xlsx", "2_logic_file.md", "3_file_quality_metrics.md", "4_summary.md",
+            "7b_cost_effectiveness_metrics.md"} <= names
+    logic = (tmp_path / "out/deliverables/2_logic_file.md").read_text()
+    assert "Part A: identifying the PPO network" in logic and "Part B: linking TIN -> NPI -> address" in logic
+    assert "capitation" in logic and "## 1. Where each link comes from" in logic       # C5's logic, one level down
+    quality = (tmp_path / "out/deliverables/3_file_quality_metrics.md").read_text()
+    assert all(f"`{m}`" in quality for m in ("schema_validity", "code_coverage", "zero_rates", "staleness"))
+    assert "## Scores in this run" in quality
+    assert "% TINs linked to a verified address (C5)" in text
     by_net = list(csv.DictReader(open(tmp_path / "out/c3_by_network/c3_file_scores.csv")))
     assert {"ALL", "PPO", "NON_PPO"} <= {r["bucket"] for r in by_net}
 

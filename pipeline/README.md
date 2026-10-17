@@ -33,9 +33,10 @@ pytest                                 # 90 offline tests
 | Deliverable | File |
 |---|---|
 | 1. Provider rate file (NPI, TIN, address, billing code, specialty, rate) | `1_provider_rate_file.xlsx`, plus `1_provider_rate_file_with_cost_scores.xlsx` |
-| 2. Logic file (how TIN → NPI → address was mapped) | `2_logic_file.md` |
-| 3. Cost-effectiveness metrics | `3_cost_effectiveness_metrics.md`, `3_cost_effectiveness.xlsx` |
-| 4. Summary (data quality, coverage, findings) | `4_summary.md` |
+| 2. Logic file: (a) how the PPO network was identified, (b) how TIN → NPI → address was mapped | `2_logic_file.md` |
+| 3. File quality metrics: each C3 metric, how it is calculated, why, and this run's scores | `3_file_quality_metrics.md` |
+| 4. Summary (run statistics, coverage, missing inputs) | `4_summary.md` |
+| 7b. Cost-effectiveness metrics (C7, brownie points) | `7b_cost_effectiveness_metrics.md`, `7b_cost_effectiveness.xlsx` |
 
 Useful options: `--from c4 --to c7` reruns part of the chain on earlier outputs. `--files a.json.gz` skips C1 to C3 and uses the given rate files. `--grade-by-network` reruns C3 split by C4's PPO / non-PPO tags. `--nppes`, `--dac`, `--directory`, `--zip-county` and `--nucc` point at files you already have instead of `--fetch-public`. `--as-of 2026-10-17` fixes the date used for expiry and recency, so runs are reproducible.
 
@@ -287,7 +288,7 @@ python -m ptd_c5 extract-nppes --nppes data/public/NPPES_Data_Dissemination_....
 python -m ptd_c5 run --nppes ... --dac ... [--nppes-pl ...] [--directory ...] [--zip-county ...] [--npi-api auto|always|off|N]
 ```
 
-NPPES is self-reported and mostly stale, so C5 treats every source as a witness with a known reliability and adds the one thing only the rate file knows: **which other NPIs bill under the same TIN.** The full write-up, with this run's numbers and the closest calls, is generated as `c5_logic.md` (deliverable 2).
+NPPES is self-reported and mostly stale, so C5 treats every source as a witness with a known reliability and adds the one thing only the rate file knows: **which other NPIs bill under the same TIN.** The full write-up, with this run's numbers and the closest calls, is generated as `c5_logic.md`. It becomes Part B of the logic file (deliverable 2), whose Part A explains the PPO network logic of C2 and C4.
 
 1. **Gather candidates.** Each NPI's addresses come from NPPES (practice, mailing and the Practice Location Reference File), CMS Doctors & Clinicians (current Medicare enrolment, with the group's `org_pac_id`), the payer directory (with TIN when it has one), the [NPI Registry API](https://npiregistry.cms.hhs.gov/api-page), and the practice address of any Type 2 (organisation) NPI under the same TIN.
 2. **Standardise.** A local USPS Publication 28 standardiser (`address.py`: suffixes, directionals, unit designators, ordinal numbers, ZIP+4 trimmed) makes "123 North Main Street, Suite 4" and "123 N MAIN ST STE 4" the same address. Addresses are compared on **site** (number + street + ZIP5), so two suites in one building are one practice site.
@@ -311,7 +312,7 @@ The summary compares the chosen address with the NPPES practice address, which s
 | `c5_providers.csv` | Per NPI: name, type, taxonomies, Medicare specialty, deactivation |
 | `c5_tin_sites.csv` | Each TIN's sites and how many of its NPIs practise there |
 | `c5_candidates.csv` | Every candidate site with its score, for audit |
-| `c5_logic.md` | **Deliverable 2**, the logic file |
+| `c5_logic.md` | The address logic, included as Part B of deliverable 2 |
 | `c5_results.xlsx`, `c5_run_summary.json` | Workbook and counts |
 
 If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even nothing), says so in the log, and leaves the address blank rather than guessing.
@@ -333,7 +334,7 @@ If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even noth
 
 ## C7: cost effectiveness against similar providers
 
-`python -m ptd_c7 run --workbook weights.xlsx` writes **deliverable 3** (`c7_metrics.md`, generated with this run's numbers) and the scores.
+`python -m ptd_c7 run --workbook weights.xlsx` writes the cost-effectiveness metrics (`c7_metrics.md`, generated with this run's numbers; brownie point 7b) and the scores.
 
 1. **Like for like.** A rate is only compared with rates for the same billing code *and* the same price variant (rate type, billing class, setting, place of service, modifier). Percentage-of-charges rates are left out, since the charge is unknown.
 2. **Similar providers, with back-off.** Each rate is benchmarked against the most specific peer group that has at least 5 providers: specialty + region + NPI type, then specialty + type statewide, then type, then everyone. The level used is recorded on every row, so a reviewer can see how local each comparison is.
@@ -353,7 +354,7 @@ If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even noth
 | `c7_rate_benchmarks.csv.gz` | Every rate with its peer level, peer count, median, P25/P75, percentile and index |
 | `c7_cost_effectiveness.xlsx` | Providers sorted by score, TINs, and how many rates used each peer level |
 | `c7_provider_rate_file_scored.xlsx` / `.csv.gz` | The C6 rate file with the cost columns added |
-| `c7_metrics.md` | **Deliverable 3**, the metrics file |
+| `c7_metrics.md` | The cost-effectiveness metrics file (brownie point 7b) |
 
 ## What has and hasn't been checked
 
@@ -411,14 +412,14 @@ pipeline/
 │   ├── sources.py          # NPPES, practice locations, CMS D&C, directory, NPI API readers
 │   ├── resolve.py          # scoring, TIN consensus, group alignment, selection
 │   ├── fetch.py            # public file discovery and download
-│   └── logic.py  config.py  cli.py   # logic.py writes deliverable 2
+│   └── logic.py  config.py  cli.py   # logic.py writes the address logic (Part B of deliverable 2)
 ├── ptd_c6/                 # C6: python -m ptd_c6 run
 │   └── specialty.py  cli.py
 ├── ptd_c7/                 # C7: python -m ptd_c7 run
 │   ├── bench.py            # peer groups with back-off, vectorised statistics
 │   ├── score.py            # provider and TIN indexes, shrinkage, scores, tiers
-│   └── report.py  cli.py   # report.py writes deliverable 3
-├── ptd_run/                # python -m ptd_run all | summary (deliverable 4)
+│   └── report.py  cli.py   # report.py writes the cost-effectiveness metrics (7b)
+├── ptd_run/                # python -m ptd_run all | summary: deliverables 2, 3 and 4 (docs.py)
 ├── tools/make_synthetic_rate_file.py   # large Health Net-shaped test files
 ├── tests/
 └── data/, out/             # generated, git-ignored

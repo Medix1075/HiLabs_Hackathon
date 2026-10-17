@@ -20,6 +20,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .docs import write_logic, write_quality_metrics
+
 STAGES = ["c1", "c2", "c3", "c4", "c3net", "c5", "c6", "c7"]
 
 
@@ -84,6 +86,8 @@ def write_summary(out: Path, data: Path) -> dict:
         "unique_npis": c4.get("distinct_npis"), "unique_tins": c4.get("distinct_tins"),
         "pct_npis_with_address": c5.get("pct_npis_with_address"),
         "pct_npis_with_verified_address": c5.get("pct_npis_with_verified_address"),
+        "pct_tins_with_address": c5.get("pct_tins_with_address"),
+        "pct_tins_with_verified_address": c5.get("pct_tins_with_verified_address"),
         "best_address_vs_nppes": c5.get("best_address_vs_nppes_practice"),
         "address_sources_used": (", ".join(sorted(c5.get("sources_used") or {})) or "none") if c5 else None,
         "rate_file_rows": c6.get("rows"), "rate_file_rows_with_address": c6.get("rows_with_address"),
@@ -101,6 +105,8 @@ def write_summary(out: Path, data: Path) -> dict:
         ("Rates extracted: NPI x TIN x code x variant (C4)", "rates_extracted"), ("Unique NPIs (C4)", "unique_npis"),
         ("Unique TINs (C4)", "unique_tins"), ("% NPIs linked to an address (C5)", "pct_npis_with_address"),
         ("% NPIs linked to a verified address (C5)", "pct_npis_with_verified_address"),
+        ("% TINs linked to an address (C5)", "pct_tins_with_address"),
+        ("% TINs linked to a verified address (C5)", "pct_tins_with_verified_address"),
         ("Address sources used (C5)", "address_sources_used"),
         ("Best address vs NPPES practice address (C5)", "best_address_vs_nppes"),
         ("Rows in the provider rate file (C6)", "rate_file_rows"), ("... of which with an address", "rate_file_rows_with_address"),
@@ -121,10 +127,11 @@ def write_summary(out: Path, data: Path) -> dict:
     lines += ["", "## Deliverables", "",
               "| # | Deliverable | File |", "|---|---|---|",
               "| 1 | Provider rate file | `out/c6/c6_provider_rate_file.xlsx` (with cost columns: `out/c7/c7_provider_rate_file_scored.xlsx`) |",
-              "| 2 | Logic file (TIN -> NPI -> address) | `out/c5/c5_logic.md` |",
-              "| 3 | Cost-effectiveness metrics | `out/c7/c7_metrics.md`, `out/c7/c7_cost_effectiveness.xlsx` |",
+              "| 2 | Logic file: (a) PPO network, (b) TIN -> NPI -> address | `out/logic.md` |",
+              "| 3 | File quality metrics | `out/file_quality_metrics.md` (scores: `out/c3/`) |",
               "| 4 | Summary file | `out/summary.md` (this file) |",
-              "| 6 | Code repo | `pipeline/` (README.md) |", ""]
+              "| 6 | Code repo | `pipeline/` (README.md) |",
+              "| 7b | Cost-effectiveness metrics (C7) | `out/c7/c7_metrics.md`, `out/c7/c7_cost_effectiveness.xlsx` |", ""]
     (out / "summary.md").write_text("\n".join(lines))
     (out / "summary.json").write_text(json.dumps(s, indent=2, default=str))
     return s
@@ -133,10 +140,14 @@ def write_summary(out: Path, data: Path) -> dict:
 def _copy_deliverables(out: Path) -> None:
     d = out / "deliverables"
     d.mkdir(exist_ok=True)
+    write_logic(out)
+    write_quality_metrics(out)
     for src, name in [("c6/c6_provider_rate_file.xlsx", "1_provider_rate_file.xlsx"),
                       ("c7/c7_provider_rate_file_scored.xlsx", "1_provider_rate_file_with_cost_scores.xlsx"),
-                      ("c5/c5_logic.md", "2_logic_file.md"), ("c7/c7_metrics.md", "3_cost_effectiveness_metrics.md"),
-                      ("c7/c7_cost_effectiveness.xlsx", "3_cost_effectiveness.xlsx"), ("summary.md", "4_summary.md")]:
+                      ("logic.md", "2_logic_file.md"), ("file_quality_metrics.md", "3_file_quality_metrics.md"),
+                      ("summary.md", "4_summary.md"),
+                      ("c7/c7_metrics.md", "7b_cost_effectiveness_metrics.md"),
+                      ("c7/c7_cost_effectiveness.xlsx", "7b_cost_effectiveness.xlsx")]:
         if (out / src).exists():
             shutil.copy(out / src, d / name)
 
