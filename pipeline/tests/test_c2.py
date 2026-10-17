@@ -51,6 +51,9 @@ def test_state_sources():
     ("CA L SAL MEX 5/0/1500", {"HMO"}),
     ("PURECARE HSP SILVER", {"HSP"}),
     ("CA L CUS POS COUNTY OF SANTA CLARA", {"POS"}),
+    ("CA L EOA 20/500A/2500", {"EOA"}),
+    ("CA L EC EOA 15/1500D/6500", {"EOA"}),                  # EC ignored next to EOA
+    ("CA L CUSPPO 15/250/20% RAP", {"PPO"}),
 ])
 def test_strong_name_types(cfg, name, expected):
     assert _strong_types(tag_name(name, cfg))[0] == expected
@@ -162,7 +165,7 @@ def test_network_name_beats_plan_name(run_out):
 def test_unreachable_file_falls_back_to_name(run_out):
     _, rows = run_out
     r = rows["CA L SAL Mex 5/0/1500"]
-    assert r["final_network_type"] == "HMO" and r["confidence"] == "low" and r["decided_by"] == "plan name"
+    assert r["final_network_type"] == "HMO" and r["confidence"] == "medium" and r["decided_by"] == "plan name"
 
 
 def test_supporting_oon(run_out):
@@ -179,7 +182,19 @@ def test_every_row_has_reason_and_outputs_exist(run_out):
         assert (out / name).exists()
     ppo_files = {f["rate_file_url"].rsplit("/", 1)[-1] for f in read(out / "c2_ppo_rate_files.csv")}
     assert ppo_files == {"hn_ppo_in-network.json.gz", "hn_ec_in-network.json", "hn_mixed_in-network.json",
-                         "hn_late_in-network.json"}
+                         "hn_late_in-network.json", "hn_blank_in-network.json"}
+
+
+def test_blank_network_names_and_shared_file(run_out):
+    out, rows = run_out
+    probe = {p["rate_file_url"].rsplit("/", 1)[-1]: p for p in read(out / "c2_network_probe.csv")}
+    assert probe["hn_blank_in-network.json"]["status"] == "network_name_blank"
+    assert probe["hn_blank_in-network.json"]["network_label"] == "UNCONFIRMED"
+    r = rows["CA L CUSPPO 15/250/20% RAP"]
+    assert (r["final_network_type"], r["decided_by"], r["confidence"], r["needs_network_filter"]) == \
+        ("PPO", "plan name", "medium", "True")
+    assert rows["CA L EOA 20/500A/2500"]["final_network_type"] == "EOA"
+    assert rows["CA L EC EOA 15/1500D/6500"]["final_network_type"] == "EOA"
 
 
 def test_hypotheses_measured(run_out):
@@ -210,3 +225,24 @@ def test_validate_scoring(run_out, tmp_path):
     main(["validate", "--sample", str(p), "--out", str(tmp_path)])
     s = json.loads((tmp_path / "c2_validation_summary.json").read_text())
     assert s["checked"] == len(sample)
+
+
+def test_c2_reads_c1_outputs_end_to_end(world, tmp_path, monkeypatch):
+    """--run-c1: C1 scrapes a saved page, parses the cached raw indexes, then C2 reads its outputs."""
+    import shutil
+
+    from ptd_pipeline.scraper import parse_toc_links
+
+    page = Path(__file__).parent / "fixtures" / "centene_page.html"
+    links = parse_toc_links(page.read_text(encoding="utf-8"))
+    monkeypatch.chdir(tmp_path)
+    raw = tmp_path / "data" / "raw"
+    raw.mkdir(parents=True)
+    for link in links:  # pre-populate C1's download cache so nothing is fetched
+        shutil.copy(world["index"], raw / link.filename)
+    out = tmp_path / "out"
+    assert main(["run", "--run-c1", "--c1-html-file", str(page), "--out", str(out), "--no-probe"]) == 0
+    assert (tmp_path / "data" / "index_table.csv").exists()
+    s = json.loads((out / "c2_run_summary.json").read_text())
+    assert s["c1"].endswith("index_table.csv") and s["index_sources"]
+    assert s["in_scope_ppo_rows"] > 0

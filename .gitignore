@@ -1,6 +1,9 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-out/
-*.egg-info/
 .venv/
+*.egg-info/
+# pipeline outputs are rebuilt every run so they always match the current month's files
+pipeline/data/
+pipeline/out/
+temp_page.html

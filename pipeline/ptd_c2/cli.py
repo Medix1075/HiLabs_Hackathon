@@ -1,5 +1,7 @@
 """Command line entry point.
 
+  python -m ptd_c2 run --run-c1                     # C1 (scrape + parse) then C2
+  python -m ptd_c2 run                              # C2 on C1's outputs in data/
   python -m ptd_c2 run --c1 c1_output.csv --index raw_indexes/ --out out/c2
   python -m ptd_c2 validate --sample out/c2/c2_validation_sample.csv --out out/c2
 """
@@ -12,6 +14,10 @@ import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+
+from ptd_pipeline.__main__ import main as run_c1
+from ptd_pipeline.index_parser import DEFAULT_RAW_DIR as C1_RAW_DIR
+from ptd_pipeline.index_parser import DEFAULT_TABLE_CSV as C1_TABLE_CSV
 
 from . import __version__
 from .combine import combine, ppo_file_list
@@ -67,7 +73,28 @@ def write_xlsx(path: Path, sheets: dict[str, tuple[list[dict], list[str] | None]
     wb.save(path)
 
 
+def _run_c1_first(args) -> int:
+    """Run C1 (Step 0 scrape + Step 1 index parse) so C2 reads this month's files."""
+    c1_args = ["--html-file", str(args.c1_html_file)] if args.c1_html_file else []
+    print("[c1] running C1: scrape the Centene page, then parse every index file", flush=True)
+    code = run_c1(c1_args)
+    if code == 1:
+        print("[c1] C1 failed (see log above); C2 not run", flush=True)
+    elif code == 2:
+        print("[c1] some index files failed to parse; C2 continues on the ones that worked", flush=True)
+    return code
+
+
 def run(args) -> int:
+    if args.run_c1 and _run_c1_first(args) == 1:
+        return 1
+    args.c1 = args.c1 or str(C1_TABLE_CSV)
+    if not Path(args.c1).exists():
+        print(f"C1 table {args.c1} not found. Run C1 first (python -m ptd_pipeline), "
+              "add --run-c1, or pass --c1 <table>.", file=sys.stderr)
+        return 1
+    if args.index is None and C1_RAW_DIR.is_dir():
+        args.index = [str(C1_RAW_DIR)]  # C1 caches the raw index files here
     cfg = load_config(args.config)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -169,7 +196,7 @@ def run(args) -> int:
         probe_rows.append({k: p.get(k, "") for k in (
             "rate_file_url", "status", "network_label", "network_names", "network_labels", "ppo_network_names",
             "provider_references_read", "provider_references_complete", "in_network_items_read", "arrangements",
-            "distinct_tins", "tins_with_50plus_npis", "location_refs", "location_files_fetched", "bytes_read",
+            "distinct_tins", "tins_with_50plus_npis", "blank_network_names", "location_refs", "location_files_fetched", "bytes_read",
             "seconds", "stop_reason", "top_level", "note", "error")})
     name_rows = [{k: r[k] for k in ("row_id", "plan_name", "plan_name_norm", "plan_id", "rate_file_url",
                                      "name_signal", "name_types", "name_strength", "name_tokens")} for r in in_scope]
@@ -237,9 +264,12 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="ptd_c2", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="classify plans and produce the PPO rate-file list")
-    r.add_argument("--c1", required=True, help="C1 output table (.csv, .xlsx, .json, .jsonl)")
+    r.add_argument("--c1", help=f"C1 output table (.csv, .xlsx, .json, .jsonl); default {C1_TABLE_CSV}")
+    r.add_argument("--run-c1", action="store_true", help="run C1 (ptd_pipeline) first, then C2 on its outputs")
+    r.add_argument("--c1-html-file", type=Path, help="with --run-c1: parse a saved copy of the Centene page")
     r.add_argument("--sheet", help="sheet name when --c1 is an Excel file")
-    r.add_argument("--index", nargs="*", help="raw index JSON files, directories or URLs (for allowed_amount_file)")
+    r.add_argument("--index", nargs="*", help="raw index JSON files, directories or URLs (for allowed_amount_file); "
+                                           f"default {C1_RAW_DIR} when it exists")
     r.add_argument("--config", help="config YAML (default config/c2.yaml)")
     r.add_argument("--out", default="out/c2", help="output directory")
     r.add_argument("--no-probe", action="store_true", help="skip reading rate/OON files (offline run)")
