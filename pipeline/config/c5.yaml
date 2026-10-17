@@ -11,6 +11,8 @@ scope_state: CA                  # the network is California; addresses elsewher
 sources:
   weights:
     directory: 0.75              # the payer's own directory, network-specific (Centene FHIR / roster)
+    directory_tin: 0.50          # the directory lists this site for another NPI of the same TIN (only used when
+                                 # another source puts this NPI at the same site: corroboration, not a new site)
     dac: 0.70                    # CMS Doctors & Clinicians: Medicare enrolment must be current to get paid
     npi_api_practice: 0.50       # NPI Registry API, same data as NPPES but read live
     nppes_practice: 0.45         # NPPES practice location (self-reported, ~80% stale per the brief)
@@ -22,6 +24,7 @@ sources:
     nppes: [nppes_practice, nppes_secondary, nppes_mailing, npi_api_practice, npi_api_secondary]
     dac: [dac]
     directory: [directory]
+    directory_tin: [directory_tin]   # own family: counts as a second witness, but never "directory alone"
     tin_roster: [tin_org_site]
   # NPPES addresses lose weight with the record's age: factor = max(floor, 0.5 ^ (age / half_life))
   recency:

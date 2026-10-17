@@ -126,6 +126,7 @@ def load_directory(path: str | Path, c2cfg: dict, ppo_labels) -> Directory:
         "city": ["city"], "state": ["state", "st"], "zip": ["zip", "zipcode", "postalcode"],
         "source": ["source"], "last_updated": ["lastupdated", "updated", "asof"],
         "npi_source": ["npisource"], "listing_networks": ["listingnetworks"],
+        "name": ["name", "providername"], "specialty": ["specialty"],
     }
     rows = []
     for rec in read_table(path):

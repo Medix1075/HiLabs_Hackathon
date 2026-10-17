@@ -85,7 +85,7 @@ class Shard:
 
     SQL = {
         "refs": "INSERT OR IGNORE INTO c4_refs (file_id, ref_id, network_name, n_groups, source) VALUES (?,?,?,?,?)",
-        "members": "INSERT INTO c4_ref_members VALUES (?,?,?,?,?)",
+        "members": "INSERT INTO c4_ref_members VALUES (?,?,?,?,?,?)",
         "refset": "INSERT OR IGNORE INTO c4_refset_members VALUES (?,?,?)",
         "stats": "INSERT INTO c4_refset_stats_raw VALUES (?,?,?,?,?)",
         "codes": "INSERT OR IGNORE INTO c4_codes VALUES (?,?,?)",
@@ -111,7 +111,7 @@ class Shard:
 
 
 def _group_rows(file_id: int, ref_id: str, groups) -> list[tuple]:
-    """(file_id, ref_id, npi, tin, tin_type) for each NPI of each group; npi None for TIN-only groups."""
+    """(file_id, ref_id, npi, tin, tin_type, tin_name) for each NPI of each group; npi None for TIN-only groups."""
     rows = []
     for g in groups or []:
         if not isinstance(g, dict):
@@ -119,12 +119,13 @@ def _group_rows(file_id: int, ref_id: str, groups) -> list[tuple]:
         tin = g.get("tin") if isinstance(g.get("tin"), dict) else {}
         tin_value = str(tin.get("value") or "").strip()
         tin_type = str(tin.get("type") or "").lower()
+        tin_name = str(tin.get("business_name") or "").strip()
         npis = g.get("npi") if isinstance(g.get("npi"), list) else [g.get("npi")]
         valid = [int(n) for n in npis if n not in (None, "", 0, "0") and npi_is_valid(n)]
         if not valid:
-            rows.append((file_id, ref_id, None, tin_value, tin_type))
+            rows.append((file_id, ref_id, None, tin_value, tin_type, tin_name))
         for n in dict.fromkeys(valid):
-            rows.append((file_id, ref_id, n, tin_value, tin_type))
+            rows.append((file_id, ref_id, n, tin_value, tin_type, tin_name))
     return rows
 
 
@@ -274,7 +275,7 @@ def merge_shards(con: sqlite3.Connection, shard_paths: list[Path]) -> None:
     con.execute("DROP TABLE temp.stats_raw")
     # inline groups can be seen by several shards: keep one copy of each member row
     con.execute("DELETE FROM c4_ref_members WHERE rowid NOT IN (SELECT MIN(rowid) FROM c4_ref_members "
-                "GROUP BY file_id, ref_id, npi, tin, tin_type)")
+                "GROUP BY file_id, ref_id, npi, tin, tin_type)")  # one row per member, first name kept
     con.executescript(INDEXES)
     con.execute("ANALYZE")
     con.commit()

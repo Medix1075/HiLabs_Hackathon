@@ -209,6 +209,8 @@ Every rule, weight and threshold below is in `config/c4.yaml` to `config/c7.yaml
 python -m ptd_c4 run --workbook weights.xlsx                 # C2's file list, workbook codes only
 python -m ptd_c4 run --files a.json.gz --codes all           # any rate file, every billing code
 python -m ptd_c4 run --directory data/directory.csv          # payer directory as network evidence (see ptd_dir)
+python -m ptd_c4 run --directory data/directory.csv --directory-checks "data/directory/*.coverage.jsonl" \
+    --npis ppo_check_results.csv                              # only these NPIs (drop --npis for the whole file)
 python -m ptd_c4 run --files a.json --oon oon.json --oon-ppo-only   # allowed-amount file as evidence
 python -m ptd_c4 directory --fhir-base https://.../fhir      # a directory from a Plan-Net FHIR API instead
 ```
@@ -286,6 +288,7 @@ TIN-only groups (no NPI) can't produce NPI rows. They are counted and logged.
 | `c4_provider_tags.csv` | NPI, TIN and tag, for C3's `--provider-tags` |
 | `c4_hypotheses.csv` | What each hypothesis scored, and whether it was used |
 | `c4_extraction_log.csv` | Rows dropped by reason, and how often each tie-break rule decided |
+| `c4_ppo_check.csv` | With `--directory`, `--directory-checks` or `--npis`. One row per NPI × TIN: the rate file's side (TIN name, references, network status, rates extracted) next to what Health Net's Find a Provider site returned (searched where and under which network, listing name, product, address, specialty, the name/TIN fallback) and a `verdict` |
 | `c4_results.xlsx`, `c4_run_summary.json`, `c4_run_log.txt` | Workbook with a sample of rates, counts, timings, log |
 | `c4_rates.csv.gz` | Only with `rates_csv: true`. Every rate as CSV; off by default because it is large and C6 writes the deliverable anyway. |
 
@@ -353,7 +356,7 @@ NPPES is self-reported and mostly stale, so C5 treats every source as a witness 
 
 1. **Gather candidates.** Each NPI's addresses come from NPPES (practice, mailing and the Practice Location Reference File), CMS Doctors & Clinicians (current Medicare enrolment, with the group's `org_pac_id`), the payer directory (with TIN when it has one), the [NPI Registry API](https://npiregistry.cms.hhs.gov/api-page), and the practice address of any Type 2 (organisation) NPI under the same TIN.
 2. **Standardise.** A local USPS Publication 28 standardiser (`address.py`: suffixes, directionals, unit designators, ordinal numbers, ZIP+4 trimmed) makes "123 North Main Street, Suite 4" and "123 N MAIN ST STE 4" the same address. Addresses are compared on **site** (number + street + ZIP5), so two suites in one building are one practice site.
-3. **Score each site** with a noisy-OR across independent source families: `p = 1 − Π(1 − best weight in family × recency)`. Sources in one family (all the NPPES variants) share their data, so only the best one counts. NPPES evidence decays with the record's age (half-life 3 years, floor 0.4). Weights: directory 0.75, CMS D&C 0.70, NPPES practice 0.45, mailing 0.10.
+3. **Score each site** with a noisy-OR across independent source families: `p = 1 − Π(1 − best weight in family × recency)`. Sources in one family (all the NPPES variants) share their data, so only the best one counts. NPPES evidence decays with the record's age (half-life 3 years, floor 0.4). Weights: directory 0.75, CMS D&C 0.70, directory listing of the same TIN 0.50 (only corroborates a site another source already gives), NPPES practice 0.45, mailing 0.10. C5 resolves every NPI + TIN of `c4_pairs`, so `--npis` in C4 limits C5 and C6 too.
 4. **Make it TIN-specific.**
    - *TIN consensus:* the share of the TIN's other NPIs placed at this site, each weighted by how strongly its own sources place it there (a fresh CMS address counts more than an old NPPES one). This boosts the site: `p ← 1 − (1 − p)(1 − 0.6 × share)`.
    - When most of the TIN practises at a site the NPI has no address for, that site becomes a candidate (`tin_consensus_only`). This is how NPIs with only a stale NPPES address still get the right one.

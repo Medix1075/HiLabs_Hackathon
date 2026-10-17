@@ -20,6 +20,7 @@ match as weak). Not finding an NPI is therefore never used as evidence against P
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -122,11 +123,38 @@ def _setup(page, location: str, network: str, year: str) -> str:
     return match[0][1]
 
 
-def check(npis: list[str], out: Path, network: str = DEFAULT_NETWORK, year: str | None = None,
+def fallback_term(tin_name: str, npi_name: str = "") -> str:
+    """What to type for the name search: the rate file's TIN business name, cleaned. "THIELE, M.D." is
+    a doctor's own corporation: search the surname. Placeholder names fall back to the NPPES name."""
+    t = (tin_name or "").strip()
+    if re.search(r",\s*(M\.?D|PH\.?D|PSY\.?D|M\.?F\.?T|D\.?O|D\.?D\.?S)\.?$", t, re.I):
+        return t.split(",")[0].strip().title()
+    if not t or t.upper().startswith("PPO:") or "HEALTH NET" in t.upper():
+        t = npi_name or t
+    t = re.sub(r",?\s*(INC\.?|LLC|L\.L\.C\.|APC|PC|A PROFESSIONAL MEDICAL CORPORATION|A PSYCHOLOGICAL CORPORATION)\s*$",
+               "", t, flags=re.I).strip(" ,.")
+    return t.title()
+
+
+def _search(page, term: str) -> None:
+    box = page.get_by_label("Search by Specialty", exact=False).first
+    box.fill(term)
+    page.wait_for_timeout(1500)
+    box.press("Enter")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(5000)
+
+
+def check(targets: list, out: Path, network: str = DEFAULT_NETWORK, year: str | None = None,
           location: str | None = None, executable: str | None = None, channel: str | None = None,
-          delay: float = 1.0, log=print) -> dict:
+          delay: float = 1.0, fallback: bool = True, log=print) -> dict:
     """Search each NPI on the site under `network`; append the search responses to `out` (JSONL) and
-    one coverage line per NPI to `<out>.coverage.jsonl`."""
+    one coverage line per NPI to `<out>.coverage.jsonl`.
+
+    `targets` are NPIs or dicts {npi, tin, tin_name}. With `fallback`, an NPI the site does not find is
+    searched again by its TIN's business name, and listings with the same TIN are kept (a facility often
+    bills under another NPI than the one the directory shows). Those captures carry `query_tin`, so
+    `build` keeps only same-TIN listings from them."""
     from playwright.sync_api import sync_playwright
 
     from .capture import launch
@@ -146,7 +174,9 @@ def check(npis: list[str], out: Path, network: str = DEFAULT_NETWORK, year: str 
     with open(out, "a", encoding="utf-8") as fh, open(cov_path, "a", encoding="utf-8") as cov, \
             sync_playwright() as pw:
         browser = launch(pw, channel, executable, headless=True)
-        for npi in [str(n) for n in npis]:
+        for t in targets:
+            t = t if isinstance(t, dict) else {"npi": t}
+            npi, tin = str(t["npi"]), re.sub(r"\D", "", str(t.get("tin") or ""))
             if npi in done:
                 stats["skipped_done"] += 1
                 continue
@@ -157,7 +187,7 @@ def check(npis: list[str], out: Path, network: str = DEFAULT_NETWORK, year: str 
                 continue
             ctx = browser.new_context(viewport={"width": 1300, "height": 900})
             page = ctx.new_page()
-            armed, hits, net_label = [False], [], [""]
+            armed, hits, net_label, query = [False], [], [""], {"kind": "npi"}
 
             def on_response(resp):
                 if not armed[0] or SEARCH_API not in resp.url:
@@ -168,34 +198,47 @@ def check(npis: list[str], out: Path, network: str = DEFAULT_NETWORK, year: str 
                     return
                 rec = {"t": datetime.now(timezone.utc).isoformat(), "url": resp.url, "method": resp.request.method,
                        "status": resp.status, "network_name": net_label[0], "query_npi": npi,
-                       "query_location": loc, "network_year": year, "body": body}
+                       "query_location": loc, "network_year": year, "query_kind": query["kind"], "body": body}
+                if query["kind"] == "name":
+                    rec.update(query_tin=tin, query_term=query.get("term", ""))
                 fh.write(json.dumps(rec, default=str) + "\n")
                 fh.flush()
                 if is_pces(body):
                     hits.extend(parse_pces(body, int(year)))
 
-            page.on("response", on_response)
-            status = "not_found"
+            ctx.on("response", on_response)
+            status, fb = "not_found", {}
             try:
                 net_label[0] = _setup(page, loc, network, year)
-                box = page.get_by_label("Search by Specialty", exact=False).first
-                box.fill(npi)
-                page.wait_for_timeout(1500)
                 armed[0] = True
-                box.press("Enter")
-                page.wait_for_load_state("networkidle")
-                page.wait_for_timeout(5000)
+                _search(page, npi)
                 if any(h["npi"] == npi for h in hits):
                     status = "found"
                     stats["found"] += 1
+                elif fallback and tin and (t.get("tin_name") or t.get("name")):
+                    term = fallback_term(t.get("tin_name", ""), t.get("name", ""))
+                    query.update(kind="name", term=term)
+                    hits.clear()
+                    armed[0] = False
+                    page = ctx.new_page()  # a fresh search from the start: location, year, network
+                    _setup(page, loc, network, year)
+                    armed[0] = True
+                    _search(page, term)
+                    same = [h for h in hits if h["tin"] == tin]
+                    fb = {"fallback_term": term, "fallback_same_tin": len(same),
+                          "fallback_npis": sorted({h["npi"] for h in same if h["npi"]}),
+                          "fallback_names": sorted({h["name"] for h in same if h["name"]})[:5]}
+                    if same:
+                        stats["found_by_tin"] = stats.get("found_by_tin", 0) + 1
             except Exception as exc:
                 status = f"error: {exc.__class__.__name__}"
                 stats["errors"] += 1
             stats["searched"] += 1
-            cov.write(json.dumps({"npi": npi, "status": status, "location": loc, "network": net_label[0],
-                                  "year": year}) + "\n")
+            cov.write(json.dumps({"npi": npi, "tin": tin, "status": status, "location": loc,
+                                  "network": net_label[0], "year": year, **fb}) + "\n")
             cov.flush()
-            log(f"[dir] {npi} {loc}: {status}")
+            log(f"[dir] {npi} {loc}: {status}" + (f"; by name {fb['fallback_term']!r}: {fb['fallback_same_tin']} "
+                                                  f"listing(s) with the same TIN" if fb else ""))
             ctx.close()
             time.sleep(delay)
         browser.close()

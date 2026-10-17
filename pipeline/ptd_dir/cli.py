@@ -73,15 +73,16 @@ def targets_cmd(args) -> int:
     return 0
 
 
-def _check_npis(args) -> list[str]:
-    npis = list(args.npis or [])
-    if args.npi_file:
-        npis += [x.strip() for x in Path(args.npi_file).read_text().split() if x.strip()]
-    if args.db and not npis:
-        import random
-        import sqlite3
+def _check_npis(args) -> list:
+    """NPIs to check, as {npi, tin, tin_name} when the rate store knows the NPI's TIN (for the name fallback)."""
+    import random
+    import sqlite3
 
-        con = sqlite3.connect(args.db)
+    from ptd_c4.cli import read_npi_list
+
+    npis = read_npi_list((args.npis or []) + ([args.npi_file] if args.npi_file else []))
+    con = sqlite3.connect(args.db) if args.db and Path(args.db).exists() else None
+    if con is not None and not npis:
         q = "SELECT DISTINCT npi FROM c4_ref_members"
         if args.unconfirmed_only:
             q = ("SELECT DISTINCT m.npi FROM c4_ref_members m JOIN c4_refs r ON r.file_id = m.file_id AND "
@@ -90,10 +91,19 @@ def _check_npis(args) -> list[str]:
             q = (f"SELECT npi FROM ({q}) WHERE npi IN (SELECT p.npi FROM c4_pairs p JOIN c4_sig_rates s "
                  "ON s.file_id = p.file_id AND s.sig_id = p.sig_id)")
         npis = [str(n) for (n,) in con.execute(q + " ORDER BY 1") if n]
-        con.close()
         if args.sample and args.sample < len(npis):
             npis = sorted(random.Random(args.seed).sample(npis, args.sample))
-    return list(dict.fromkeys(npis))
+    targets = [{"npi": n} for n in dict.fromkeys(npis)]
+    if con is not None:
+        cols = [r[1] for r in con.execute("PRAGMA table_info(c4_ref_members)")]
+        name = "tin_name" if "tin_name" in cols else "''"
+        for t in targets:  # the NPI's first TIN in the rate file, with its business name
+            row = con.execute(f"SELECT tin, {name} FROM c4_ref_members WHERE npi = ? ORDER BY ({name} = ''), tin "
+                              "LIMIT 1", (int(t["npi"]),)).fetchone()
+            if row:
+                t.update(tin=row[0], tin_name=row[1])
+        con.close()
+    return targets
 
 
 def check_cmd(args) -> int:
@@ -105,7 +115,7 @@ def check_cmd(args) -> int:
         return 1
     print(f"[dir] checking {len(npis):,} NPIs on Health Net Find a Provider under {args.network!r}")
     st = check(npis, Path(args.out), network=args.network, year=args.year, location=args.location,
-               executable=args.browser, channel=args.channel, delay=args.delay)
+               executable=args.browser, channel=args.channel, delay=args.delay, fallback=not args.no_fallback)
     print("[dir] " + ", ".join(f"{k} {v:,}" for k, v in st.items()))
     return 0
 
@@ -166,8 +176,9 @@ def main(argv: list[str] | None = None) -> int:
     t.set_defaults(func=targets_cmd)
     k = sub.add_parser("check", help="search NPIs one by one on Health Net Find a Provider (network + year)")
     k.add_argument("--npis", nargs="*", help="NPIs to check")
-    k.add_argument("--npi-file", help="file with NPIs (whitespace separated)")
-    k.add_argument("--db", help="rate store: check the NPIs of C4's provider references")
+    k.add_argument("--npi-file", help="file with NPIs: whitespace separated, or a CSV with an npi column")
+    k.add_argument("--db", help="rate store: check the NPIs of C4's provider references (and know their TINs)")
+    k.add_argument("--no-fallback", action="store_true", help="do not search NPIs the site misses by TIN name")
     k.add_argument("--unconfirmed-only", action="store_true", help="with --db: skip references already CONFIRMED_PPO")
     k.add_argument("--rated-only", action="store_true", help="with --db: only NPIs that have extracted rates")
     k.add_argument("--sample", type=int, help="with --db: check a random sample of this many NPIs")

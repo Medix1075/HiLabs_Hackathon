@@ -18,6 +18,7 @@ Every kept address carries its confidence, the families that agree on it, and th
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter, defaultdict
 from datetime import date
 
@@ -144,10 +145,11 @@ class Resolver:
             if json.loads(ev["detail"] or "{}").get("org_pac_id") == pac:
                 return 1 - (1 - p) * (1 - ag["boost"] * share)
             return p * (1 - ag["discount"] * share)
-        if ev["source"] == "directory" and ev["detail"]:
+        if ev["source"] in ("directory", "directory_tin") and ev["detail"]:
             dtin = json.loads(ev["detail"]).get("tin")
             if dtin:
-                return 1 - (1 - p) * (1 - ag["boost"]) if dtin == tin else p * (1 - ag["discount"])
+                same = re.sub(r"\D", "", str(dtin)) == re.sub(r"\D", "", str(tin))  # "95-1234567" vs "951234567"
+                return 1 - (1 - p) * (1 - ag["boost"]) if same else p * (1 - ag["discount"])
         return p
 
     def resolve_pair(self, npi: int, tin: str) -> tuple[list[dict], list[dict]]:

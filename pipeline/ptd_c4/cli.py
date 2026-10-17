@@ -4,6 +4,8 @@
   python -m ptd_c4 run --workbook "Rate Benchmarking Individual Weights_Hackathon.xlsx"
   python -m ptd_c4 run --files a.json.gz --codes all     # any rate file, every billing code
   python -m ptd_c4 run --directory data/directory.csv    # payer directory as network evidence
+  python -m ptd_c4 run --directory data/directory.csv --directory-checks "data/directory/*.coverage.jsonl" \
+      --npis ppo_check_results.csv                        # only these NPIs; writes c4_ppo_check.csv
   python -m ptd_c4 directory --fhir-base https://.../fhir --out data/directory.csv   # build that directory
 """
 from __future__ import annotations
@@ -15,6 +17,7 @@ import json
 import os
 import sys
 import time
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,6 +33,7 @@ from .oon import read_oon_providers, store_oon
 from .extract import build_pairs, fanout_counts, pick_rates, tag_table_rows
 from .ingest import ingest_file
 from .network import STATUSES, tag_references
+from . import ppo_check
 
 DEFAULT_C2_FILES = Path("out/c2/c2_ppo_rate_files.csv")
 DEFAULT_C3_SCORES = Path("out/c3/c3_file_scores.csv")
@@ -39,6 +43,25 @@ RATE_FIELDS = ["npi", "tin", "tin_type", "code_type", "code", "negotiated_type",
 TAG_FIELDS = ["file_id", "ref_id", "network_name", "n_groups", "source", "status", "status_basis", "tag",
               "tag_confidence", "ppo_evidence",
               "non_ppo_evidence", "evidence"]
+
+
+def read_npi_list(values: list[str] | None) -> list[str]:
+    """NPIs from the command line: NPIs themselves, text files of NPIs, or CSV files with an `npi` column."""
+    out = []
+    for v in values or []:
+        p = Path(v)
+        if p.is_file():
+            text = p.read_text(encoding="utf-8-sig")
+            first = text.splitlines()[0] if text else ""
+            if "npi" in first.lower() and ("," in first or "\t" in first):
+                rows = csv.DictReader(text.splitlines(), delimiter="," if "," in first else "\t")
+                col = next(c for c in rows.fieldnames if c.strip().lower() == "npi")
+                out += [str(r[col]).strip() for r in rows if str(r[col]).strip()]
+            else:
+                out += text.split()
+        else:
+            out += [x for x in str(v).replace(",", " ").split() if x]
+    return list(dict.fromkeys(n.split(".")[0] for n in out if n.split(".")[0].isdigit()))
 
 
 def _read_csv(path: Path) -> list[dict]:
@@ -129,6 +152,10 @@ def run(args) -> int:
     else:
         log("[input] code scope: every billing code")
 
+    npis = set(read_npi_list(args.npis)) if args.npis else None
+    if npis is not None:
+        log(f"[input] NPI limit: {len(npis):,} NPIs (network evidence still uses the whole file; pairs, rates and "
+            "the steps after C4 cover only these)")
     directory = None
     if args.directory:
         directory = load_directory(args.directory, c2cfg, cfg["network"]["ppo_labels"])
@@ -165,7 +192,7 @@ def run(args) -> int:
             t1 = time.time()
             network_reports[url] = tag_references(con, file_id, meta, cfg, c2cfg, directory, log)
             t2 = time.time()
-            pairs = build_pairs(con, file_id, cfg["network"]["include_statuses"], log)
+            pairs = build_pairs(con, file_id, cfg["network"]["include_statuses"], log, npis=npis)
             picked = pick_rates(con, file_id, cfg, as_of, log)
             t3 = time.time()
             row["phase_seconds"] = {"read": info["seconds"], "network": round(t2 - t1, 1), "extract": round(t3 - t2, 1)}
@@ -213,6 +240,13 @@ def run(args) -> int:
     picks = [{"rate_file_url": u, "kind": kind, "key": k, "count": v} for u, rep in extract_reports.items()
              for kind in ("pick_rules", "dropped") for k, v in rep[kind].items()]
     write_csv(out / "c4_extraction_log.csv", picks, ["rate_file_url", "kind", "key", "count"])
+    check_rows = []
+    if directory or args.directory_checks or npis is not None:
+        check_rows = ppo_check.build_rows(con, directory, ppo_check.read_coverage(args.directory_checks or []), npis)
+        ppo_check.write(out / "c4_ppo_check.csv", check_rows)
+        verdicts = Counter(r["verdict"] for r in check_rows)
+        log(f"[c4]   PPO check table: {len(check_rows):,} NPI-TIN rows -> {out / 'c4_ppo_check.csv'}; "
+            + ", ".join(f"{k} {v:,}" for k, v in verdicts.most_common()))
     write_csv(out / "c4_hypotheses.csv", hyp)
     write_xlsx(out / "c4_results.xlsx", {
         "files": (summary_files, None), "network_tags": (tag_summary, None), "hypotheses": (hyp, None),
@@ -222,6 +256,8 @@ def run(args) -> int:
         "version": __version__, "started": started.isoformat(), "finished": datetime.now(timezone.utc).isoformat(),
         "config": cfg["_path"], "as_of": as_of, "db": str(db_path), "source": source,
         "code_scope": len(codes) if codes is not None else "all", "directory": bool(directory),
+        "npi_limit": len(npis) if npis is not None else None,
+        "ppo_check": dict(Counter(r["verdict"] for r in check_rows)) if check_rows else None,
         "network_status": {st: sum(rep["statuses"].get(st, 0) for rep in network_reports.values()) for st in STATUSES},
         "files": summary_files, "network": network_reports, "extraction": extract_reports,
         "totals": {k: sum(r.get(k, 0) for r in extract_reports.values()) for k in ("rate_rows", "pairs", "signatures")},
@@ -254,6 +290,10 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--workbook", help="HiLabs Rate Benchmarking Individual Weights workbook (code scope)")
     r.add_argument("--codes", choices=["workbook", "all"], help="code scope (default from config)")
     r.add_argument("--directory", help="directory table (CSV/XLSX: npi, tin, network) used as network evidence")
+    r.add_argument("--npis", nargs="+", help="only these NPIs (NPIs, a text file, or a CSV with an npi column, "
+                   "e.g. ptd_dir's ppo_check_results.csv): a trial run; leave out for the whole file")
+    r.add_argument("--directory-checks", nargs="+", help="ptd_dir check coverage logs (<out>.coverage.jsonl, globs "
+                   "allowed): which NPIs were searched on the site, where, and the name/TIN fallback")
     r.add_argument("--db", default=str(DEFAULT_DB), help=f"rate store (default {DEFAULT_DB})")
     r.add_argument("--oon", nargs="*", help="with --files: allowed-amount (out-of-network) files to read as evidence")
     r.add_argument("--oon-ppo-only", action="store_true", help="with --oon: those files are listed only by PPO plans")

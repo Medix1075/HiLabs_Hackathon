@@ -208,6 +208,8 @@ def parse_captures(paths: list[Path], network_override: str | None = None) -> li
             body = rec.get("body")
             if is_pces(body):  # Health Net Find a Provider: read its schema exactly (Par listings only)
                 found = parse_pces(body, int(rec["network_year"]) if rec.get("network_year") else None)
+                if rec.get("query_tin"):  # a name search done for one TIN: other providers' listings are noise
+                    found = [r for r in found if r["tin"] == rec["query_tin"]]
             else:
                 found = providers_in(body)
             for r in found:

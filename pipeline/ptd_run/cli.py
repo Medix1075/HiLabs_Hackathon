@@ -200,6 +200,8 @@ def run_all(args) -> int:
         "c4": lambda: c4(["run", "--c2", str(out / "c2/c2_ppo_rate_files.csv"), "--c3", str(out / "c3/c3_file_scores.csv"),
                           "--db", db, "--out", str(out / "c4")] + wb + as_of
                          + (["--directory", args.directory] if args.directory else [])
+                         + (["--directory-checks", *args.directory_checks] if args.directory_checks else [])
+                         + (["--npis", *args.npis] if args.npis else [])
                          + (["--files", *args.files] if args.files else [])
                          + (["--workers", str(args.workers)] if args.workers else [])),
         "c3net": lambda: (c3(["run", "--c2", str(out / "c2/c2_ppo_rate_files.csv"), "--out", str(out / "c3_by_network"),
@@ -250,6 +252,8 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--html-file", help="C1: saved copy of the Centene page")
     a.add_argument("--no-probe", action="store_true", help="C2: do not open rate files")
     a.add_argument("--directory", help="payer directory table (C4 network evidence, C5 addresses)")
+    a.add_argument("--directory-checks", nargs="+", help="C4: ptd_dir check coverage logs, for c4_ppo_check.csv")
+    a.add_argument("--npis", nargs="+", help="C4 onwards: only these NPIs (list, text file or CSV with an npi column)")
     a.add_argument("--nppes", help="C5: NPPES monthly ZIP / npidata CSV / state extract")
     a.add_argument("--nppes-pl", help="C5: NPPES Practice Location Reference File")
     a.add_argument("--dac", help="C5: CMS Doctors and Clinicians file")

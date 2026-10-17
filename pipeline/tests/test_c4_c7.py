@@ -656,3 +656,83 @@ def test_directory_matches_dashed_rate_file_tins():
     assert d.match(1417554528, "85-1644866") == ({"PPO"}, "npi")             # same TIN, written with a dash
     assert d.match(1417554528, "95-0000000") == ({"PPO"}, "npi_tin_mismatch")
     assert d.match(1999999999, "85-1644866") == ({"PPO"}, "tin")
+
+
+def test_c4_npi_limit_writes_ppo_check_table(world, tmp_path):
+    """C4 --npis keeps only those NPIs' pairs (network tagging still sees the whole file) and writes
+    c4_ppo_check.csv: rate-file side + what the Health Net site said, with the name/TIN fallback."""
+    from ptd_c4.cli import read_npi_list
+    truth = world["truth"]
+    t37, t39 = sorted(truth["tin_npis"]["950000037"])[0], sorted(truth["tin_npis"]["950000039"])[0]
+    other = ca_world.npi(100000991)
+    lim = tmp_path / "ppo_check_results.csv"
+    lim.write_text(f"npi,verdict\n{t37},x\n{t39},x\n")
+    assert read_npi_list([str(lim), "1234567893, 1417554528"]) == [str(t37), str(t39), "1234567893", "1417554528"]
+    net = "PPO - Large Group/Small Group (Platinum, Gold, Silver, Bronze, GF Plans, HSA Compatible, HDHP)"
+    s37, s39 = truth["tin_site"]["950000037"], truth["tin_site"]["950000039"]
+    recs = [{"status": 200, "network_name": net, "network_year": "2026", "query_kind": "npi",
+             "body": {"results": [_pces_entity(t37, "950000037", "Group 37", s37[0], s37[2], s37[3],
+                                               [("Par", "2021-01-01", "4000-01-01")])]}},
+            {"status": 200, "network_name": net, "network_year": "2026", "query_kind": "name", "query_tin": "950000039",
+             "body": {"results": [_pces_entity(other, "950000039", "Group 39 Main", s39[0], s39[2], s39[3],
+                                               [("Par", "2021-01-01", "4000-01-01")]),
+                                  _pces_entity(ca_world.npi(100000992), "880000001", "Namesake", "1 Elm St", "Fresno",
+                                               "93701", [("Par", "2021-01-01", "4000-01-01")])]}}]
+    cap = tmp_path / "hn.jsonl"
+    cap.write_text("\n".join(json.dumps(r) for r in recs) + "\n")
+    cap.with_suffix(".coverage.jsonl").write_text(
+        json.dumps({"npi": str(t37), "status": "found", "location": "Los Angeles, CA", "network": net, "year": "2026"}) + "\n"
+        + json.dumps({"npi": str(t39), "status": "not_found", "location": "Irvine, CA", "network": net, "year": "2026",
+                      "fallback_term": "Group 39", "fallback_same_tin": 1}) + "\n")
+    from ptd_dir.cli import main as ptd_dir
+    d = tmp_path / "directory.csv"
+    assert ptd_dir(["build", "--capture", str(cap), "--out", str(d)]) == 0
+    assert {r["tin"] for r in csv.DictReader(open(d))} == {"950000037", "950000039"}   # the namesake is dropped
+    db, out = str(tmp_path / "r.sqlite"), tmp_path / "c4"
+    assert c4(["run", "--files", str(world["rate_file"]), "--workbook", str(world["workbook"]), "--directory", str(d),
+               "--directory-checks", str(cap.with_suffix(".coverage.jsonl")), "--npis", str(lim), "--db", db,
+               "--out", str(out), "--workers", "1", "--as-of", AS_OF]) == 0
+    con = sqlite3.connect(db)
+    assert {n for (n,) in con.execute("SELECT DISTINCT npi FROM c4_pairs")} == {t37, t39}
+    assert con.execute("SELECT COUNT(DISTINCT ref_id) FROM c4_refs").fetchone()[0] > 2      # all references tagged
+    rows = {int(r["npi"]): r for r in csv.DictReader(open(out / "c4_ppo_check.csv"))}
+    assert set(rows) == {t37, t39}
+    a, b = rows[t37], rows[t39]
+    assert (a["verdict"], a["pair_status"], a["search_location"]) == ("FOUND_PPO_BY_NPI", "CONFIRMED_PPO", "Los Angeles, CA")
+    assert a["directory_listing"] == "HealthNet Commercial PPO | CA PPO Large and Small" and int(a["rates_extracted"]) > 0
+    assert (b["verdict"], b["npi_search_result"], b["tin_fallback_term"]) == ("NOT_FOUND_BY_NPI_SAME_TIN", "not_found", "Group 39")
+    assert b["tin_fallback_npis"] == str(other)
+
+
+def test_reference_members_keep_the_tin_business_name():
+    from ptd_c4.ingest import _group_rows
+    rows = _group_rows(1, "7", [{"npi": [1417554528], "tin": {"type": "ein", "value": "85-1644866",
+                                                             "business_name": "Keck Medical Center of USC"}}])
+    assert rows == [(1, "7", 1417554528, "85-1644866", "ein", "Keck Medical Center of USC")]
+
+
+def test_c5_directory_address_of_the_same_tin_is_boosted_whatever_the_dashes():
+    from ptd_c5.config import load_config as c5cfg
+    from ptd_c5.resolve import Resolver
+    cfg = c5cfg(as_of=AS_OF)
+    r = Resolver(cfg, cfg["_as_of"], {}, {})
+    ev = {"source": "directory", "p": 0.75, "detail": json.dumps({"tin": "941623075"})}
+    assert r._adjust(ev, "94-1623075") > 0.75 > r._adjust(ev, "95-0000000")
+
+
+def test_c5_same_tin_directory_site_only_corroborates():
+    """St Jude bills under 1194926279; the directory lists the hospital under 1891904942 (same TIN).
+    That listing supports the NPPES address in the same ZIP, but another campus of the TIN is not added."""
+    from ptd_c2.config import load_config
+    from ptd_c4.directory import Directory
+    from ptd_c5.sources import directory_tin_candidates
+    net = "PPO - Large Group/Small Group"
+    d = Directory([{"npi": 1891904942, "tin": "951643325", "network_name": net, "address_line1": "101 E Valencia Mesa Dr",
+                    "city": "Fullerton", "state": "CA", "zip": "92835"},
+                   {"npi": 1891904943, "tin": "951643325", "network_name": net, "address_line1": "1 Other Campus Rd",
+                    "city": "Orange", "state": "CA", "zip": "92868"}], load_config(), ["PPO_FULL"])
+    nppes = [{"npi": 1194926279, "source": "nppes_practice", "line1": "101 E VALENCIA MESA DR", "zip": "92835"},
+             {"npi": 1194926279, "source": "nppes_mailing", "line1": "9 Billing Way", "zip": "92868"}]
+    from datetime import date
+    got = directory_tin_candidates(d, [(1194926279, "95-1643325")], nppes, date(2026, 10, 17))
+    assert [(c["source"], c["zip"]) for c in got] == [("directory_tin", "92835")]
