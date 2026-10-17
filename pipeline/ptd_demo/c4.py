@@ -37,45 +37,66 @@ def _apply_demo_statuses(con, file_id: int, pair_status: dict, log) -> None:
 
 
 def _restrict_and_clone_pairs(con, file_id: int, pair_status: dict, log) -> dict:
-    """Keep only demo NPI+TIN pairs and clone their rates with pair-specific network status."""
+    """Keep only exact demo NPI+TIN pairs and set their network status on cloned rates."""
     import re
     from ptd_c4.db import stable_id
 
-    original = con.execute("SELECT npi, tin, tin_type, sig_id FROM c4_pairs WHERE file_id=?", (file_id,)).fetchall()
+    original = con.execute(
+        "SELECT npi, tin, tin_type, sig_id FROM c4_pairs WHERE file_id=?", (file_id,)
+    ).fetchall()
     wanted = {}
     for npi, tin, tin_type, sig_id in original:
-        norm_tin = re.sub(r"\D", "", str(tin or ""))
+        norm_tin = re.sub(r"\\D", "", str(tin or ""))
         key = (int(npi), norm_tin)
         if key in pair_status and norm_tin:
-            wanted[key] = (str(tin), str(tin_type or ""), int(sig_id))
+            wanted[key] = (str(tin or ""), str(tin_type or ""), int(sig_id))
     con.execute("DELETE FROM c4_pairs WHERE file_id=?", (file_id,))
     cloned, missing_rates = 0, 0
     for (npi, norm_tin), status in pair_status.items():
-        if (npi, norm_tin) not in wanted:
+        match = wanted.get((npi, norm_tin))
+        if not match:
             continue
-        original_tin, tin_type, sig_id = wanted[(npi, norm_tin)]
-        rate_rows = con.execute("SELECT * FROM c4_sig_rates WHERE file_id=? AND sig_id=?",
-                                (file_id, sig_id)).fetchall()
+        _, tin_type, original_sig = match
+        rate_rows = con.execute(
+            "SELECT * FROM c4_sig_rates WHERE file_id=? AND sig_id=?",
+            (file_id, original_sig),
+        ).fetchall()
         if not rate_rows:
             missing_rates += 1
             continue
-        new_sig = stable_id(file_id, sig_id, "demo-pair", npi, norm_tin, status)
+        new_sig = stable_id(file_id, original_sig, "demo-pair", npi, norm_tin, status)
         for values in rate_rows:
-            # Column order is defined in ptd_c4.db.SCHEMA.
             row = list(values)
+            # c4_sig_rates columns: file_id,sig_id,...,network_tag,network_confidence,
+            # candidates,distinct_rates,rate_min,rate_max,pick_rule,network_status
             row[1] = new_sig
             row[11] = "PPO" if status == CONFIRMED_PPO else "UNKNOWN"
             row[12] = "high" if status == CONFIRMED_PPO else "none"
-            row[17] = "demo roster"  # pick rule
+            row[17] = "demo_roster_verdict"
             row[18] = status
-            con.execute("INSERT INTO c4_sig_rates VALUES (" + ",".join("?" * len(row)) + ")", row)
-        con.execute("INSERT INTO c4_pairs VALUES (?,?,?,?,?)", (file_id, npi, norm_tin, tin_type, new_sig))
+            con.execute(
+                "INSERT INTO c4_sig_rates VALUES (" + ",".join("?" * len(row)) + ")",
+                row,
+            )
+        # Normalize TIN formatting to the roster convention so the C5 addresses join in C6.
+        con.execute(
+            "INSERT INTO c4_pairs VALUES (?,?,?,?,?)",
+            (file_id, npi, norm_tin, tin_type, new_sig),
+        )
         cloned += 1
     con.commit()
-    log(f"[demo] kept {cloned:,} exact demo pairs with extracted rates; {missing_rates:,} roster pairs matched "
-        "the rate file but had no surviving rates; all non-roster pairs excluded.")
-    return {"demo_pairs_with_rates": cloned, "demo_pairs_without_rates": missing_rates,
-            "rate_file_pairs_seen": len(original), "demo_pairs_not_found_in_rate_file": len(pair_status) - len(wanted)}
+    not_in_file = len([k for k in pair_status if k not in wanted])
+    log(
+        f"[demo] kept {cloned:,} exact demo NPI+TIN pairs with extracted rates; "
+        f"{missing_rates:,} matched pairs had no surviving rates; "
+        f"{not_in_file:,} CSV pairs had no exact pair in the PTD rate file. Non-roster pairs excluded."
+    )
+    return {
+        "demo_pairs_with_rates": cloned,
+        "demo_pairs_without_rates": missing_rates,
+        "rate_file_pairs_seen": len(original),
+        "demo_pairs_not_found_in_rate_file": not_in_file,
+    }
 
 
 def run(args) -> int:
