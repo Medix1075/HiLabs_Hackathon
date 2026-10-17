@@ -25,6 +25,11 @@ def _apply_pair_verdicts_to_outputs(out: Path, rows: list[dict]) -> None:
     if not table_exists(db, "c6_rates"):
         db.close()
         return
+    # Rewrite C6's database routing as pair-specific; this is an isolated demo DB only.
+    for (npi, tin), status in statuses.items():
+        db.execute("UPDATE c6_rates SET network_status=? WHERE npi=? AND replace(replace(tin, '-', ''), ' ', '')=?",
+                   (status, int(npi), tin.replace("-", "").replace(" ", "")))
+    db.commit()
     # Rewrite only the standard output exports that are already in demo scope.
     for filename in ("c6_provider_rate_file.csv.gz", "c6_provider_rate_file_candidates.csv.gz"):
         path = out / filename
