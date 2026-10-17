@@ -12,7 +12,6 @@ from .supporting import HMO_LEAN, PPO_LEAN
 LEVELS = ["low", "medium", "high"]
 PPO_NET = {"PPO_FULL": "FULL", "PPO_ENHANCEDCARE": "ENHANCEDCARE", "PPO_MIXED_VARIANTS": "FULL+ENHANCEDCARE"}
 NON_PPO_NET = {"HMO", "HSP", "EPO", "POS"}
-NON_PPO_TYPES = {"HMO", "HSP", "EPO", "POS"}
 
 
 def _shift(level: str, step: int, cap: str = "high") -> str:
@@ -39,6 +38,7 @@ def classify_row(row: dict, vote: dict, probe: dict | None, cfg: dict, conflicts
                           "rate_file_url": row["rate_file_url"], "conflict_type": kind, "detail": detail,
                           "resolution": resolution})
 
+    non_ppo_types = set(cfg["file_vote"]["non_ppo_types"])
     name = row["name_signal"]
     name_explicit = row["name_strength"] in ("explicit", "product_code")
     fv = vote["file_vote"]
@@ -61,7 +61,7 @@ def classify_row(row: dict, vote: dict, probe: dict | None, cfg: dict, conflicts
         elif net in NON_PPO_NET:
             final = net
         else:
-            final = name if name in NON_PPO_TYPES else "HMO"
+            final = name if name in non_ppo_types else "HMO"
         conf = "high"
         parts.append(f"rate file network_name {names_txt} -> {net}")
         disagree_name = name_explicit and name not in ("conflict", "none") and \
@@ -81,8 +81,8 @@ def classify_row(row: dict, vote: dict, probe: dict | None, cfg: dict, conflicts
         if name == "PPO" or (name in ("none", "conflict") and fv == "PPO"):
             final, variant = "PPO", _name_variant(row)
             conf = "medium" if name_explicit else "low"
-        elif name in NON_PPO_TYPES or fv == "NON_PPO":
-            final = name if name in NON_PPO_TYPES else vote["dominant_non_ppo_type"] or "HMO"
+        elif name in non_ppo_types or fv == "NON_PPO":
+            final = name if name in non_ppo_types else vote["dominant_non_ppo_type"] or "HMO"
             conf = "medium" if name_explicit else "low"
         conflict("mixed_file", f"file carries PPO and non-PPO network names: {probe.get('network_labels')}",
                  f"plan placed by name/vote -> {final}; C4 must filter provider_references to PPO network names")
@@ -96,7 +96,7 @@ def classify_row(row: dict, vote: dict, probe: dict | None, cfg: dict, conflicts
         if fv == "PPO":
             final, variant, source = "PPO", _name_variant(row), "file vote"
         elif fv == "NON_PPO":
-            final = name if name in NON_PPO_TYPES else vote["dominant_non_ppo_type"]
+            final = name if name in non_ppo_types else vote["dominant_non_ppo_type"]
             source = "file vote"
         elif name not in ("none", "conflict"):
             final, source = name, "plan name"
@@ -111,11 +111,14 @@ def classify_row(row: dict, vote: dict, probe: dict | None, cfg: dict, conflicts
             elif name in ("none", "conflict"):
                 parts.append("no usable name signal; inherited file label")
         elif source == "plan name":
-            conf = "low"
+            # An explicit keyword or product code is the best plan-level evidence left when the
+            # file is shared by PPO and non-PPO plans; hints and benefit-string shapes stay low.
+            conf = "medium" if name_explicit else "low"
             if fv == "NO_OTHER_VOTES":
                 parts.append("no other plan shares this rate file")
             if fv == "MIXED":
-                conflict("mixed_vote", vote_txt, f"plan name decides -> {final}")
+                needs_filter = True
+                conflict("mixed_vote", vote_txt, f"plan name decides -> {final}; file shared with non-PPO plans")
         parts.append(vote_txt)
 
     if name != "none":
@@ -147,7 +150,7 @@ def classify_row(row: dict, vote: dict, probe: dict | None, cfg: dict, conflicts
         # High needs network_name; a primary-signal disagreement caps at medium;
         # a plan-name-only decision stays low (names are a weak tiebreaker).
         cap = "high" if source == "network_name" and not primary_disagreement else "medium"
-        if source in ("plan name", "employer tiebreaker"):
+        if source == "employer tiebreaker" or (source == "plan name" and not name_explicit):
             cap = "low"
         if agree and not disagree:
             conf = _shift(conf, +1, cap)

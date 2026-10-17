@@ -7,9 +7,6 @@ from __future__ import annotations
 
 from collections import Counter
 
-NETWORK_TYPES = ("PPO", "HMO", "EPO", "POS", "HSP")
-
-
 def tag_name(norm_name: str, cfg: dict) -> dict:
     """Return the raw matches for one normalised plan name (no hypothesis gating yet)."""
     ns = cfg["name_signals"]
@@ -26,13 +23,13 @@ def tag_name(norm_name: str, cfg: dict) -> dict:
 
 
 def _strong_types(tags: dict) -> tuple[set[str], list[str], bool]:
-    """Types implied by explicit keywords + product codes, plus EC when no HMO is present."""
+    """Types implied by explicit keywords + product codes, plus EC when nothing else is present."""
     types = set(tags["keywords"]) | set(tags["codes"])
     tokens = [f"kw:{t}" for t in tags["keywords"]] + [f"code:{c}" for cs in tags["codes"].values() for c in cs]
     ec_used = False
     if tags["ec"]:
-        if "HMO" in types:
-            tokens.append("EC(ignored: next to HMO)")
+        if types:
+            tokens.append(f"EC(ignored: next to {'/'.join(sorted(types))})")
         else:
             types.add("PPO")
             tokens.append("code:EC/EnhancedCare")

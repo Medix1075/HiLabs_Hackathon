@@ -27,11 +27,14 @@ scope:
 name_signals:
   # Explicit network-type keywords (matched as whole words on the normalised name).
   keywords:
-    PPO: ['\bPPO\b']
+    PPO: ['\bPPO\b', '\bCUSPPO\b']   # real data has "CA L CUSPPO 15/250/20% RAP" (missing space)
     HMO: ['\bHMO\b']
     EPO: ['\bEPO\b']
     POS: ['\bPOS\b']
     HSP: ['\bHSP\b']
+    # Elect Open Access: an HMO-based Health Net product with an out-of-network tier. Not PPO.
+    # 63 "CA L EOA ..." plans in the 2026-09-30 Health Net index carry no other network keyword.
+    EOA: ['\bEOA\b']
   # Product codes / product names that imply a network type.
   product_codes:
     HMO:
@@ -44,8 +47,10 @@ name_signals:
       FULL NETWORK: '\bFULL\s+NETWORK\b'
     HSP:
       PURECARE: '\bPURE\s*CARE\b'
-  # EnhancedCare is a PPO product, but "EC" also shows up next to HMO (e.g. "CA L EC HMO ...").
-  # (Hypothesis) Only counted as PPO when no HMO keyword/product code is present.
+  # EnhancedCare is a PPO product, but "EC" also shows up next to other types.
+  # Only counted as PPO when no other network keyword/product code is present.
+  # Measured on the 2026-09-30 Health Net index: all 140 EC plans sit next to HMO (85) or EOA (55),
+  # so in that index EC never decides a plan on its own.
   enhancedcare_codes: ['\bEC\b', '\bENHANCED\s*CARE\b']
   # (Hypothesis) weak hints. They are TESTED on plans with explicit keywords first, and only
   # used for plans with no other name signal if they clear the precision/support gates below.
@@ -63,7 +68,7 @@ file_vote:
   label_threshold: 0.80        # share of decided plans needed to label a file PPO or NON_PPO
   min_decided_votes: 1         # files with fewer decided plans get NO_VOTES
   # Network types that count against PPO in the vote. POS is not PPO.
-  non_ppo_types: [HMO, EPO, HSP, POS]
+  non_ppo_types: [HMO, EPO, HSP, POS, EOA]
 
 # ------------------------------------------------ Step 4: network_name in the file
 network_probe:

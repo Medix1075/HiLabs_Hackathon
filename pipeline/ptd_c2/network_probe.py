@@ -36,6 +36,7 @@ def _new_state() -> dict:
     return {
         "names": Counter(), "tins": set(), "npis_per_tin": Counter(), "locations": [],
         "arrangements": Counter(), "refs": 0, "in_items": 0, "refs_complete": False, "in_complete": False,
+        "empty_names": 0,
         "top": {}, "stop_reason": "end_of_file",
     }
 
@@ -51,7 +52,10 @@ def _scan(fh, pc: dict, st: dict) -> None:
             if prefix == PR and event == "end_map":
                 st["refs"] += 1
             elif prefix in (PR + ".network_name", PR + ".network_name.item") and event == "string":
-                st["names"][value.strip()] += 1
+                if value.strip():
+                    st["names"][value.strip()] += 1
+                else:  # seen in Health Net's CA file: network_name present but blank
+                    st["empty_names"] += 1
             elif prefix == PR + ".location" and event == "string":
                 if len(st["locations"]) < 1000:
                     st["locations"].append(value)
@@ -89,7 +93,7 @@ def _scan_location(url: str, pc: dict) -> dict:
                      user_agent=pc["user_agent"]) as (fh, _):
         for prefix, event, value in ijson.parse(fh):
             if prefix.endswith("network_name") or prefix.endswith("network_name.item"):
-                if event == "string":
+                if event == "string" and value.strip():
                     names[value.strip()] += 1
             elif prefix.endswith("tin.value"):
                 tins.add(str(value))
@@ -132,6 +136,7 @@ def probe_file(url: str, cfg: dict) -> dict:
     result["seconds"] = round(time.time() - t0, 2)
     if not result["status"]:
         result["status"] = ("ok" if scan["names"] else
+                            "network_name_blank" if scan["empty_names"] else
                             "byte_cap_reached" if scan["stop_reason"] == "byte_cap_reached" else
                             "no_network_name_found")
     return _finalise(result, scan, cfg)
@@ -170,7 +175,7 @@ def _finalise(result: dict, scan: dict | None, cfg: dict) -> dict:
         ppo_network_names=sorted(n for n, lab in per_name.items() if lab in ppo_labels),
         provider_references_read=scan["refs"], provider_references_complete=scan["refs_complete"],
         in_network_items_read=scan["in_items"], arrangements=dict(scan["arrangements"]),
-        distinct_tins=len(scan["tins"]), tins_with_50plus_npis=big_groups,
+        distinct_tins=len(scan["tins"]), tins_with_50plus_npis=big_groups, blank_network_names=scan["empty_names"],
         top_level=scan["top"], stop_reason=scan["stop_reason"],
         sampled_partially=not scan["refs_complete"],
     )

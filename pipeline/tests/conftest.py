@@ -91,6 +91,8 @@ def world(tmp_path_factory):
                                              _in_network(5)))
     # File that names HMO network although its plans look PPO (network_name must win)
     dump("hn_trap_in-network.json", _rate_file(_refs(["HMO - CommunityCare"], 10), _in_network(25)))
+    # Like Health Net's real CA file: network_name present on every reference but blank
+    dump("hn_blank_in-network.json", _rate_file(_refs([""], 30), _in_network(25)))
     dump("qc_in-network.json", _rate_file(_refs(["QualChoice PPO"], 5), _in_network(5)))
     dump("ambetter-ok_in-network.json", _rate_file(_refs(["Ambetter Balanced Care"], 5), _in_network(5)))
 
@@ -116,6 +118,10 @@ def world(tmp_path_factory):
         ("Health Net", "CA L PPO LATECO 30/500/4000/30%", "940000002", "group", "hn_late_in-network.json", ""),
         ("Health Net", "CA L&T CUS LOCCO", "940000003", "group", "hn_loc_in-network.json", ""),
         ("Health Net", "CA L PPO TRAPCO 30/500/4000/30%", "940000004", "group", "hn_trap_in-network.json", ""),
+        # Real 2026-09-30 name shapes: EOA, EC next to EOA, CUSPPO without a space
+        ("Health Net", "CA L EOA 20/500A/2500", "940000006", "group", "hn_blank_in-network.json", ""),
+        ("Health Net", "CA L EC EOA 15/1500D/6500", "940000006", "group", "hn_blank_in-network.json", ""),
+        ("Health Net", "CA L CUSPPO 15/250/20% RAP", "940000007", "group", "hn_blank_in-network.json", "hn_ppo_allowed-amounts.json"),
         ("Health Net", "CA L SAL Mex 5/0/1500", "940000005", "group", "hn_missing_in-network.json", ""),
         # Traps for the scope filter
         ("Ambetter", "Ambetter Health Solutions Gold PPO 0", "29276OK0010001", "individual", "ambetter-ok_in-network.json", ""),
