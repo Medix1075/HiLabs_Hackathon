@@ -87,6 +87,7 @@ class Directory:
         'npi_tin_mismatch' (the NPI is listed, but only under other TINs), 'name_zip' (the listing
         showed no NPI and was linked to this one by name + ZIP only), 'tin' (only the TIN is listed: a
         group link, not proof for this NPI), or '' (no match)."""
+        tin = re.sub(r"\D", "", str(tin or ""))  # rate files write EINs as "95-1234567"; the table keeps digits
         s = set(self.by_npi.get(int(npi), ())) if npi is not None else set()
         if s:
             tins = self.tins_of_npi.get(int(npi))

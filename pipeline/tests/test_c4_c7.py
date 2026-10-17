@@ -582,3 +582,76 @@ def test_allowed_amount_file_of_ppo_plans_is_non_ppo_evidence(world, tmp_path):
     assert c4(args) == 0                                           # a shared file is only a note
     st, ev = sqlite3.connect(db).execute("SELECT status, evidence FROM c4_refs WHERE ref_id = '46'").fetchone()
     assert st != "CONFIRMED_NON_PPO" and "shared allowed-amount file" in ev
+
+
+def _pces_entity(npi, tin, name, street, city, zip5, cycles):
+    """A search result shaped like Health Net Find a Provider's (external-api.../pces/query)."""
+    return {"carrierEntity": {
+        "providerName": name, "providerType": "HOSPITAL", "taxIdNumber": f"{tin[:2]}-{tin[2:]}",
+        "nationalProviderIdentifiers": [{"number": str(npi), "type": "Type 2"}],
+        "locations": [{"address": {"addressLine1": street, "city": city, "stateCode": "CA", "zipCode": zip5},
+                       "specialties": [{"descriptionDisplay": "General Acute Care Hospital"}]}],
+        "network": {"product": {"code": "PPO", "name": "HealthNet Commercial PPO", "networkId": "8201"},
+                    "carrier": {"code": "PP", "name": "CA PPO Large and Small", "networkId": "8242"},
+                    "networkCycles": [{"status": s, "startDate": a + "T00:00:00Z", "endDate": b + "T00:00:00Z"}
+                                      for s, a, b in cycles]}},
+        "matchedLists": []}
+
+
+def test_healthnet_find_a_provider_parser_keeps_par_listings_only():
+    from ptd_dir.healthnet import is_pces, parse_pces
+    body = {"totalHits": 3, "results": [
+        _pces_entity(1417554528, "851644866", "USC Norris", "1441 Eastlake Ave", "Los Angeles", "90089",
+                     [("Par", "2021-01-01", "4000-01-01")]),
+        _pces_entity(1093892275, "941623075", "Siskiyou", "444 Bruce St", "Yreka", "96097",
+                     [("Nonpar", "2018-01-01", "2022-12-31"), ("Par", "2023-01-01", "4000-01-01")]),
+        _pces_entity(1861409823, "951915820", "Old", "1 Main St", "El Centro", "92243",
+                     [("Par", "2015-01-01", "2024-12-31"), ("Nonpar", "2025-01-01", "4000-01-01")])]}
+    assert is_pces(body) and not is_pces({"results": [{"type": "name", "results": []}]})
+    rows = {r["npi"]: r for r in parse_pces(body, 2026)}
+    assert set(rows) == {"1417554528", "1093892275"}                  # Nonpar in 2026 is not in network
+    r = rows["1417554528"]
+    assert (r["tin"], r["zip"], r["specialty"]) == ("851644866", "90089", "General Acute Care Hospital")
+    assert r["listing_networks"] == "HealthNet Commercial PPO | CA PPO Large and Small"
+    assert "1861409823" in {r["npi"] for r in parse_pces(body, 2024)}
+
+
+def test_healthnet_check_captures_build_directory_that_confirms_ppo(world, tmp_path):
+    """Captures in `ptd_dir check` format -> build -> C4: an NPI listed Par under the Group PPO network
+    confirms its reference; a Nonpar listing does not; a facility listed under another NPI with the same
+    TIN is only a candidate."""
+    from ptd_dir.cli import main as ptd_dir
+    truth = world["truth"]
+    net = "PPO - Large Group/Small Group (Platinum, Gold, Silver, Bronze, GF Plans, HSA Compatible, HDHP)"
+    ents = []
+    for g, cycles, other_npi in ((37, [("Par", "2021-01-01", "4000-01-01")], False),
+                                 (38, [("Nonpar", "2021-01-01", "4000-01-01")], False),
+                                 (39, [("Par", "2021-01-01", "4000-01-01")], True)):
+        tin = str(950000000 + g)
+        site = truth["tin_site"][tin]
+        npi = ca_world.npi(100000990) if other_npi else sorted(truth["tin_npis"][tin])[0]
+        ents.append(_pces_entity(npi, tin, f"Group {g}", site[0], site[2], site[3], cycles))
+    cap = tmp_path / "hn_check.jsonl"
+    cap.write_text("\n".join(json.dumps({"url": "https://external-api.search.my.centene.com/pces/query", "status": 200,
+                                         "network_name": net, "network_year": "2026", "body": {"results": [e]}})
+                             for e in ents) + "\n")
+    out = tmp_path / "directory.csv"
+    assert ptd_dir(["build", "--capture", str(cap), "--out", str(out)]) == 0
+    built = list(csv.DictReader(open(out)))
+    assert len(built) == 2 and all(r["network_name"] == net for r in built)
+    db = str(tmp_path / "r.sqlite")
+    assert c4(["run", "--files", str(world["rate_file"]), "--workbook", str(world["workbook"]), "--directory", str(out),
+               "--db", db, "--out", str(tmp_path / "c4"), "--workers", "1", "--as-of", AS_OF]) == 0
+    st = dict(sqlite3.connect(db).execute("SELECT ref_id, status FROM c4_refs WHERE ref_id IN ('37', '38', '39')"))
+    assert st["37"] == "CONFIRMED_PPO"
+    assert (st["38"], st["39"]) == ("UNRESOLVED", "PPO_CANDIDATE")
+
+
+def test_directory_matches_dashed_rate_file_tins():
+    from ptd_c2.config import load_config
+    from ptd_c4.directory import Directory
+    d = Directory([{"npi": 1417554528, "tin": "851644866", "network_name": "PPO - Large Group/Small Group"}],
+                  load_config(), ["PPO_FULL"])
+    assert d.match(1417554528, "85-1644866") == ({"PPO"}, "npi")             # same TIN, written with a dash
+    assert d.match(1417554528, "95-0000000") == ({"PPO"}, "npi_tin_mismatch")
+    assert d.match(1999999999, "85-1644866") == ({"PPO"}, "tin")

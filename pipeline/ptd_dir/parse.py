@@ -21,6 +21,8 @@ from urllib.parse import urlparse
 
 from ptd_c3.scan import npi_is_valid
 
+from .healthnet import is_pces, parse_pces
+
 ROW_FIELDS = ["npi", "tin", "name", "first_name", "last_name", "specialty", "address_line1", "address_line2", "city",
               "state", "zip", "listing_networks", "network_name", "npi_source", "source", "last_updated", "request_url"]
 
@@ -203,7 +205,12 @@ def parse_captures(paths: list[Path], network_override: str | None = None) -> li
         for rec in read_capture(p):
             if int(rec.get("status") or 200) >= 400:
                 continue
-            for r in providers_in(rec.get("body")):
+            body = rec.get("body")
+            if is_pces(body):  # Health Net Find a Provider: read its schema exactly (Par listings only)
+                found = parse_pces(body, int(rec["network_year"]) if rec.get("network_year") else None)
+            else:
+                found = providers_in(body)
+            for r in found:
                 r.update(network_name=network_override or rec.get("network_name", ""),
                          npi_source="listed" if r["npi"] else "", source=urlparse(rec.get("url", "")).netloc,
                          last_updated=str(rec.get("t", ""))[:10], request_url=rec.get("url", ""))

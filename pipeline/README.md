@@ -325,6 +325,22 @@ python -m ptd_run all --from c4 --directory data/directory.csv --workbook weight
 - **NPIs for listings that show none** (`build`): matched to C4/C5's providers from an earlier run (`--db`), or the NPI Registry by name + ZIP (`--npi-api`). First + last name **and** the same street site gives `npi_source = name+address`, which counts like a listed NPI. Name + ZIP alone (`name+zip`) could be a namesake, so C4 treats it as weak evidence. A name matching several providers gets no NPI.
 - **Which network a row is for** comes from `--network` (what you selected), or, for a generic search, from the networks the listing itself names. A generic "Health Net" listing makes a candidate at most. Capturing the HMO searches too (with `--network` naming them) adds evidence the other way.
 
+### Health Net's own site: `ptd_dir check`
+
+`https://findaprovider.healthnetcalifornia.com` (no login) is the California directory and can be reached from the cloud too. `check` drives it the way a person does, once per NPI: location = the NPI's own city (NPI Registry), network year, network **"PPO - Large Group/Small Group (Platinum, Gold, Silver, Bronze, GF Plans, HSA Compatible, HDHP)"** (product "HealthNet Commercial PPO", carrier "CA PPO Large and Small"), then the NPI in the search box. The site's search responses (`external-api.search.my.centene.com/pces/query`) are saved in the capture format, and `build` reads them with a parser for that schema:
+
+```bash
+# NPIs with extracted rates from an earlier C4 run (or --npis / --npi-file), a sample to start with
+python -m ptd_dir check --db out/rates.sqlite --rated-only --sample 200 --year 2026 --out data/directory/hn_check.jsonl
+python -m ptd_dir build --capture "data/directory/hn_check*.jsonl" --out data/directory.csv
+python -m ptd_run all --from c4 --directory data/directory.csv --workbook weights.xlsx
+```
+
+- A listing counts only when its network cycle is `Par` during the chosen year; a `Nonpar` listing is left out. Each row keeps the NPI, TIN, address, specialty and the listing's product/carrier (`listing_networks`).
+- `check` is resumable: `<out>.coverage.jsonl` records each NPI as `found` / `not_found` and is skipped on the next run. One NPI takes about 40 s; run several `check` processes on split NPI files to go faster.
+- Not finding an NPI is not evidence against PPO: the site finds only the NPI it stores (a hospital may bill under another NPI than the one listed), searches within 50 miles of the city, and behavioural-health providers are mostly not listed there.
+- An NPI listed as PPO confirms its reference only when it is that NPI's only reference in the file (see `directory` above). In the Health Net CA file most hospital NPIs sit in several references, which then stay candidates.
+
 ## C5: which address each NPI + TIN practises at
 
 ```bash
