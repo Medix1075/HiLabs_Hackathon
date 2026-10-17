@@ -13,49 +13,69 @@ from ptd_c2.config import load_config as load_c2_config
 from ptd_c3.codes import load_expected_codes
 from ptd_c4 import cli as base
 from ptd_c4.config import load_config
-from ptd_c4.db import DEFAULT_DB, connect, drop_c4, finish_c4, init_c4
+from ptd_c4.db import connect, drop_c4, finish_c4, init_c4
 from ptd_c4.directory import load_directory
 from ptd_c4.extract import build_pairs, fanout_counts, pick_rates, tag_table_rows
 from ptd_c4.ingest import ingest_file
 from ptd_c4.network import STATUSES, CONFIRMED_PPO
 from .roster import DEFAULT_DEMO_CSV, demo_pair_status, load_demo_rows
 
-DEFAULT_RATE_FILE = "https://centene-provider-transparency.s3.amazonaws.com/2026-09-30_centene-management-company-llc_healthnet-ca_in-network.json.gz"
+DEFAULT_RATE_FILE = "https://www.centene.com/content/dam/centene/Centene%20Corporate/json/DOCUMENT/2026-09-30_centene-management-company-llc_healthnet-ca_in-network.json"
 RATE_FIELDS, TAG_FIELDS = base.RATE_FIELDS, base.TAG_FIELDS
 
 
-def _apply_demo_statuses(con, file_id: int, pair_status: dict, log) -> dict:
-    """Only exact NPI+TIN matches are confirmed. NOT_FOUND remains unresolved, never NON_PPO."""
+def _apply_demo_statuses(con, file_id: int, pair_status: dict, log) -> None:
+    """Keep reference-level evidence unresolved; the CSV verdict is pair-specific."""
     con.execute(
         "UPDATE c4_refs SET tag='UNKNOWN', tag_confidence='none', ppo_evidence=0, non_ppo_evidence=0, "
-        "evidence='demo roster: no exact NPI+TIN evidence', status='UNRESOLVED', "
-        "status_basis='not in demo roster' WHERE file_id=?", (file_id,))
-    counts = {"confirmed_ppo": 0, "unresolved": 0, "missing_pair": 0}
-    for (npi, tin), status in pair_status.items():
-        refs = con.execute(
-            "SELECT ref_id FROM c4_ref_members WHERE file_id=? AND npi=? AND tin=?",
-            (file_id, npi, tin)).fetchall()
-        if not refs:
-            counts["missing_pair"] += 1
-            continue
-        for (ref_id,) in refs:
-            if status == CONFIRMED_PPO:
-                con.execute(
-                    "UPDATE c4_refs SET tag='PPO', tag_confidence='high', ppo_evidence=1, non_ppo_evidence=0, "
-                    "evidence='demo roster verdict: PPO found on Health Net directory', "
-                    "status='CONFIRMED_PPO', status_basis='temporary demo PPO roster: exact NPI+TIN' "
-                    "WHERE file_id=? AND ref_id=?", (file_id, ref_id))
-                counts["confirmed_ppo"] += 1
-            else:
-                con.execute(
-                    "UPDATE c4_refs SET tag='UNKNOWN', tag_confidence='none', ppo_evidence=0, non_ppo_evidence=0, "
-                    "evidence='demo roster verdict: not found; not treated as non-PPO', status='UNRESOLVED', "
-                    "status_basis='temporary demo roster: not found is unresolved' "
-                    "WHERE file_id=? AND ref_id=?", (file_id, ref_id))
-                counts["unresolved"] += 1
+        "evidence='demo CSV is NPI+TIN-specific and cannot classify this shared provider reference by itself', "
+        "status='UNRESOLVED', status_basis='pair-specific demo roster is applied after signature extraction' "
+        "WHERE file_id=?", (file_id,))
     con.commit()
-    log(f"[demo] applied exact NPI+TIN statuses: {counts}")
-    return counts
+    log(f"[demo] kept {con.execute('SELECT COUNT(*) FROM c4_refs WHERE file_id=?', (file_id,)).fetchone()[0]:,} "
+        "shared provider references unresolved; exact roster labels will be attached to NPI+TIN rate signatures.")
+
+
+def _restrict_and_clone_pairs(con, file_id: int, pair_status: dict, log) -> dict:
+    """Keep only demo NPI+TIN pairs and clone their rates with pair-specific network status."""
+    import re
+    from ptd_c4.db import stable_id
+
+    original = con.execute("SELECT npi, tin, tin_type, sig_id FROM c4_pairs WHERE file_id=?", (file_id,)).fetchall()
+    wanted = {}
+    for npi, tin, tin_type, sig_id in original:
+        norm_tin = re.sub(r"\\D", "", str(tin or ""))
+        key = (int(npi), norm_tin)
+        if key in pair_status and norm_tin:
+            wanted[key] = (str(tin), str(tin_type or ""), int(sig_id))
+    con.execute("DELETE FROM c4_pairs WHERE file_id=?", (file_id,))
+    cloned, missing_rates = 0, 0
+    for (npi, norm_tin), status in pair_status.items():
+        if (npi, norm_tin) not in wanted:
+            continue
+        original_tin, tin_type, sig_id = wanted[(npi, norm_tin)]
+        rate_rows = con.execute("SELECT * FROM c4_sig_rates WHERE file_id=? AND sig_id=?",
+                                (file_id, sig_id)).fetchall()
+        if not rate_rows:
+            missing_rates += 1
+            continue
+        new_sig = stable_id(file_id, sig_id, "demo-pair", npi, norm_tin, status)
+        for values in rate_rows:
+            # Column order is defined in ptd_c4.db.SCHEMA.
+            row = list(values)
+            row[1] = new_sig
+            row[11] = "PPO" if status == CONFIRMED_PPO else "UNKNOWN"
+            row[12] = "high" if status == CONFIRMED_PPO else "none"
+            row[17] = "demo roster"  # pick rule
+            row[18] = status
+            con.execute("INSERT INTO c4_sig_rates VALUES (" + ",".join("?" * len(row)) + ")", row)
+        con.execute("INSERT INTO c4_pairs VALUES (?,?,?,?,?)", (file_id, npi, norm_tin, tin_type, new_sig))
+        cloned += 1
+    con.commit()
+    log(f"[demo] kept {cloned:,} exact demo pairs with extracted rates; {missing_rates:,} roster pairs matched "
+        "the rate file but had no surviving rates; all non-roster pairs excluded.")
+    return {"demo_pairs_with_rates": cloned, "demo_pairs_without_rates": missing_rates,
+            "rate_file_pairs_seen": len(original), "demo_pairs_not_found_in_rate_file": len(pair_status) - len(wanted)}
 
 
 def run(args) -> int:
@@ -100,7 +120,8 @@ def run(args) -> int:
         _apply_demo_statuses(con, 1, pair_status, log)
         pair_stats = build_pairs(con, 1, cfg["network"]["include_statuses"], log)
         price_stats = pick_rates(con, 1, cfg, cfg["_as_of"].isoformat(), log)
-        report = {**pair_stats, **price_stats, **fanout_counts(con, 1)}
+        demo_filter_stats = _restrict_and_clone_pairs(con, 1, pair_status, log)
+        report = {**pair_stats, **price_stats, **demo_filter_stats, **fanout_counts(con, 1)}
     except Exception as exc:
         status = 2
         file_row.update(status="error", error=f"{exc.__class__.__name__}: {exc}"[:500])
@@ -129,6 +150,7 @@ def run(args) -> int:
         "distinct_tins": con.execute(
             "SELECT COUNT(DISTINCT tin) FROM c4_pairs WHERE sig_id IN (SELECT sig_id FROM c4_sig_rates)").fetchone()[0],
         "demo_roster_rows": len(rows), "demo_pairs": len(pair_status),
+        "demo_pair_status_counts": {v: sum(1 for x in pair_status.values() if x == v) for v in sorted(set(pair_status.values()))},
         "demo_verdicts": {v: sum(r["verdict"] == v for r in rows) for v in sorted({r["verdict"] for r in rows})},
     }
     (out / "c4_run_summary.json").write_text(json.dumps(summary, indent=2, default=str))
