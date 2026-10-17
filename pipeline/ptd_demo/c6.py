@@ -14,8 +14,6 @@ from .roster import DEFAULT_DEMO_CSV, load_demo_rows
 
 def _apply_pair_verdicts_to_outputs(out: Path, rows: list[dict]) -> None:
     """Keep demo PPO/unknown routing pair-specific in the exported files too."""
-    import pandas as pd
-
     statuses = {}
     for r in rows:
         npi, tin = r["npi"], r["rate_file_tin"]
@@ -23,7 +21,7 @@ def _apply_pair_verdicts_to_outputs(out: Path, rows: list[dict]) -> None:
             "FOUND_PPO_BY_NPI", "FOUND_PPO_SAME_FACILITY_DIFFERENT_NPI",
             "NOT_FOUND_BY_NPI_SAME_TIN_OTHER_SITES_PPO"} else "UNRESOLVED")
     # C6's SQLite table contains the exact rate rows fanned out by NPI+TIN.
-    db = connect("out/demo/rates.sqlite")
+    db = connect(out.parent.parent / "rates.sqlite")
     if not table_exists(db, "c6_rates"):
         db.close()
         return
@@ -54,9 +52,12 @@ def _apply_pair_verdicts_to_outputs(out: Path, rows: list[dict]) -> None:
     if rate_path.exists():
         with gzip.open(rate_path, "rt", newline="", encoding="utf-8") as fh:
             data = list(csv.DictReader(fh))
-        # The normal C6 Excel already has extensive metadata and is intentionally kept.
         # The corrected CSV is the exact row-level demo output used for downstream review.
-        pd.DataFrame(data).to_csv(out / "c6_provider_rate_file_demo.csv", index=False)
+        with open(out / "c6_provider_rate_file_demo.csv", "w", newline="", encoding="utf-8") as fh:
+            if data:
+                writer = csv.DictWriter(fh, fieldnames=list(data[0]))
+                writer.writeheader()
+                writer.writerows(data)
     db.close()
 
 
