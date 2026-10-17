@@ -20,7 +20,7 @@ from ptd_pipeline.index_parser import DEFAULT_RAW_DIR as C1_RAW_DIR
 from ptd_pipeline.index_parser import DEFAULT_TABLE_CSV as C1_TABLE_CSV
 
 from . import __version__
-from .combine import combine, ppo_file_list
+from .combine import allowed_amount_files, combine, ppo_file_list
 from .config import load_config
 from .file_vote import vote_files
 from .loaders import discover_index_sources, load_c1, load_oon_map
@@ -33,7 +33,7 @@ from .validation import SAMPLE_FIELDS, make_sample, score_sample
 CLASSIFICATION_FIELDS = [
     "row_id", "brand", "plan_name", "plan_id", "market_type", "rate_file_url", "state", "state_source",
     "network_names", "name_signal", "name_tokens", "file_vote", "oon_signal", "oon_measured",
-    "payment_signal", "payment_measured", "final_network_type", "ppo_variant", "in_scope_ppo",
+    "payment_signal", "payment_measured", "allowed_amount_file_url", "final_network_type", "ppo_variant", "in_scope_ppo",
     "needs_network_filter", "confidence", "decided_by", "reason",
 ]
 
@@ -177,6 +177,12 @@ def run(args) -> int:
     # Step 6
     conflicts, support_report = combine(rows, votes, probes, cfg)
     ppo_files = ppo_file_list(rows, probes)
+    aa_files = allowed_amount_files(rows, oon_results)
+    for r in rows:
+        r["allowed_amount_file_url"] = "|".join(sorted(u for u in r.get("_oon_urls") or () if u))
+    log(f"[step6] allowed-amount files: {len(aa_files)} listed by in-scope plans; "
+        f"{sum(1 for a in aa_files if a['ppo_only'])} listed only by PPO plans; "
+        f"{sum(1 for a in aa_files if a['ppo_plan_rows'])} listed by PPO plans")
     hyp_report += support_report
     for h in support_report:
         log(f"[step5] hypothesis {h['hypothesis']}: support {h['support_on_labelled_plans']}, "
@@ -215,6 +221,9 @@ def run(args) -> int:
     files = {
         "c2_classification.csv": (rows, CLASSIFICATION_FIELDS),
         "c2_ppo_rate_files.csv": (ppo_files, None),
+        "c2_allowed_amount_files.csv": (aa_files, ["allowed_amount_file_url", "ppo_plan_rows", "non_ppo_plan_rows",
+                                                   "ppo_only", "rate_files", "status", "records_seen", "bytes_read",
+                                                   "error"]),
         "c2_exclusions.csv": (exclusions, None),
         "c2_name_signals.csv": (name_rows, None),
         "c2_file_votes.csv": (vote_rows, None),
@@ -230,7 +239,7 @@ def run(args) -> int:
         write_csv(out / name, data, fields)
     write_xlsx(out / "c2_results.xlsx", {
         "classification": files["c2_classification.csv"], "ppo_rate_files": files["c2_ppo_rate_files.csv"],
-        "exclusions": files["c2_exclusions.csv"], "file_votes": files["c2_file_votes.csv"],
+        "allowed_amount_files": files["c2_allowed_amount_files.csv"], "exclusions": files["c2_exclusions.csv"], "file_votes": files["c2_file_votes.csv"],
         "network_probe": files["c2_network_probe.csv"], "conflicts": files["c2_conflicts.csv"],
         "hypotheses": files["c2_hypotheses.csv"], "validation_sample": files["c2_validation_sample.csv"],
     })
@@ -240,6 +249,8 @@ def run(args) -> int:
         "network_probe_ran": bool(probes), "rows": len(rows), "in_scope_rows": len(in_scope),
         "exclusions_by_rule": dict(by_rule), "final_types": dict(final_counts),
         "in_scope_ppo_rows": sum(r["in_scope_ppo"] for r in rows), "ppo_rate_files": len(ppo_files),
+        "allowed_amount_files": len(aa_files),
+        "allowed_amount_files_ppo_only": sum(1 for a in aa_files if a["ppo_only"]),
         "conflicts": dict(Counter(c["conflict_type"] for c in conflicts)),
         "include_enhancedcare_ppo": cfg["network_probe"]["include_enhancedcare_ppo"],
         "context_notes": cfg.get("context_notes", []),

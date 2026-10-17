@@ -252,5 +252,33 @@ def ppo_file_list(rows_all: list[dict], probes: dict) -> list[dict]:
             "decided_by": ",".join(sorted({r["decided_by"] for r in rs})),
             "best_confidence": max((r["confidence"] for r in rs), key=LEVELS.index),
             "confidence_counts": dict(conf),
+            "allowed_amount_file_urls": "|".join(sorted({u for r in rs for u in r.get("_oon_urls") or () if u})),
         })
+    return out
+
+
+def allowed_amount_files(rows_all: list[dict], oon_results: dict) -> list[dict]:
+    """Every allowed-amount (out-of-network) file listed by an in-scope plan, with who lists it.
+
+    ppo_only is the key fact for C4: providers in a file that only PPO plans list were paid out of
+    network by a PPO plan, so they are not in that PPO network. A file shared with HMO plans only
+    says "out of network for some plan".
+    """
+    by_url: dict[str, dict] = {}
+    for r in rows_all:
+        if not r.get("in_scope"):
+            continue
+        for u in r.get("_oon_urls") or ():
+            if not u:
+                continue
+            d = by_url.setdefault(u, {"ppo": 0, "other": 0, "files": set()})
+            d["ppo" if r.get("in_scope_ppo") else "other"] += 1
+            d["files"].add(r["rate_file_url"])
+    out = []
+    for u, d in sorted(by_url.items()):
+        res = oon_results.get(u) or {}
+        out.append({"allowed_amount_file_url": u, "ppo_plan_rows": d["ppo"], "non_ppo_plan_rows": d["other"],
+                    "ppo_only": d["ppo"] > 0 and d["other"] == 0, "rate_files": "|".join(sorted(d["files"])),
+                    "status": res.get("status", "not probed"), "records_seen": res.get("records_seen", ""),
+                    "bytes_read": res.get("bytes_read", ""), "error": res.get("error", "")})
     return out

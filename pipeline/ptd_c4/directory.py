@@ -26,6 +26,8 @@ NPI_SYSTEM = "http://hl7.org/fhir/sid/us-npi"
 TIN_SYSTEMS = ("urn:oid:2.16.840.1.113883.4.4", "http://terminology.hl7.org/NamingSystem/USEIN")
 FIELDS = ["npi", "tin", "network_name", "network_label", "address_line1", "address_line2", "city", "state",
           "zip", "source", "last_updated"]
+# How a row's NPI was established (ptd_dir build). Name + ZIP alone can be a namesake: weak evidence.
+WEAK_NPI_SOURCES = {"name+zip"}
 PPO, NON = "PPO", "NON_PPO"
 
 
@@ -43,28 +45,59 @@ def side_of(label: str, ppo_labels) -> str | None:
 
 
 class Directory:
+    """Directory rows indexed for matching. A row's network side comes from its network name through
+    C2's rules: a named PPO network (target-specific), a named non-PPO network, or neither (a generic
+    "Health Net" listing, which says the provider is with the payer but not in which network)."""
     enabled = True
 
     def __init__(self, rows: list[dict], c2cfg: dict, ppo_labels):
         self.rows = rows
         self.by_npi: dict[int, set] = defaultdict(set)
         self.by_tin: dict[str, set] = defaultdict(set)
+        self.tins_of_npi: dict[int, set] = defaultdict(set)   # TINs the directory lists for an NPI (PPO rows)
+        self.generic_npis: set[int] = set()
+        self.weak_by_npi: dict[int, set] = defaultdict(set)
         for r in rows:
             label = r.get("network_label") or label_network_name(str(r.get("network_name") or ""), c2cfg)
             side = side_of(label, ppo_labels)
+            if side is None and r.get("listing_networks"):  # the search was generic; the listing may name networks
+                sides = {side_of(label_network_name(x, c2cfg), ppo_labels) for x in str(r["listing_networks"]).split("|")}
+                sides.discard(None)
+                side = PPO if PPO in sides else (NON if sides else None)
             r["_side"] = side
+            if side is not None and r.get("npi") and str(r.get("npi_source") or "") in WEAK_NPI_SOURCES:
+                self.weak_by_npi[int(r["npi"])].add(side)
+                continue
             if side is None:
+                if r.get("npi"):
+                    self.generic_npis.add(int(r["npi"]))
                 continue
             if r.get("npi"):
                 self.by_npi[int(r["npi"])].add(side)
+                if r.get("tin") and side == PPO:
+                    self.tins_of_npi[int(r["npi"])].add(str(r["tin"]))
             if r.get("tin"):
                 self.by_tin[str(r["tin"])].add(side)
 
     def sides(self, npi, tin) -> set:
+        return set(self.match(npi, tin)[0])
+
+    def match(self, npi, tin) -> tuple[set, str]:
+        """(sides, kind). kind: 'npi' (the NPI is listed and the TIN agrees or is not given),
+        'npi_tin_mismatch' (the NPI is listed, but only under other TINs), 'name_zip' (the listing
+        showed no NPI and was linked to this one by name + ZIP only), 'tin' (only the TIN is listed: a
+        group link, not proof for this NPI), or '' (no match)."""
         s = set(self.by_npi.get(int(npi), ())) if npi is not None else set()
-        if not s and tin:  # a TIN match only counts when the NPI itself is not listed
-            s = set(self.by_tin.get(str(tin), ()))
-        return s
+        if s:
+            tins = self.tins_of_npi.get(int(npi))
+            if PPO in s and tins and tin and str(tin) not in tins:
+                return s, "npi_tin_mismatch"
+            return s, "npi"
+        if npi is not None and self.weak_by_npi.get(int(npi)):
+            return set(self.weak_by_npi[int(npi)]), "name_zip"
+        if tin and self.by_tin.get(str(tin)):
+            return set(self.by_tin[str(tin)]), "tin"
+        return set(), ""
 
 
 def read_table(path: str | Path) -> list[dict]:
@@ -91,6 +124,7 @@ def load_directory(path: str | Path, c2cfg: dict, ppo_labels) -> Directory:
         "address_line2": ["addressline2", "address2", "line2", "suite"],
         "city": ["city"], "state": ["state", "st"], "zip": ["zip", "zipcode", "postalcode"],
         "source": ["source"], "last_updated": ["lastupdated", "updated", "asof"],
+        "npi_source": ["npisource"], "listing_networks": ["listingnetworks"],
     }
     rows = []
     for rec in read_table(path):

@@ -1,21 +1,25 @@
-"""Tag every provider reference in a rate file as PPO, NON_PPO or UNKNOWN.
+"""Give every provider reference in a rate file a network status.
 
 Why this exists: C2 found that all of Health Net's California group plans share one rate file
 whose network_name is blank, so PPO and HMO providers sit in the same file with nothing on the
 reference saying which is which. A provider can also be in both networks under two different
-references, with two different prices, so the tag belongs to the reference, not to the NPI.
+references, with two different prices, so the status belongs to the reference, not to the NPI.
 
-Evidence, strongest first (weights in config/c4.yaml):
-  network_name  the reference's own network_name, mapped with C2's network-name rules
-  file_label    C2 says the whole file is a single PPO network (no mixing)
-  directory     the reference's NPIs/TINs appear in a payer directory under a PPO or non-PPO network
-  capitation    the reference is paid per member per month for some services, an HMO arrangement
-  dual_contract (hypothesis) one TIN in two references with different prices: the higher-paid one is PPO
-  propagation   (hypothesis) label spreading over references that are listed together for the same price
+Evidence (weights in config/c4.yaml), graded by what it can prove:
+  network_name   (direct) the reference's own network_name, mapped with C2's network-name rules
+  file_label     (direct) C2 says the whole file is a single PPO network (no mixing)
+  directory      (direct) an NPI listed in a PPO / non-PPO network, when the listing can only be
+                 about this reference; TIN-only, name + ZIP, shared or generic matches are weak
+  capitation     (direct, non-PPO) paid per member per month for some services: an HMO arrangement
+  oon_ppo_plan   (direct, non-PPO) paid out of network by a PPO plan (allowed-amount file)
+  dual_contract  (inferred) one TIN in two references with different prices: the higher-paid one is PPO
+  propagation    (inferred) label spreading over references that are listed together for the same price
 
-The two hypotheses are measured against references whose network is already known and are used
-only when they pass (precision / held-out accuracy in the config), the same rule C2 uses for its
-plan-name hypotheses. Every decision keeps its evidence string.
+The evidence is weighed into a tag (PPO / NON_PPO / UNKNOWN), then network_status() turns tag plus
+evidence grades into CONFIRMED_PPO / PPO_CANDIDATE / UNRESOLVED / CONFIRMED_NON_PPO: only direct
+evidence confirms. The two hypotheses are measured against references whose network is already known
+and are used only when they pass (precision / held-out accuracy in the config), the same rule C2 uses
+for its plan-name hypotheses. Every decision keeps its evidence string.
 """
 from __future__ import annotations
 
@@ -40,6 +44,9 @@ class Evidence:
         self.non = np.zeros(len(ref_ids))
         self.notes: dict[int, list[str]] = defaultdict(list)
         self.sources: dict[int, set] = defaultdict(set)
+        self.flags: dict[int, set] = defaultdict(set)     # notes that are not evidence for a side
+        self.ppo_by: dict[int, dict] = defaultdict(dict)  # source -> weight, per side
+        self.non_by: dict[int, dict] = defaultdict(dict)
 
     def add(self, i: int, side: str, weight: float, source: str, note: str) -> None:
         if weight <= 0:
@@ -48,11 +55,16 @@ class Evidence:
             self.ppo[i] += weight
         else:
             self.non[i] += weight
+        by = self.ppo_by if side == PPO else self.non_by
+        by[i][source] = by[i].get(source, 0.0) + weight
         self.notes[i].append(f"{source}:{side}({weight:.2f}) {note}".strip())
         self.sources[i].add(source)
 
     def seeded_label(self, i: int, min_share: float) -> str | None:
-        p, n = self.ppo[i], self.non[i]
+        """The side a reference is known to be on, for testing and spreading hypotheses. Weak
+        directory matches (TIN-only, NPI under another TIN) are left out: they are not proof."""
+        p = self.ppo[i] - self.ppo_by[i].get("directory_weak", 0.0)
+        n = self.non[i] - self.non_by[i].get("directory_weak", 0.0)
         if p + n == 0:
             return None
         if p / (p + n) >= min_share:
@@ -87,30 +99,46 @@ def _seed_network_names(ev: Evidence, names: dict[str, str], cfg: dict, c2cfg: d
 def _seed_directory(ev: Evidence, con, file_id: int, directory, cfg: dict) -> tuple[int, list]:
     """Directory evidence. A directory lists an NPI in a network, not a reference, so:
 
-    - an NPI that sits in one reference of this file is direct evidence for that reference;
+    - an NPI that sits in one reference of this file is direct evidence for that reference
+      (source "directory": the listing can only be about that contract);
     - an NPI in several references (e.g. a PPO and an HMO contract under one TIN) only says that
       at least one of them is in that network. That evidence is held back as "shared" and given
-      out later by exclusion (see _allocate_shared).
+      out later by exclusion (see _allocate_shared);
+    - a listing that matches only by TIN, lists the NPI under a different TIN, or was linked to the
+      NPI by name + ZIP only, does not pin the provider to this contract: weak evidence
+      ("directory_weak"), a candidate at most;
+    - a listing under a generic payer name (no network named) is only noted ("directory_generic").
     """
     if not directory or not directory.enabled:
         return 0, []
     w = cfg["network"]["seed_weights"]["directory"]
+    w_weak = w * cfg["network"].get("directory_weak_factor", 0.4)
     refs_of: dict[int, set] = defaultdict(set)
-    tin_of: dict[int, str] = {}
     members: Counter = Counter()
     for ref, npi, tin in con.execute("SELECT ref_id, npi, tin FROM c4_ref_members WHERE file_id = ?", (file_id,)):
         members[ref] += 1
         if npi is not None:
-            refs_of[npi].add(ref)
-            tin_of[npi] = tin
+            refs_of[npi].add((ref, tin))
     unique: dict[str, list] = defaultdict(lambda: [0, 0])
+    weak: dict[tuple, Counter] = defaultdict(Counter)
     shared: Counter = Counter()
-    for npi, refs in refs_of.items():
-        for side in directory.sides(npi, tin_of[npi]):
-            if len(refs) == 1:
+    for npi, ref_tins in refs_of.items():
+        strong: dict[str, set] = defaultdict(set)   # side -> refs whose (NPI, TIN) the listing names
+        for ref, tin in ref_tins:
+            sides, kind = directory.match(npi, tin)
+            for side in sides:
+                if kind == "npi":
+                    strong[side].add(ref)
+                else:
+                    weak[(ref, side)][kind] += 1
+            if npi in directory.generic_npis and ref in ev.index:
+                ev.flags[ev.index[ref]].add("directory_generic")
+        all_refs = {r for r, _ in ref_tins}
+        for side, refs in strong.items():
+            if len(all_refs) == 1:
                 unique[next(iter(refs))][side == NON] += 1
             else:
-                shared[(side, frozenset(refs))] += 1
+                shared[(side, frozenset(all_refs))] += 1
     n = 0
     for ref, (hp, hn) in unique.items():
         if ref not in ev.index:
@@ -118,9 +146,17 @@ def _seed_directory(ev: Evidence, con, file_id: int, directory, cfg: dict) -> tu
         n += 1
         i, m = ev.index[ref], members[ref]
         if hp:
-            ev.add(i, PPO, w * hp / m, "directory", f"{hp}/{m} members listed in a PPO network")
+            ev.add(i, PPO, w * hp / m, "directory", f"{hp}/{m} members listed in a PPO network (their only reference)")
         if hn:
-            ev.add(i, NON, w * hn / m, "directory", f"{hn}/{m} members listed in a non-PPO network")
+            ev.add(i, NON, w * hn / m, "directory", f"{hn}/{m} members listed in a non-PPO network (their only reference)")
+    for (ref, side), kinds in weak.items():
+        if ref not in ev.index:
+            continue
+        k = sum(kinds.values())
+        what = {"tin": "TIN only", "npi_tin_mismatch": "NPI under another TIN", "name_zip": "name + ZIP, no NPI shown"}
+        why = ", ".join(f"{v} by {what.get(kk, kk)}" for kk, v in kinds.items())
+        ev.add(ev.index[ref], side, w_weak * k / members[ref], "directory_weak",
+               f"{k}/{members[ref]} members matched a {'PPO' if side == PPO else 'non-PPO'} listing weakly ({why})")
     pending = [{"side": side, "refs": sorted(refs), "npis": k, "w": w, "members": members, "done": False}
                for (side, refs), k in shared.items()]
     return n, pending
@@ -176,6 +212,40 @@ def _seed_capitation(ev: Evidence, con, file_id: int, cfg: dict) -> int:
             n += 1
             ev.add(ev.index[ref], NON, w * min(1.0, share / 0.10 + 0.5), "capitation",
                    f"{cap:,} of {rows:,} price rows capitated")
+    return n
+
+
+def _seed_oon(ev: Evidence, con, file_id: int, cfg: dict) -> int:
+    """Providers paid out of network (allowed-amount files, see oon.py).
+
+    A file listed only by PPO plans: those NPIs were outside the PPO network, so their references
+    (matched on NPI, and on TIN when the file gives one) get non-PPO evidence. A shared file only adds
+    a note, since the out-of-network plan may have been an HMO.
+    """
+    if not con.execute("SELECT 1 FROM sqlite_master WHERE name = 'c4_oon_providers'").fetchone():
+        return 0
+    w = cfg["network"].get("oon", {}).get("weight", 0.8)
+    hits: dict[str, list] = defaultdict(lambda: [0, 0, 0])   # ref -> [members hit (ppo-only), shared hits, members]
+    members: Counter = Counter()
+    q = ("SELECT m.ref_id, m.npi, MAX(o.ppo_only) FROM c4_ref_members m JOIN c4_oon_providers o "
+         "ON o.file_id = m.file_id AND o.npi = m.npi AND (o.tin = '' OR o.tin = m.tin) WHERE m.file_id = ? "
+         "GROUP BY m.ref_id, m.npi")
+    for ref, _npi, ppo_only in con.execute(q, (file_id,)):
+        hits[ref][0 if ppo_only else 1] += 1
+    for ref, in con.execute("SELECT ref_id FROM c4_ref_members WHERE file_id = ?", (file_id,)):
+        members[ref] += 1
+    n = 0
+    for ref, (hp, hs, _) in hits.items():
+        if ref not in ev.index:
+            continue
+        i, m = ev.index[ref], members[ref]
+        if hp:
+            n += 1
+            ev.add(i, NON, w * min(1.0, 0.5 + hp / m), "oon_ppo_plan",
+                   f"{hp}/{m} members were paid out of network by a PPO plan (allowed-amount file)")
+        if hs:
+            ev.flags[i].add("oon_shared")
+            ev.notes[i].append(f"note: {hs}/{m} members appear in a shared allowed-amount file (out of network for some plan)")
     return n
 
 
@@ -362,6 +432,45 @@ def propagation(ev: Evidence, con, file_id: int, cfg: dict, log=print) -> dict:
     return out
 
 
+# ------------------------------------------------------------------ status
+CONFIRMED_PPO, PPO_CANDIDATE, UNRESOLVED, CONFIRMED_NON_PPO = \
+    "CONFIRMED_PPO", "PPO_CANDIDATE", "UNRESOLVED", "CONFIRMED_NON_PPO"
+STATUSES = [CONFIRMED_PPO, PPO_CANDIDATE, UNRESOLVED, CONFIRMED_NON_PPO]
+# Evidence that names this reference's network directly (target-specific). Everything else (TIN-only
+# or ambiguous directory matches, shared listings, price-gap and graph hypotheses) is inference.
+STRONG = {PPO: {"network_name", "file_label", "directory"},
+          NON: {"network_name", "directory", "capitation", "oon_ppo_plan"}}
+
+
+def network_status(tag: str, ppo_by: dict, non_by: dict, flags: set) -> tuple[str, str]:
+    """(status, basis) for one reference, from its decided tag and its evidence per source.
+
+    CONFIRMED_PPO      decided PPO, with direct PPO evidence and no direct non-PPO evidence
+    CONFIRMED_NON_PPO  decided non-PPO, with direct non-PPO evidence and no direct PPO evidence
+    PPO_CANDIDATE      some PPO evidence (inferred, weak or generic), but no direct proof
+    UNRESOLVED         nothing for PPO, or the evidence conflicts
+    """
+    strong_ppo = sorted(set(ppo_by) & STRONG[PPO])
+    strong_non = sorted(set(non_by) & STRONG[NON])
+    if strong_ppo and strong_non:
+        return UNRESOLVED, f"conflict: PPO by {', '.join(strong_ppo)}; non-PPO by {', '.join(strong_non)}"
+    if tag == PPO and strong_ppo:
+        return CONFIRMED_PPO, "direct: " + ", ".join(strong_ppo)
+    if tag == NON and strong_non:
+        return CONFIRMED_NON_PPO, "direct: " + ", ".join(strong_non)
+    if strong_non:  # direct non-PPO evidence that did not win the vote: never a PPO candidate
+        return UNRESOLVED, "non-PPO by " + ", ".join(strong_non) + ", outweighed by inference"
+    if tag == NON:
+        return UNRESOLVED, "non-PPO inferred only: " + ", ".join(sorted(non_by))
+    if ppo_by:
+        return PPO_CANDIDATE, "inferred: " + ", ".join(sorted(ppo_by))
+    if "directory_generic" in flags:
+        return PPO_CANDIDATE, "listed with the payer, no network named"
+    if non_by:
+        return UNRESOLVED, "non-PPO inferred only: " + ", ".join(sorted(non_by))
+    return UNRESOLVED, "no network evidence"
+
+
 # ------------------------------------------------------------------ decide
 def _confidence(ev: Evidence, i: int, share: float) -> str:
     if ev.sources[i] == {"directory_shared"}:
@@ -370,7 +479,7 @@ def _confidence(ev: Evidence, i: int, share: float) -> str:
     if direct and share >= 0.9:
         return "high"
     if share >= 0.8 and ev.sources[i] & {"network_name", "file_label", "directory", "capitation", "dual_contract",
-                                          "propagation"}:
+                                          "propagation", "oon_ppo_plan", "directory_weak"}:
         return "medium"
     return "low"
 
@@ -384,6 +493,7 @@ def tag_references(con: sqlite3.Connection, file_id: int, file_meta: dict, cfg: 
         "network_name": _seed_network_names(ev, names, cfg, c2cfg),
         "file_label": _seed_file_label(ev, file_meta, cfg),
         "capitation": _seed_capitation(ev, con, file_id, cfg),
+        "allowed_amount_ppo_plan": _seed_oon(ev, con, file_id, cfg),
     }
     seeds["directory"], pending = _seed_directory(ev, con, file_id, directory, cfg)
     seeds["directory_by_exclusion"] = _allocate_shared(ev, pending, min_share, final=False)
@@ -394,11 +504,11 @@ def tag_references(con: sqlite3.Connection, file_id: int, file_meta: dict, cfg: 
     report["propagation"] = propagation(ev, con, file_id, cfg, log)
     report["seeded_by"]["directory_shared_after_hypotheses"] = _allocate_shared(ev, pending, min_share, final=True)
 
-    rows, counts = [], defaultdict(int)
+    rows, counts, statuses = [], defaultdict(int), Counter()
     for i, ref in enumerate(ev.ref_ids):
         p, n = float(ev.ppo[i]), float(ev.non[i])
         if p + n == 0:
-            tag, conf, note = UNKNOWN, "none", "no network evidence"
+            tag, conf, note = UNKNOWN, "none", "; ".join(ev.notes[i])[:500] or "no network evidence"
         else:
             share = max(p, n) / (p + n)
             if share >= min_share:
@@ -408,10 +518,14 @@ def tag_references(con: sqlite3.Connection, file_id: int, file_meta: dict, cfg: 
                 tag, conf = UNKNOWN, "conflict"
             note = "; ".join(ev.notes[i])[:500]
         counts[(tag, conf)] += 1
-        rows.append((tag, conf, round(p, 4), round(n, 4), note, file_id, ref))
+        status, basis = network_status(tag, ev.ppo_by[i], ev.non_by[i], ev.flags[i])
+        statuses[status] += 1
+        rows.append((tag, conf, round(p, 4), round(n, 4), note, status, basis, file_id, ref))
     con.executemany("UPDATE c4_refs SET tag = ?, tag_confidence = ?, ppo_evidence = ?, non_ppo_evidence = ?, "
-                    "evidence = ? WHERE file_id = ? AND ref_id = ?", rows)
+                    "evidence = ?, status = ?, status_basis = ? WHERE file_id = ? AND ref_id = ?", rows)
     con.commit()
     report["tags"] = {f"{t}/{c}": v for (t, c), v in sorted(counts.items())}
+    report["statuses"] = {s: statuses.get(s, 0) for s in STATUSES}
     log("[c4]   network tags: " + ", ".join(f"{k} {v:,}" for k, v in report["tags"].items()))
+    log("[c4]   network status: " + ", ".join(f"{k} {v:,}" for k, v in report["statuses"].items()))
     return report

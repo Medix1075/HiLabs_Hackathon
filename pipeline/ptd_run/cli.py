@@ -20,6 +20,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .docs import write_logic, write_quality_metrics
+
 STAGES = ["c1", "c2", "c3", "c4", "c3net", "c5", "c6", "c7"]
 
 
@@ -40,8 +42,9 @@ def _input_warnings(c4: dict, c5: dict) -> list[str]:
     """Inputs whose absence changes the numbers above, so nobody mistakes a missing file for a finding."""
     w = []
     if c4 and not c4.get("directory"):
-        w.append("No payer directory (C4 --directory): PPO providers can't be confirmed, so references without "
-                 "capitation stay UNKNOWN and are kept.")
+        w.append("No payer directory (C4 --directory): no provider can be confirmed PPO, so deliverable 1 holds only "
+                 "rates confirmed some other way (usually none) and the rest are in the candidate file (1b). Build "
+                 "the directory table with `python -m ptd_dir` (see README, 'PPO directory').")
     if c4 and c4.get("code_scope") == "all":
         w.append("No HiLabs workbook (--workbook): every billing code was extracted and C7 weights codes equally.")
     used = (c5.get("sources_used") or {}) if c5 else None
@@ -61,6 +64,8 @@ def write_summary(out: Path, data: Path) -> dict:
     """Deliverable 4: one page of run statistics, from whatever stage outputs exist."""
     c2, c3, c4 = _load(out / "c2/c2_run_summary.json"), _load(out / "c3/c3_run_summary.json"), _load(out / "c4/c4_run_summary.json")
     c5, c6, c7 = _load(out / "c5/c5_run_summary.json"), _load(out / "c6/c6_run_summary.json"), _load(out / "c7/c7_run_summary.json")
+    c7c = _load(out / "c7_candidates/c7_run_summary.json")
+    c6f = (c6.get("files") or {}) if c6 else {}
     toc = _load(data / "toc_urls.json")
     s = {
         "generated": datetime.now(timezone.utc).isoformat(),
@@ -70,41 +75,58 @@ def write_summary(out: Path, data: Path) -> dict:
         "unique_rate_files": _count_csv(data / "rate_files.csv"),
         "in_scope_plan_rows": c2.get("in_scope_rows"), "ppo_plan_rows": c2.get("in_scope_ppo_rows"),
         "ppo_rate_files": c2.get("ppo_rate_files"), "plan_types": c2.get("final_types"),
+        "allowed_amount_files": (f"{c2.get('allowed_amount_files')} listed by in-scope plans, "
+                                 f"{c2.get('allowed_amount_files_ppo_only')} listed only by PPO plans")
+        if c2.get("allowed_amount_files") is not None else None,
         "file_quality_scores": c3.get("scores"),
         "rate_files_processed": len([f for f in c4.get("files", []) if f.get("status") == "ok"]) if c4 else None,
         "price_rows_read": sum(f.get("price_rows") or 0 for f in c4.get("files", [])) if c4 else None,
         "file_shape": {f["url"]: {"MB": round((f.get("size_bytes") or 0) / 1e6, 1), "references": f.get("references"),
                                   "in_network_items": f.get("items"), "price_rows_all_codes": f.get("all_price_rows"),
                                   "distinct_codes": f.get("distinct_codes"),
-                                  "workbook_codes_found": f.get("workbook_codes_found")}
+                                  "workbook_codes_found": f.get("workbook_codes_found"),
+                                  "items_by_code_type": f.get("code_types")}
                        for f in c4.get("files", []) if f.get("status") == "ok"} if c4 else None,
+        "network_status": c4.get("network_status") if c4 else None,
         "network_tags": {u: r.get("tags") for u, r in c4.get("network", {}).items()} if c4 else None,
         "rates_extracted": (c4.get("totals") or {}).get("rate_rows"),
         "unique_npis": c4.get("distinct_npis"), "unique_tins": c4.get("distinct_tins"),
         "pct_npis_with_address": c5.get("pct_npis_with_address"),
         "pct_npis_with_verified_address": c5.get("pct_npis_with_verified_address"),
+        "pct_tins_with_address": c5.get("pct_tins_with_address"),
+        "pct_tins_with_verified_address": c5.get("pct_tins_with_verified_address"),
         "best_address_vs_nppes": c5.get("best_address_vs_nppes_practice"),
         "address_sources_used": (", ".join(sorted(c5.get("sources_used") or {})) or "none") if c5 else None,
-        "rate_file_rows": c6.get("rows"), "rate_file_rows_with_address": c6.get("rows_with_address"),
+        "rate_file_rows": (c6f.get("c6_provider_rate_file") or {}).get("rows"),
+        "rate_file_rows_with_address": (c6f.get("c6_provider_rate_file") or {}).get("rows_with_address"),
+        "candidate_file_rows": (c6f.get("c6_provider_rate_file_candidates") or {}).get("rows"),
         "specialty_sources": c6.get("specialty_sources"),
         "providers_scored": c7.get("providers_scored"), "tins_scored": c7.get("tins_scored"),
         "cost_tiers": c7.get("tiers"),
+        "candidate_providers_scored": c7c.get("providers_scored"),
     }
     labels = [
         ("Index files found on the Centene page", "index_files_found"), ("Index files parsed", "index_files_parsed"),
         ("Plan x rate-file rows (C1)", "plan_file_rows"), ("Unique rate files (C1)", "unique_rate_files"),
         ("CA commercial group plan rows (C2)", "in_scope_plan_rows"), ("PPO plan rows (C2)", "ppo_plan_rows"),
         ("PPO rate files (C2)", "ppo_rate_files"), ("Plan types (C2)", "plan_types"),
+        ("Allowed-amount (out-of-network) files (C2)", "allowed_amount_files"),
         ("File quality score per file (C3)", "file_quality_scores"), ("Rate files processed (C4)", "rate_files_processed"),
-        ("Rate file shape (C4)", "file_shape"), ("Price rows read for in-scope codes (C4)", "price_rows_read"), ("Network tags of provider references (C4)", "network_tags"),
+        ("Rate file shape (C4)", "file_shape"), ("Price rows read for in-scope codes (C4)", "price_rows_read"), ("Network status of provider references (C4)", "network_status"),
+        ("Network evidence vote / confidence (C4)", "network_tags"),
         ("Rates extracted: NPI x TIN x code x variant (C4)", "rates_extracted"), ("Unique NPIs (C4)", "unique_npis"),
         ("Unique TINs (C4)", "unique_tins"), ("% NPIs linked to an address (C5)", "pct_npis_with_address"),
         ("% NPIs linked to a verified address (C5)", "pct_npis_with_verified_address"),
+        ("% TINs linked to an address (C5)", "pct_tins_with_address"),
+        ("% TINs linked to a verified address (C5)", "pct_tins_with_verified_address"),
         ("Address sources used (C5)", "address_sources_used"),
         ("Best address vs NPPES practice address (C5)", "best_address_vs_nppes"),
-        ("Rows in the provider rate file (C6)", "rate_file_rows"), ("... of which with an address", "rate_file_rows_with_address"),
+        ("Rows in the provider rate file, confirmed PPO (C6)", "rate_file_rows"),
+        ("... of which with an address", "rate_file_rows_with_address"),
+        ("Rows in the candidate file, not confirmed (C6)", "candidate_file_rows"),
         ("Specialty source per NPI (C6)", "specialty_sources"), ("Providers scored (C7)", "providers_scored"),
         ("TINs scored (C7)", "tins_scored"), ("Cost tiers (C7)", "cost_tiers"),
+        ("Candidate providers scored separately (C7)", "candidate_providers_scored"),
     ]
     lines = ["# Run summary", "", f"Generated {s['generated']} by `python -m ptd_run summary`.", "",
              "| Measure | Value |", "|---|---|"]
@@ -119,11 +141,13 @@ def write_summary(out: Path, data: Path) -> dict:
     s["input_warnings"] = warnings
     lines += ["", "## Deliverables", "",
               "| # | Deliverable | File |", "|---|---|---|",
-              "| 1 | Provider rate file | `out/c6/c6_provider_rate_file.xlsx` (with cost columns: `out/c7/c7_provider_rate_file_scored.xlsx`) |",
-              "| 2 | Logic file (TIN -> NPI -> address) | `out/c5/c5_logic.md` |",
-              "| 3 | Cost-effectiveness metrics | `out/c7/c7_metrics.md`, `out/c7/c7_cost_effectiveness.xlsx` |",
+              "| 1 | Provider rate file, confirmed PPO | `out/c6/c6_provider_rate_file.xlsx` (with cost columns: `out/c7/c7_provider_rate_file_scored.xlsx`) |",
+              "| 1b | Candidate rates, not confirmed PPO | `out/c6/c6_provider_rate_file_candidates.xlsx` (scored on their own: `out/c7_candidates/`) |",
+              "| 2 | Logic file: (a) PPO network, (b) TIN -> NPI -> address | `out/logic.md` |",
+              "| 3 | File quality metrics | `out/file_quality_metrics.md` (scores: `out/c3/`) |",
               "| 4 | Summary file | `out/summary.md` (this file) |",
-              "| 6 | Code repo | `pipeline/` (README.md) |", ""]
+              "| 6 | Code repo | `pipeline/` (README.md) |",
+              "| 7b | Cost-effectiveness metrics (C7) | `out/c7/c7_metrics.md`, `out/c7/c7_cost_effectiveness.xlsx` |", ""]
     (out / "summary.md").write_text("\n".join(lines))
     (out / "summary.json").write_text(json.dumps(s, indent=2, default=str))
     return s
@@ -132,10 +156,17 @@ def write_summary(out: Path, data: Path) -> dict:
 def _copy_deliverables(out: Path) -> None:
     d = out / "deliverables"
     d.mkdir(exist_ok=True)
+    write_logic(out)
+    write_quality_metrics(out)
     for src, name in [("c6/c6_provider_rate_file.xlsx", "1_provider_rate_file.xlsx"),
                       ("c7/c7_provider_rate_file_scored.xlsx", "1_provider_rate_file_with_cost_scores.xlsx"),
-                      ("c5/c5_logic.md", "2_logic_file.md"), ("c7/c7_metrics.md", "3_cost_effectiveness_metrics.md"),
-                      ("c7/c7_cost_effectiveness.xlsx", "3_cost_effectiveness.xlsx"), ("summary.md", "4_summary.md")]:
+                      ("c6/c6_provider_rate_file_candidates.xlsx", "1b_candidate_rates_not_confirmed.xlsx"),
+                      ("c6/c6_network_check_sample.csv", "1c_network_check_sample.csv"),
+                      ("c6/c6_network_accuracy.md", "1d_network_accuracy.md"),
+                      ("logic.md", "2_logic_file.md"), ("file_quality_metrics.md", "3_file_quality_metrics.md"),
+                      ("summary.md", "4_summary.md"),
+                      ("c7/c7_metrics.md", "7b_cost_effectiveness_metrics.md"),
+                      ("c7/c7_cost_effectiveness.xlsx", "7b_cost_effectiveness.xlsx")]:
         if (out / src).exists():
             shutil.copy(out / src, d / name)
 
@@ -181,8 +212,10 @@ def run_all(args) -> int:
                                 ("nppes", "nppes_pl", "dac", "directory", "zip_county") if getattr(args, k)), [])
                          + (["--npi-api", str(args.npi_api)] if args.npi_api is not None else [])),
         "c6": lambda: c6(["run", "--db", db, "--out", str(out / "c6")] + wb + (["--nucc", args.nucc] if args.nucc else [])),
-        "c7": lambda: c7(["run", "--db", db, "--out", str(out / "c7"), "--c6-out", str(out / "c6")] + wb
-                         + (["--network-tags", *args.network_tags] if args.network_tags else [])),
+        "c7": lambda: (c7(["run", "--db", db, "--out", str(out / "c7"), "--c6-out", str(out / "c6")] + wb
+                          + (["--network-tags", *args.network_tags] if args.network_tags else []))
+                       or c7(["run", "--set", "candidates", "--db", db, "--out", str(out / "c7_candidates"),
+                              "--c6-out", str(out / "c6")] + wb)),
     }
     for name in STAGES[start:stop + 1]:
         if name in ("c1", "c2") and args.files:
@@ -224,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--npi-api", help="C5: NPI Registry API: auto (default), always, off, or a number of lookups")
     a.add_argument("--nucc", help="C6: NUCC taxonomy CSV")
     a.add_argument("--network-tags", nargs="+", help="C7: benchmark only these network tags (e.g. PPO)")
-    a.add_argument("--grade-by-network", action="store_true", help="re-run C3 split by C4's network tags")
+    a.add_argument("--grade-by-network", action="store_true", help="re-run C3 split by C4's network status")
     a.add_argument("--fetch-public", action="store_true", help="download NPPES, CMS D&C and NUCC first")
     a.add_argument("--workers", type=int, help="C4 worker processes")
     a.add_argument("--as-of", help="date for expiry and recency (YYYY-MM-DD)")

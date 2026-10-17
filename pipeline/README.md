@@ -8,10 +8,11 @@ This pipeline reads Centene's Transparency in Coverage files and finds the rate 
 | C1: parse the index files | `ptd_pipeline/index_parser.py` | `data/index_table.csv`, `data/rate_files.csv`, `data/raw/` |
 | C2: find the CA group PPO plans and files | `ptd_c2/` | `out/c2/` (classification, PPO rate-file list, logs) |
 | C3: grade each PPO rate file's data quality | `ptd_c3/` | `out/c3/` (score per file, metric justifications, examples) |
-| C4: tag PPO providers and extract clean rates | `ptd_c4/` | `out/rates.sqlite` (the rate store), `out/c4/` (network tags, extraction log) |
+| C4: network status per provider and clean rates | `ptd_c4/` | `out/rates.sqlite` (the rate store), `out/c4/` (network status and evidence, extraction log) |
 | C5: TIN → NPI → practice address | `ptd_c5/` | `out/c5/` (addresses with confidence, **logic file**) |
-| C6: the provider rate file | `ptd_c6/` | `out/c6/c6_provider_rate_file.xlsx` (**deliverable 1**) |
+| C6: the provider rate file | `ptd_c6/` | `out/c6/c6_provider_rate_file.xlsx` (**deliverable 1**, confirmed PPO), the candidate file, the network accuracy report |
 | C7: cost effectiveness | `ptd_c7/` | `out/c7/` (scores, tiers, **metrics file**, scored rate file) |
+| PPO directory | `ptd_dir/` | `data/directory.csv` from Health Net's directory (run on your machine) |
 | Runner + summary | `ptd_run/` | `out/summary.md` and `out/deliverables/` |
 
 C2 imports C1, and C3 imports C2. C4 to C7 share one SQLite rate store (`out/rates.sqlite`): C4 writes the rates, C5 adds addresses, C6 adds specialties and the headline rate, and C7 reads all of it. Each stage reads the previous stage's outputs by default.
@@ -25,19 +26,21 @@ pip install -r requirements.txt
 
 # Everything, C1 to C7, with the public provider files downloaded first:
 python -m ptd_run all --fetch-public --workbook "Rate Benchmarking Individual Weights_Hackathon.xlsx"
-pytest                                 # 90 offline tests
+pytest                                 # 96 offline tests
 ```
 
 `ptd_run all` runs C1, C2, C3, C4, C5, C6 and C7 in order and then writes `out/summary.md` and copies the four deliverables into `out/deliverables/`:
 
 | Deliverable | File |
 |---|---|
-| 1. Provider rate file (NPI, TIN, address, billing code, specialty, rate) | `1_provider_rate_file.xlsx`, plus `1_provider_rate_file_with_cost_scores.xlsx` |
-| 2. Logic file (how TIN → NPI → address was mapped) | `2_logic_file.md` |
-| 3. Cost-effectiveness metrics | `3_cost_effectiveness_metrics.md`, `3_cost_effectiveness.xlsx` |
-| 4. Summary (data quality, coverage, findings) | `4_summary.md` |
+| 1. Provider rate file (NPI, TIN, address, billing code, specialty, rate), confirmed PPO only | `1_provider_rate_file.xlsx`, plus `1_provider_rate_file_with_cost_scores.xlsx` |
+| 1b. Candidate rates, not confirmed PPO (kept for review) | `1b_candidate_rates_not_confirmed.xlsx`; `1c_network_check_sample.csv` to check by hand; `1d_network_accuracy.md` |
+| 2. Logic file: (a) how the PPO network was identified, (b) how TIN → NPI → address was mapped | `2_logic_file.md` |
+| 3. File quality metrics: each C3 metric, how it is calculated, why, and this run's scores | `3_file_quality_metrics.md` |
+| 4. Summary (run statistics, coverage, missing inputs) | `4_summary.md` |
+| 7b. Cost-effectiveness metrics (C7, brownie points) | `7b_cost_effectiveness_metrics.md`, `7b_cost_effectiveness.xlsx` |
 
-Useful options: `--from c4 --to c7` reruns part of the chain on earlier outputs. `--files a.json.gz` skips C1 to C3 and uses the given rate files. `--grade-by-network` reruns C3 split by C4's PPO / non-PPO tags. `--nppes`, `--dac`, `--directory`, `--zip-county` and `--nucc` point at files you already have instead of `--fetch-public`. `--as-of 2026-10-17` fixes the date used for expiry and recency, so runs are reproducible.
+Useful options: `--from c4 --to c7` reruns part of the chain on earlier outputs. `--files a.json.gz` skips C1 to C3 and uses the given rate files. `--grade-by-network` reruns C3 split by C4's network status. `--nppes`, `--dac`, `--directory`, `--zip-county` and `--nucc` point at files you already have instead of `--fetch-public`. `--as-of 2026-10-17` fixes the date used for expiry and recency, so runs are reproducible.
 
 You can also run the stages separately:
 
@@ -108,7 +111,8 @@ C2 implements the seven steps of the C2 brief:
 | File | Contents |
 |---|---|
 | `c2_classification.csv` | One row per C1 row, out-of-scope rows included, with `final_network_type`, `ppo_variant`, `in_scope_ppo`, `needs_network_filter`, `confidence`, `decided_by` and a one-line `reason` |
-| `c2_ppo_rate_files.csv` | **Hand-off to C3/C4:** distinct in-scope PPO rate files, PPO network names to filter on, confidence |
+| `c2_ppo_rate_files.csv` | **Hand-off to C3/C4:** distinct in-scope PPO rate files, PPO network names to filter on, confidence, and the plans' allowed-amount file URLs |
+| `c2_allowed_amount_files.csv` | Every allowed-amount (out-of-network) file listed by an in-scope plan: how many PPO and non-PPO plan rows list it, `ppo_only`, and whether it holds records. Each plan's file is also in `c2_classification.csv` (`allowed_amount_file_url`). |
 | `c2_exclusions.csv` | Every row removed by Step 1, with the rule(s) it failed |
 | `c2_name_signals.csv`, `c2_file_votes.csv`, `c2_network_probe.csv`, `c2_supporting.csv` | Per-step evidence |
 | `c2_conflicts.csv` | Every conflict and how it was resolved |
@@ -204,8 +208,9 @@ Every rule, weight and threshold below is in `config/c4.yaml` to `config/c7.yaml
 ```bash
 python -m ptd_c4 run --workbook weights.xlsx                 # C2's file list, workbook codes only
 python -m ptd_c4 run --files a.json.gz --codes all           # any rate file, every billing code
-python -m ptd_c4 run --directory data/directory.csv          # payer directory as network evidence
-python -m ptd_c4 directory --fhir-base https://.../fhir      # build that directory from a Plan-Net FHIR API
+python -m ptd_c4 run --directory data/directory.csv          # payer directory as network evidence (see ptd_dir)
+python -m ptd_c4 run --files a.json --oon oon.json --oon-ppo-only   # allowed-amount file as evidence
+python -m ptd_c4 directory --fhir-base https://.../fhir      # a directory from a Plan-Net FHIR API instead
 ```
 
 ### Reading a 700 MB file fast, in flat memory
@@ -216,29 +221,44 @@ python -m ptd_c4 directory --fhir-base https://.../fhir      # build that direct
 - **Refsets.** Each `negotiated_rates` entry lists the provider references it applies to. The same list repeats across thousands of codes, so it is stored once as a *refset* (a hash of the sorted list), and each price row points at its refset. On the 385 MB benchmark this turned 267k price rows × their reference lists into 30k refsets.
 - Only codes in the HiLabs workbook are kept (`--codes all` keeps everything). Every item is still read, because codes outside the workbook still carry network evidence.
 
-### Which providers are PPO: tagging each provider reference
+### Which providers are PPO: a network status for each provider reference
 
-C2 found that all 1,312 California group plans point to one Health Net file whose `network_name` is blank, so PPO and HMO providers sit in one file with nothing saying which is which. A provider can also be in both networks, under two references with two prices. **So the tag belongs to the provider reference, not to the NPI.** Each reference collects weighted evidence for PPO or non-PPO:
+C2 found that all 1,312 California group plans point to one Health Net file whose `network_name` is blank, so PPO and HMO providers sit in one file with nothing saying which is which. A provider can also be in both networks, under two references with two prices. **So the decision belongs to the provider reference (one contract), not to the NPI.**
 
-| Evidence | Weight | What it says |
+Two questions are kept apart: *is this the right provider and address?* (C5's job) and *is this contract the PPO?* (C4's). Evidence for the first never answers the second. Each reference collects evidence, and the evidence is graded by what it can prove:
+
+| Evidence | Grade | What it says |
 |---|---|---|
-| `network_name` | 1.0 | The reference's own network name, mapped with C2's rules. Used whenever the field is filled in. |
-| `file_label` | 0.9 | C2 says the whole file is a single PPO network. |
-| `directory` | 0.9 | The reference's NPIs are listed in a PPO or non-PPO network in a payer directory (e.g. Centene's Plan-Net FHIR API, via `ptd_c4 directory`). |
-| `capitation` | 0.8 | The reference is paid per member per month for some services. That is an HMO arrangement; PPO contracts are fee-for-service. |
-| `dual_contract` | 0.5 | *Hypothesis:* one TIN in two references listing mostly the same NPIs at different prices, where the higher-paid one is PPO. |
-| `propagation` | spread | *Hypothesis:* label spreading over the graph of references that are priced together. |
+| `network_name` | direct | The reference's own network name, mapped with C2's rules. |
+| `file_label` | direct | C2 says the whole file is a single PPO network (never for a mixed file). |
+| `directory` | direct | An NPI of the reference is listed in the PPO network (or only in non-PPO networks) of the payer's directory, and the listing can only be about this reference: it is the NPI's only reference in the file, or its other references are already confirmed on the other side ("listed as PPO, and its other reference is capitated, so it's this one"). A listing without an NPI counts when it matched exactly one provider by first + last name **and** street site (see [PPO directory](#ppo-directory-ptd_dir)). |
+| `capitation` | direct, non-PPO | Paid per member per month for some services: an HMO arrangement; PPO contracts are fee-for-service. |
+| `oon_ppo_plan` | direct, non-PPO | An NPI of the reference was paid out of network by a PPO plan (an allowed-amount file that only PPO plans list, from C2). A file shared with HMO plans only adds a note. |
+| `directory_weak` | weak | The listing matches by TIN only, names the NPI under another TIN, or was linked by name + ZIP without the street. |
+| `directory_shared` | weak | The NPI sits in several references and nothing tells which one the listing is about: split evenly. |
+| generic listing | weak | Listed under the payer's name with no network named ("accepts Health Net"). |
+| `dual_contract` | inferred | *Hypothesis:* one TIN in two references listing mostly the same NPIs at different prices; the higher-paid one is PPO. |
+| `propagation` | inferred | *Hypothesis:* label spreading over the graph of references that are priced together. |
 
-A directory lists an NPI, not a reference. When the NPI sits in only one reference, the listing is direct evidence for it. When it sits in several (the PPO and HMO contracts of one group), the listing is held back. It is given out **by exclusion** once some of those references are known to be on the other side ("listed as PPO, and its other reference is capitated, so it's this one"). Anything still unresolved at the end is split evenly as weak `directory_shared` evidence, which never makes a tag high confidence.
-
-**The two hypotheses are tested before they are trusted**, the same rule C2 uses for plan names:
+**The two hypotheses are tested before they are trusted**, the same rule C2 uses for plan names, and they only add evidence to references that have none of their own:
 
 - `dual_contract` is scored on TIN pairs where both networks are already known. It is used only if its precision is at least 0.9 on at least 10 pairs.
 - `propagation` builds a bipartite graph of references and refsets: two references are linked when they are paid the same price for the same code, which is how one contract looks in the file. Labels spread from the known references (numpy, 30 iterations). It is checked by **5-fold cross-validation**: every known reference is hidden once and must be recovered from the others. It is used only if at least 90% are recovered, with at least 20 tested and at least 5 known references on each side, so a graph with only one class can't pass trivially. Very large refsets (over 5,000 references) are left out of the graph, since they are catch-all lists.
 
-A reference is tagged `PPO` or `NON_PPO` when one side has at least 65% of its evidence, otherwise `UNKNOWN`. Confidence is high when direct evidence (`network_name`, `file_label`, `directory`) gives at least 90%. **C4 keeps `PPO` and `UNKNOWN` references** (`include_tags`) and drops only references with evidence against them. With no evidence at all, nothing is thrown away, and every row carries its tag and confidence so you can filter later. `c4_hypotheses.csv` reports what each hypothesis scored and whether it was used, and `c4_network_tags.csv` gives each reference its evidence string.
+Directory matches are what make these testable: they give C4 its first known PPO references, so the hypotheses can be measured and then used for providers the directory doesn't reach, but only ever up to a candidate.
 
-`c4_provider_tags.csv` (NPI, TIN, tag) plugs straight into C3's `--provider-tags`. `ptd_run all --grade-by-network` uses it to grade the PPO part of the file on its own.
+The evidence is weighed (`seed_weights`; a side needs 65% to win) and then each reference gets one **network status** (`network_status` in `network.py`):
+
+| Status | Rule | Rates go to |
+|---|---|---|
+| `CONFIRMED_PPO` | decided PPO, with direct PPO evidence and no direct non-PPO evidence | deliverable 1 |
+| `PPO_CANDIDATE` | some PPO evidence, but all of it weak or inferred | the candidate file |
+| `UNRESOLVED` | no PPO evidence, non-PPO by inference only, or direct evidence on both sides | the candidate file |
+| `CONFIRMED_NON_PPO` | decided non-PPO, with direct non-PPO evidence | not extracted |
+
+Inference (a price gap, graph similarity, an address alone) is never enough to confirm. Weights are evidence scores, not probabilities; how well the statuses hold up is measured on a hand-checked sample (C6). `c4_network_tags.csv` gives every reference its status, the basis for it and its full evidence string, and `c4_hypotheses.csv` what each hypothesis scored and whether it was used.
+
+`c4_provider_tags.csv` (NPI, TIN, network status) plugs straight into C3's `--provider-tags`. `ptd_run all --grade-by-network` uses it to grade each status's part of the file on its own.
 
 ### One clean rate per NPI + TIN + code + price variant
 
@@ -246,7 +266,7 @@ A code can legitimately have several prices for one provider: professional vs in
 
 1. Dropped: capitation rows, rates ≤ 0, rows past their expiration date (`9999-12-31` counts as evergreen) and exact repeats. Every drop is counted in `c4_extraction_log.csv`.
 2. If the provider still has several rates for the same variant, the tie-break is (`tie_break` in the config):
-   1. `network`: the rate from the reference with the strongest PPO tag;
+   1. `network`: the rate from the reference with the best network status (then the tag's confidence). A pair in several contracts takes its rates only from the contracts with its best status: once one is confirmed PPO, the others are other networks;
    2. `expiry`: the latest expiration date;
    3. `support`: the rate listed by the most references;
    4. `lowest`: the lowest rate, as a last resort.
@@ -277,7 +297,33 @@ TIN-only groups (no NPI) can't produce NPI rows. They are counted and logged.
 |---|---|---|---|---|---|
 | 56 MB gz / 385 MB JSON | 40,000 | 3,000 (594 in the workbook) | 267,254 | 73 s | 434 MB |
 
-Reading took about 10 seconds with 3 workers, tagging under a second and extraction about 50 seconds. That gives 15.9M NPI × TIN × code × variant rates for 115,632 NPIs and 10,036 TINs. Writing all 15.9M rows out as `c4_rates.csv.gz` would add about 160 seconds, which is why it is off by default. The real CA file is roughly 700 MB, so expect a few minutes plus the download. The benchmark has no directory, so tagging only marks the 9,578 capitated references as non-PPO and keeps the rest as `UNKNOWN`. **A payer directory is what turns `UNKNOWN` into `PPO`.**
+Reading took about 10 seconds with 3 workers, tagging under a second and extraction about 50 seconds. That gives 15.9M NPI × TIN × code × variant rates for 115,632 NPIs and 10,036 TINs. Writing all 15.9M rows out as `c4_rates.csv.gz` would add about 160 seconds, which is why it is off by default. The real CA file is roughly 700 MB, so expect a few minutes plus the download. The benchmark has no directory, so tagging only confirms the 9,578 capitated references as non-PPO and leaves the rest `UNRESOLVED`. **Directory data is what turns `UNRESOLVED` into `CONFIRMED_PPO`.**
+
+## PPO directory (`ptd_dir`)
+
+The one source that can say "this provider is in the Health Net PPO network" is Health Net's own provider directory. It is a JavaScript web app, it can't be reached from every network (the Cigna-hosted copy, `https://hcpdirectory.cigna.com/web/public/consumer/directory/search?consumerCode=HDC064`, works from outside California), and it has no bulk download. So `ptd_dir` runs on your own machine and works with the site rather than around it:
+
+```bash
+pip install playwright        # once; uses your installed Chrome or Edge (or: playwright install chromium)
+
+# 1. capture: a browser opens; pick the PPO network, search, page through results, close the window.
+#    Every JSON response the app receives is saved with the request that produced it.
+python -m ptd_dir capture --url "https://hcpdirectory.cigna.com/web/public/consumer/directory/search?consumerCode=HDC064" --network "Health Net PPO" --out data/directory/capture_ppo.jsonl
+
+# 2. replay (optional): re-send that search for every ZIP where C4's providers practise, page by page
+python -m ptd_dir targets --db out/rates.sqlite --what zip --out data/directory/zips.txt
+python -m ptd_dir replay --capture data/directory/capture_ppo.jsonl --vary zip=@data/directory/zips.txt --vary page=1..30 --out data/directory/replay_ppo.jsonl
+
+# 3. build the directory table, then rerun from C4 with it
+python -m ptd_dir build --capture "data/directory/*.jsonl" --db out/rates.sqlite --out data/directory.csv
+python -m ptd_run all --from c4 --directory data/directory.csv --workbook weights.xlsx
+```
+
+- **Capture** records responses, not screens, so it does not depend on the page layout. `--network` records which network was selected, with the date (`last_updated`) and the host (`source`).
+- **Parse** finds providers in any JSON shape by their parts: an NPI-like key with a valid NPI (check digit), a name, locations with an address, and networks/specialties under keys that name them. One row per provider × location.
+- **Replay** finds each varied parameter by name in the query string, a JSON body at any depth, or a form body; spaces requests (`--delay`, default 1 s), stops paging at the first empty page, and caps the run (`--max-requests`). Check the site's terms of use before a large run.
+- **NPIs for listings that show none** (`build`): matched to C4/C5's providers from an earlier run (`--db`), or the NPI Registry by name + ZIP (`--npi-api`). First + last name **and** the same street site gives `npi_source = name+address`, which counts like a listed NPI. Name + ZIP alone (`name+zip`) could be a namesake, so C4 treats it as weak evidence. A name matching several providers gets no NPI.
+- **Which network a row is for** comes from `--network` (what you selected), or, for a generic search, from the networks the listing itself names. A generic "Health Net" listing makes a candidate at most. Capturing the HMO searches too (with `--network` naming them) adds evidence the other way.
 
 ## C5: which address each NPI + TIN practises at
 
@@ -287,7 +333,7 @@ python -m ptd_c5 extract-nppes --nppes data/public/NPPES_Data_Dissemination_....
 python -m ptd_c5 run --nppes ... --dac ... [--nppes-pl ...] [--directory ...] [--zip-county ...] [--npi-api auto|always|off|N]
 ```
 
-NPPES is self-reported and mostly stale, so C5 treats every source as a witness with a known reliability and adds the one thing only the rate file knows: **which other NPIs bill under the same TIN.** The full write-up, with this run's numbers and the closest calls, is generated as `c5_logic.md` (deliverable 2).
+NPPES is self-reported and mostly stale, so C5 treats every source as a witness with a known reliability and adds the one thing only the rate file knows: **which other NPIs bill under the same TIN.** The full write-up, with this run's numbers and the closest calls, is generated as `c5_logic.md`. It becomes Part B of the logic file (deliverable 2), whose Part A explains the PPO network logic of C2 and C4.
 
 1. **Gather candidates.** Each NPI's addresses come from NPPES (practice, mailing and the Practice Location Reference File), CMS Doctors & Clinicians (current Medicare enrolment, with the group's `org_pac_id`), the payer directory (with TIN when it has one), the [NPI Registry API](https://npiregistry.cms.hhs.gov/api-page), and the practice address of any Type 2 (organisation) NPI under the same TIN.
 2. **Standardise.** A local USPS Publication 28 standardiser (`address.py`: suffixes, directionals, unit designators, ordinal numbers, ZIP+4 trimmed) makes "123 North Main Street, Suite 4" and "123 N MAIN ST STE 4" the same address. Addresses are compared on **site** (number + street + ZIP5), so two suites in one building are one practice site.
@@ -311,16 +357,19 @@ The summary compares the chosen address with the NPPES practice address, which s
 | `c5_providers.csv` | Per NPI: name, type, taxonomies, Medicare specialty, deactivation |
 | `c5_tin_sites.csv` | Each TIN's sites and how many of its NPIs practise there |
 | `c5_candidates.csv` | Every candidate site with its score, for audit |
-| `c5_logic.md` | **Deliverable 2**, the logic file |
+| `c5_logic.md` | The address logic, included as Part B of deliverable 2 |
 | `c5_results.xlsx`, `c5_run_summary.json` | Workbook and counts |
 
 If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even nothing), says so in the log, and leaves the address blank rather than guessing.
 
 ## C6: the provider rate file
 
-`python -m ptd_c6 run --workbook weights.xlsx [--nucc nucc.csv]` writes **deliverable 1**: one row per **NPI + TIN + address + billing code**.
+`python -m ptd_c6 run --workbook weights.xlsx [--nucc nucc.csv]` writes **deliverable 1**: one row per **NPI + TIN + address + billing code**, for **confirmed PPO** rates only.
 
-- **The first six columns are exactly the ones asked for:** NPI, TIN, Address, Billing Code, Specialty, Rate. Then come the details a reviewer needs to trust a row: code type and description, NPI type and name, the price variant, expiry, how many variants exist, address rank, confidence, verified flag and sources, city, ZIP, region, specialty code and source, whether the code is expected for that specialty, network tag and confidence, the rate's pick rule and the source file.
+- **Two files.** `c6_provider_rate_file.xlsx` holds rates with network status `CONFIRMED_PPO` (deliverable 1). `c6_provider_rate_file_candidates.xlsx` holds `PPO_CANDIDATE` and `UNRESOLVED` rates, with their status, so nothing potentially useful is thrown away but nothing unconfirmed is presented as PPO (`network` in `config/c6.yaml`). Without directory data, deliverable 1 is empty on the Health Net file and the log says so.
+- **How far to trust the statuses.** `c6_network_accuracy.md` gives coverage per status (references, NPI + TIN pairs, NPIs, rates). `c6_network_check_sample.csv` is a stratified sample, 30 NPI + TIN pairs per status with name and address, to look up by hand in Health Net's PPO directory: fill in `directory_result` (`PPO`, `NOT_PPO` or `NOT_LISTED`) and run `python -m ptd_c6 check-network --sample <file>`. The report then gives, per status, the share found in the PPO network with a 95% Wilson interval: the precision of deliverable 1, and how many PPO providers the strict rule leaves among the candidates. The sample only measures; it is never fed back as evidence.
+
+- **The first six columns are exactly the ones asked for:** NPI, TIN, Address, Billing Code, Specialty, Rate. Then come the details a reviewer needs to trust a row: code type and description, NPI type and name, the price variant, expiry, how many variants exist, address rank, confidence, verified flag and sources, city, ZIP, region, specialty code and source, whether the code is expected for that specialty, network status, network tag and confidence, the rate's pick rule and the source file.
 - **Headline rate.** When a code has several price variants, one is shown, with the variant count beside it. The preference is a dollar rate type first, then the billing class that fits the provider (Type 1 individuals: professional; Type 2 organisations: institutional), then outpatient, then place of service 11 (office), then no modifier. Every variant stays in the `c4_rates` view.
 - **Specialty**, first match wins, with the source recorded:
   1. the primary NPPES taxonomy through the HiLabs workbook's taxonomy crosswalk;
@@ -333,7 +382,7 @@ If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even noth
 
 ## C7: cost effectiveness against similar providers
 
-`python -m ptd_c7 run --workbook weights.xlsx` writes **deliverable 3** (`c7_metrics.md`, generated with this run's numbers) and the scores.
+`python -m ptd_c7 run --workbook weights.xlsx` writes the cost-effectiveness metrics (`c7_metrics.md`, generated with this run's numbers; brownie point 7b) and the scores.
 
 1. **Like for like.** A rate is only compared with rates for the same billing code *and* the same price variant (rate type, billing class, setting, place of service, modifier). Percentage-of-charges rates are left out, since the charge is unknown.
 2. **Similar providers, with back-off.** Each rate is benchmarked against the most specific peer group that has at least 5 providers: specialty + region + NPI type, then specialty + type statewide, then type, then everyone. The level used is recorded on every row, so a reviewer can see how local each comparison is.
@@ -344,7 +393,8 @@ If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even noth
    - The **cost score (0–100)** is the provider's percentile among providers of the same specialty and region (falling back to specialty, then everyone, below 10 providers). 100 means the cheapest.
    - **Tiers** come from the shrunk index: Highly cost-effective ≤ 0.85, Cost-effective ≤ 0.95, At market ≤ 1.05, Above market ≤ 1.20, High cost above that.
    - **Confidence** is high with `n_eff` ≥ 8 and at least 30% of the specialty's workbook weight covered, medium with `n_eff` ≥ 3, otherwise low.
-7. **Per TIN:** the members' shrunk indexes averaged on the log scale, each weighted by its `n_eff`, for group-level contracting views. `--network-tags PPO` benchmarks only rates C4 tagged PPO.
+7. **Per TIN:** the members' shrunk indexes averaged on the log scale, each weighted by its `n_eff`, for group-level contracting views.
+8. **Confirmed and candidates apart.** `--set confirmed` (default) scores `CONFIRMED_PPO` rates; `--set candidates --out out/c7_candidates` scores the candidate file on its own. Peers always come from the same set, so unconfirmed rates never move the confirmed benchmark. `ptd_run all` runs both.
 
 | File | Contents |
 |---|---|
@@ -353,7 +403,7 @@ If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even noth
 | `c7_rate_benchmarks.csv.gz` | Every rate with its peer level, peer count, median, P25/P75, percentile and index |
 | `c7_cost_effectiveness.xlsx` | Providers sorted by score, TINs, and how many rates used each peer level |
 | `c7_provider_rate_file_scored.xlsx` / `.csv.gz` | The C6 rate file with the cost columns added |
-| `c7_metrics.md` | **Deliverable 3**, the metrics file |
+| `c7_metrics.md` | The cost-effectiveness metrics file (brownie point 7b) |
 
 ## What has and hasn't been checked
 
@@ -362,21 +412,22 @@ If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even noth
   - a California world built to contain the traps (`tests/ca_world.py`): PPO and HMO contracts sharing NPIs, capitation, stale and deactivated NPPES records, an NPI under two TINs, TIN-only groups, junk variants;
   - the 385 MB benchmark above.
 
-  On the synthetic world, no reference gets the wrong network tag, every NPI + TIN's rank-1 address is its true site, and the C7 cost index rises with each provider's true price tier.
-- **The PPO split needs a directory.** Without a payer directory (or filled-in `network_name`), the only hard evidence in the CA file is capitation. That removes HMO references but cannot confirm PPO ones, so most rows stay `UNKNOWN` and are kept. Run `python -m ptd_c4 directory --fhir-base <Centene Plan-Net FHIR URL>` from a machine that can reach it, and pass the result with `--directory`.
+  On the synthetic world, no reference gets the wrong network tag or a wrong confirmed status, every NPI + TIN's rank-1 address is its true site, and the C7 cost index rises with each provider's true price tier.
+- **Confirming PPO needs the directory.** Without directory data (or a filled-in `network_name`), the only direct evidence in the CA file is non-PPO evidence (capitation, PPO-only allowed-amount files). That removes HMO references but confirms no PPO one, so deliverable 1 is empty and every rate sits in the candidate file. Build the directory table with `python -m ptd_dir` on a machine that can open the directory site. `ptd_dir` was tested end to end against a mock directory app in a real headless browser, not against the live site, which was not reachable from the build machine.
 
 ## Tests
 
-`pytest` runs 90 offline tests in about 6 seconds.
+`pytest` runs 96 offline tests in about 6 seconds.
 
 - **C1 (9 tests):** scraper structure on a saved page, employee exclusion, date parsing, flattening, dedup, gzip.
-- **C2 (41 tests):** a miniature Centene world served over local HTTP. It covers gzip, `network_name` as string, list or blank, `in_network` before `provider_references`, `location` references, mixed and unreachable files, the scope traps, the EnhancedCare flag, and the real EOA/EC/CUSPPO name shapes.
+- **C2 (42 tests):** a miniature Centene world served over local HTTP. It covers gzip, `network_name` as string, list or blank, `in_network` before `provider_references`, `location` references, mixed and unreachable files, the scope traps, the EnhancedCare flag, and the real EOA/EC/CUSPPO name shapes.
 - **C3 (14 tests):** hand-built clean and dirty rate files with every problem counted in advance, NPI check digits, plain and weighted code coverage (a workbook in the HiLabs layout), provider tags (including references after `in_network`), `location` references, byte-cap sampling, unreachable files and the CLI.
 - **Integration (1 test):** `--run-c1` going from a saved page through C1 into C2.
-- **C4 to C7 (25 tests):** one synthetic California world (`tests/ca_world.py`) run through C4, C5, C6, C7 and the summary, with the truth known in advance:
-  - C4: no reference gets the wrong network tag; HMO-only and capitated references are excluded; the hypotheses are gated; variants are never mixed; the tie-break picks the right rate; code scope works; the result is the same with 1 or 3 workers and with `in_network` before or after `provider_references`.
+- **C4 to C7 and the directory (31 tests):** one synthetic California world (`tests/ca_world.py`) run through C4, C5, C6, C7 and the summary, with the truth known in advance:
+  - C4: no reference gets the wrong network tag and no confirmed status is wrong; confirmed non-PPO references are not extracted; spreading and shared listings never confirm; a PPO-only allowed-amount file confirms non-PPO and a shared one only adds a note; the hypotheses are gated; variants are never mixed; the tie-break picks the right rate; code scope works; the result is the same with 1 or 3 workers and with `in_network` before or after `provider_references`.
   - C5: every NPI + TIN's rank-1 address is its true site, including the NPI under two TINs, stale NPPES records, deactivated NPIs and NPIs missing from NPPES. Also the standardiser, the logic file and a run with no sources.
-  - C6 and C7: the required column order, headline variant and specialty source; the cost index rises with the true price tier; benchmark statistics; the metrics file and scored rate file.
+  - C6 and C7: deliverable 1 holds confirmed rows only; the hand-check sample covers every status and scores precision with a Wilson interval; the required column order, headline variant and specialty source; the cost index rises with the true price tier; benchmark statistics; the metrics file and scored rate file.
+  - `ptd_dir` end to end: a mock directory app in headless Chromium is captured, replayed for every ZIP and page, and built into a directory table; a listed NPI and a name + street match confirm PPO in C4, a name + ZIP match stays a candidate. The parser on nested shapes (group practitioners, child name objects) and the name normaliser.
   - The Plan-Net FHIR crawler, the NPI Registry API (as a fallback for missing NPIs, as the only source with its cache reused on a rerun) and the NPPES extractor, against local HTTP servers.
 
 ## Layout
@@ -404,6 +455,7 @@ pipeline/
 │   ├── ingest.py           # sharded parallel streaming into SQLite
 │   ├── network.py          # PPO / non-PPO evidence, hypotheses, label spreading
 │   ├── directory.py        # payer directory loader and Plan-Net FHIR crawler
+│   ├── oon.py              # allowed-amount (out-of-network) file reader
 │   ├── extract.py          # signatures, price variants, tie-break
 │   └── db.py  config.py  cli.py
 ├── ptd_c5/                 # C5: python -m ptd_c5 run | fetch | extract-nppes
@@ -411,14 +463,19 @@ pipeline/
 │   ├── sources.py          # NPPES, practice locations, CMS D&C, directory, NPI API readers
 │   ├── resolve.py          # scoring, TIN consensus, group alignment, selection
 │   ├── fetch.py            # public file discovery and download
-│   └── logic.py  config.py  cli.py   # logic.py writes deliverable 2
-├── ptd_c6/                 # C6: python -m ptd_c6 run
-│   └── specialty.py  cli.py
+│   └── logic.py  config.py  cli.py   # logic.py writes the address logic (Part B of deliverable 2)
+├── ptd_c6/                 # C6: python -m ptd_c6 run | check-network
+│   └── specialty.py  network_check.py  cli.py
+├── ptd_dir/                # PPO directory: python -m ptd_dir capture | replay | targets | build
+│   ├── capture.py          # record a directory app's JSON in a real browser (Playwright)
+│   ├── parse.py            # find providers in any JSON shape
+│   ├── replay.py           # re-send a captured search per ZIP / page
+│   └── match.py  cli.py    # NPIs for listings without one; search targets
 ├── ptd_c7/                 # C7: python -m ptd_c7 run
 │   ├── bench.py            # peer groups with back-off, vectorised statistics
 │   ├── score.py            # provider and TIN indexes, shrinkage, scores, tiers
-│   └── report.py  cli.py   # report.py writes deliverable 3
-├── ptd_run/                # python -m ptd_run all | summary (deliverable 4)
+│   └── report.py  cli.py   # report.py writes the cost-effectiveness metrics (7b)
+├── ptd_run/                # python -m ptd_run all | summary: deliverables 2, 3 and 4 (docs.py)
 ├── tools/make_synthetic_rate_file.py   # large Health Net-shaped test files
 ├── tests/
 └── data/, out/             # generated, git-ignored

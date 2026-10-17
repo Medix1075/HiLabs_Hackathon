@@ -47,3 +47,13 @@ tiers:
 outputs:
   scored_rate_file: true        # rewrite the C6 rate file with the cost columns added
   top_n_in_report: 10
+
+# Which rates are scored together (python -m ptd_c7 run --set ...). Each set is benchmarked only against
+# itself: candidate (unconfirmed) rates never enter the peer medians of confirmed PPO providers.
+sets:
+  confirmed:
+    network_statuses: [CONFIRMED_PPO]
+    c6_file: c6_provider_rate_file
+  candidates:
+    network_statuses: [PPO_CANDIDATE, UNRESOLVED]
+    c6_file: c6_provider_rate_file_candidates

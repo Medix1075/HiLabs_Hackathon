@@ -26,16 +26,18 @@ from . import __version__
 from .config import load_config
 from .db import DEFAULT_DB, connect, drop_c4, finish_c4, init_c4
 from .directory import crawl_plannet, load_directory
+from .oon import read_oon_providers, store_oon
 from .extract import build_pairs, fanout_counts, pick_rates, tag_table_rows
 from .ingest import ingest_file
-from .network import tag_references
+from .network import STATUSES, tag_references
 
 DEFAULT_C2_FILES = Path("out/c2/c2_ppo_rate_files.csv")
 DEFAULT_C3_SCORES = Path("out/c3/c3_file_scores.csv")
 RATE_FIELDS = ["npi", "tin", "tin_type", "code_type", "code", "negotiated_type", "billing_class", "setting", "pos",
-               "modifier", "rate", "expiration_date", "network_tag", "network_confidence", "candidates",
+               "modifier", "rate", "expiration_date", "network_status", "network_tag", "network_confidence", "candidates",
                "distinct_rates", "rate_min", "rate_max", "pick_rule", "file_id"]
-TAG_FIELDS = ["file_id", "ref_id", "network_name", "n_groups", "source", "tag", "tag_confidence", "ppo_evidence",
+TAG_FIELDS = ["file_id", "ref_id", "network_name", "n_groups", "source", "status", "status_basis", "tag",
+              "tag_confidence", "ppo_evidence",
               "non_ppo_evidence", "evidence"]
 
 
@@ -46,13 +48,19 @@ def _read_csv(path: Path) -> list[dict]:
 
 def _targets(args, cfg, log) -> tuple[list[dict], str] | None:
     if args.files:
-        return [{"rate_file_url": f, "from_c2": False} for f in args.files], "--files"
+        oon = [(u, bool(args.oon_ppo_only)) for u in args.oon or []]
+        return [{"rate_file_url": f, "from_c2": False, "oon_files": oon} for f in args.files], "--files"
     c2_path = Path(args.c2 or DEFAULT_C2_FILES)
     if not c2_path.exists():
         print(f"C2 file list {c2_path} not found. Run C2 first (python -m ptd_c2 run) or pass --files.",
               file=sys.stderr)
         return None
     targets = [{**r, "from_c2": True} for r in _read_csv(c2_path) if r.get("rate_file_url")]
+    aa_path = c2_path.parent / "c2_allowed_amount_files.csv"
+    ppo_only = {r["allowed_amount_file_url"]: str(r.get("ppo_only")).lower() == "true"
+                for r in (_read_csv(aa_path) if aa_path.exists() else [])}
+    for t in targets:
+        t["oon_files"] = [(u, ppo_only.get(u, False)) for u in str(t.get("allowed_amount_file_urls") or "").split("|") if u]
     c3_path = Path(args.c3 or DEFAULT_C3_SCORES)
     if c3_path.exists():
         scores = {r["rate_file_url"]: r for r in _read_csv(c3_path) if r.get("bucket") == "ALL"}
@@ -67,6 +75,24 @@ def _targets(args, cfg, log) -> tuple[list[dict], str] | None:
                     log(f"[input] skipped (C3 score {t['c3_score']} < {min_score}): {t['rate_file_url']}")
             targets = keep
     return targets, str(c2_path)
+
+
+def _read_oon(con, file_id: int, oon_files: list, cfg: dict, log) -> list[dict]:
+    """Load the providers of the file's allowed-amount files (network evidence, see oon.py)."""
+    out = []
+    if not cfg["network"].get("oon", {}).get("enabled", True):
+        return out
+    for url, ppo_only in oon_files:
+        try:
+            seen, st = read_oon_providers(url, cfg["stream"], log)
+            store_oon(con, file_id, url, ppo_only, seen)
+            log(f"[c4]   allowed-amount file {url}: {st['items']:,} out-of-network items, {st['providers']:,} "
+                f"NPI-TIN pairs paid out of network ({'listed only by PPO plans' if ppo_only else 'shared with non-PPO plans'})")
+            out.append({"url": url, "ppo_only": ppo_only, **st})
+        except Exception as exc:  # optional evidence: keep going
+            log(f"[c4]   allowed-amount file {url}: not read ({exc.__class__.__name__}: {exc})")
+            out.append({"url": url, "ppo_only": ppo_only, "error": f"{exc.__class__.__name__}: {exc}"[:300]})
+    return out
 
 
 def run(args) -> int:
@@ -135,10 +161,11 @@ def run(args) -> int:
                 f"{info['distinct_codes']:,} distinct codes (items by code type: {info['code_types']}); "
                 + (f"{info['workbook_codes_found']:,} of the {len(codes):,} workbook codes are in the file"
                    if codes is not None else "no code scope"))
+            row["oon_files"] = _read_oon(con, file_id, t.get("oon_files") or [], cfg, log)
             t1 = time.time()
             network_reports[url] = tag_references(con, file_id, meta, cfg, c2cfg, directory, log)
             t2 = time.time()
-            pairs = build_pairs(con, file_id, cfg["network"]["include_tags"], log)
+            pairs = build_pairs(con, file_id, cfg["network"]["include_statuses"], log)
             picked = pick_rates(con, file_id, cfg, as_of, log)
             t3 = time.time()
             row["phase_seconds"] = {"read": info["seconds"], "network": round(t2 - t1, 1), "extract": round(t3 - t2, 1)}
@@ -177,8 +204,10 @@ def run(args) -> int:
                     sample.append(dict(zip(RATE_FIELDS, r)))
     else:
         sample = [dict(zip(RATE_FIELDS, r)) for r in con.execute(q + f" LIMIT {cfg['outputs']['sample_rows_in_xlsx']}")]
-    tag_summary = [{"rate_file_url": u, "tag": k, "references": v} for u, rep in network_reports.items()
-                   for k, v in rep["tags"].items()]
+    tag_summary = [{"rate_file_url": u, "kind": "status", "value": k, "references": v}
+                   for u, rep in network_reports.items() for k, v in rep["statuses"].items()]
+    tag_summary += [{"rate_file_url": u, "kind": "tag/confidence", "value": k, "references": v}
+                    for u, rep in network_reports.items() for k, v in rep["tags"].items()]
     hyp = [{"rate_file_url": u, "hypothesis": h, **{k: v for k, v in rep[h].items()}}
            for u, rep in network_reports.items() for h in ("dual_contract", "propagation")]
     picks = [{"rate_file_url": u, "kind": kind, "key": k, "count": v} for u, rep in extract_reports.items()
@@ -193,6 +222,7 @@ def run(args) -> int:
         "version": __version__, "started": started.isoformat(), "finished": datetime.now(timezone.utc).isoformat(),
         "config": cfg["_path"], "as_of": as_of, "db": str(db_path), "source": source,
         "code_scope": len(codes) if codes is not None else "all", "directory": bool(directory),
+        "network_status": {st: sum(rep["statuses"].get(st, 0) for rep in network_reports.values()) for st in STATUSES},
         "files": summary_files, "network": network_reports, "extraction": extract_reports,
         "totals": {k: sum(r.get(k, 0) for r in extract_reports.values()) for k in ("rate_rows", "pairs", "signatures")},
         "distinct_npis": con.execute("SELECT COUNT(DISTINCT npi) FROM c4_pairs WHERE sig_id IN "
@@ -225,6 +255,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--codes", choices=["workbook", "all"], help="code scope (default from config)")
     r.add_argument("--directory", help="directory table (CSV/XLSX: npi, tin, network) used as network evidence")
     r.add_argument("--db", default=str(DEFAULT_DB), help=f"rate store (default {DEFAULT_DB})")
+    r.add_argument("--oon", nargs="*", help="with --files: allowed-amount (out-of-network) files to read as evidence")
+    r.add_argument("--oon-ppo-only", action="store_true", help="with --oon: those files are listed only by PPO plans")
     r.add_argument("--workers", type=int, help="in_network worker processes (default: CPU cores - 1)")
     r.add_argument("--max-items", type=int, help="read only the first N in_network items (a quick trial run)")
     r.add_argument("--config", help="config YAML (default config/c4.yaml)")

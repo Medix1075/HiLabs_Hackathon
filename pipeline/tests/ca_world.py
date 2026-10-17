@@ -139,12 +139,14 @@ def build(root: Path) -> dict:
     with open(root / "directory.csv", "w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["npi", "tin", "network_name", "address_line1", "address_line2", "city", "state", "zip"])
-        for g in range(1, 16):
+        for g in range(1, 36):  # the directory covers most, not all, of the PPO network
             grp = refs[g - 1]["provider_groups"][0]
             site = truth["tin_site"][grp["tin"]["value"]]
             for m in grp["npi"][:3]:
                 w.writerow([m, grp["tin"]["value"], "PPO - Large Group/Small Group", site[0], site[1], site[2], "CA",
                             site[3]])
+        # a listing under the payer's name only (no network named): a candidate, never a confirmation
+        w.writerow([refs[35]["provider_groups"][0]["npi"][0], "", "Health Net", "", "", "", "", ""])
         for g in range(41, 46):
             grp = refs[g - 1]["provider_groups"][0]
             for m in grp["npi"][:3]:
