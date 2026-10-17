@@ -162,7 +162,7 @@ def run(args) -> int:
     # The baseline the brief warns about: NPPES's own practice address. How often do we keep it?
     nppes_site = {}
     for c in cands:
-        if c["source"] == "nppes_practice" and c.get("line1"):
+        if c["source"] in ("nppes_practice", "npi_api_practice") and c.get("line1"):
             nppes_site[c["npi"]] = standardize(c["line1"], c.get("line2", ""), c.get("city", ""), c.get("state", ""),
                                                c.get("zip", "")).site_key
     vs_nppes = Counter("no NPPES address" if r["npi"] not in nppes_site else

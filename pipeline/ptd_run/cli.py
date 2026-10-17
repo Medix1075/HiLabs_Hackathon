@@ -76,7 +76,8 @@ def write_summary(out: Path, data: Path) -> dict:
         "file_shape": {f["url"]: {"MB": round((f.get("size_bytes") or 0) / 1e6, 1), "references": f.get("references"),
                                   "in_network_items": f.get("items"), "price_rows_all_codes": f.get("all_price_rows"),
                                   "distinct_codes": f.get("distinct_codes"),
-                                  "workbook_codes_found": f.get("workbook_codes_found")}
+                                  "workbook_codes_found": f.get("workbook_codes_found"),
+                                  "items_by_code_type": f.get("code_types")}
                        for f in c4.get("files", []) if f.get("status") == "ok"} if c4 else None,
         "network_tags": {u: r.get("tags") for u, r in c4.get("network", {}).items()} if c4 else None,
         "rates_extracted": (c4.get("totals") or {}).get("rate_rows"),
