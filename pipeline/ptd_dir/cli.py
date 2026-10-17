@@ -44,7 +44,7 @@ def _paths(patterns: list[str]) -> list[Path]:
     for p in patterns:
         hits = sorted(glob.glob(p))
         out += [Path(h) for h in hits] if hits else [Path(p)]
-    return [p for p in out if p.exists() and not p.name.endswith(".cookies.json")]
+    return [p for p in out if p.exists() and not p.name.endswith((".cookies.json", ".coverage.jsonl"))]
 
 
 def capture_cmd(args) -> int:

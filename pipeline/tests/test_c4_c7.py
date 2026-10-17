@@ -635,8 +635,9 @@ def test_healthnet_check_captures_build_directory_that_confirms_ppo(world, tmp_p
     cap.write_text("\n".join(json.dumps({"url": "https://external-api.search.my.centene.com/pces/query", "status": 200,
                                          "network_name": net, "network_year": "2026", "body": {"results": [e]}})
                              for e in ents) + "\n")
+    cap.with_suffix(".coverage.jsonl").write_text(json.dumps({"npi": "1", "status": "found"}) + "\n")
     out = tmp_path / "directory.csv"
-    assert ptd_dir(["build", "--capture", str(cap), "--out", str(out)]) == 0
+    assert ptd_dir(["build", "--capture", str(tmp_path / "hn_check*.jsonl"), "--out", str(out)]) == 0  # glob skips the coverage log
     built = list(csv.DictReader(open(out)))
     assert len(built) == 2 and all(r["network_name"] == net for r in built)
     db = str(tmp_path / "r.sqlite")
