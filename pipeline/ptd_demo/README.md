@@ -12,7 +12,7 @@ This is an **opt-in demo** on branch `demo/ppo-c4-c6`. It does not replace or mo
 3. C5 resolves addresses for the CSV's NPI+TIN pairs, even if they do not have a surviving price row. Provide NPPES and/or CMS Doctors & Clinicians data for address results. Without any source, addresses remain blank rather than being guessed.
 4. C6 reads the C4 extracted rates plus C5 address/specialty tables and writes the standard rate output and candidate output.
 
-**Important:** `rate_file_ref` in `ppo_check_results.csv` is a provider-reference identifier, not the JSON rate-file URL. The CSV has no negotiated rate or billing code data, so it cannot stand alone as deliverable 1.
+**Important:** `rate_file_ref` in `ppo_check_results.csv` is a provider-reference identifier, not the JSON rate-file URL. The CSV has no negotiated rate or billing code data, so it cannot stand alone as deliverable 1. The confirmed rows map to 19 PPO-verdict rows in this snapshot; 21 `NOT_FOUND` rows remain unresolved. After exact NPI+TIN matching, the runner reports which of those rows actually exist in the source PTD and have usable extracted prices.
 
 ## Run
 
