@@ -7,9 +7,7 @@ not survived price-row extraction. Address sources retain their usual scores.
 from __future__ import annotations
 
 import argparse
-import csv
 import json
-import sys
 import zipfile
 from collections import Counter
 from datetime import datetime, timezone
@@ -18,10 +16,10 @@ from pathlib import Path
 from ptd_c2.cli import write_csv, write_xlsx
 from ptd_c2.config import load_config as load_c2_config
 from ptd_c4.config import load_config as load_c4_config
-from ptd_c4.db import DEFAULT_DB, connect, table_exists
+from ptd_c4.db import connect, table_exists
 from ptd_c4.directory import load_directory
 from ptd_c5.config import load_config
-from ptd_c5.fetch import fetch, extract_nppes, read_zip_county
+from ptd_c5.fetch import read_zip_county
 from ptd_c5.logic import write_logic
 from ptd_c5.address import standardize
 from ptd_c5.resolve import Resolver
