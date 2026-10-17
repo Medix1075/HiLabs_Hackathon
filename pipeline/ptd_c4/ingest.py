@@ -180,7 +180,10 @@ def read_items(file_id: int, path: str, shard_path: str, k: int, n: int, codes: 
     code_set = set(codes) if codes is not None else None
     seen_refsets: set[int] = set()
     stats: dict[int, list] = {}
-    items = in_scope = rows = 0
+    items = in_scope = rows = all_rows = 0
+    file_codes: set = set()
+    found_codes: set = set()
+    code_types: dict[str, int] = {}
     progress = sc.get("progress_every_items") or 0
     with open_stream(path) as (fh, _):
         for i, item in enumerate(ijson.items(fh, "in_network.item", use_float=True)):
@@ -195,8 +198,11 @@ def read_items(file_id: int, path: str, shard_path: str, k: int, n: int, codes: 
             code = norm_code(item.get("billing_code"))
             arrangement = str(item.get("negotiation_arrangement") or "").lower()
             keep = code_set is None or code in code_set
+            file_codes.add((code_type, code))
+            code_types[code_type] = code_types.get(code_type, 0) + 1
             if keep:
                 in_scope += 1
+                found_codes.add(code)
                 shard.add("codes", (code_type, code, str(item.get("description") or "")[:300]))
             for nr in item.get("negotiated_rates") or []:
                 if not isinstance(nr, dict):
@@ -220,6 +226,7 @@ def read_items(file_id: int, path: str, shard_path: str, k: int, n: int, codes: 
                 prices = [p for p in (nr.get("negotiated_prices") or []) if isinstance(p, dict)]
                 st = stats.setdefault(rsid, [len(refs), 0, 0])
                 st[1] += len(prices)
+                all_rows += len(prices)
                 if arrangement == "capitation":
                     st[2] += len(prices)
                 if not keep:
@@ -241,7 +248,8 @@ def read_items(file_id: int, path: str, shard_path: str, k: int, n: int, codes: 
     for rsid, (size, r, cap) in stats.items():
         shard.add("stats", (file_id, rsid, size, r, cap))
     shard.close()
-    return {"shard": k, "items": items, "items_in_scope": in_scope, "price_rows": rows,
+    return {"shard": k, "items": items, "items_in_scope": in_scope, "price_rows": rows, "all_price_rows": all_rows,
+            "file_codes": file_codes, "found_codes": found_codes, "code_types": code_types,
             "refsets": len(seen_refsets), "seconds": round(time.time() - t0, 2)}
 
 
@@ -299,7 +307,13 @@ def ingest_file(con: sqlite3.Connection, db_path: Path, file_id: int, url: str, 
         "local_path": path, "top": refs_info["top"], "refs": refs_info["refs"],
         "location_fetched": refs_info["location_fetched"], "location_skipped": refs_info["location_skipped"],
         "items": sum(i["items"] for i in items_info), "items_in_scope": sum(i["items_in_scope"] for i in items_info),
-        "price_rows": sum(i["price_rows"] for i in items_info), "workers": workers,
+        "price_rows": sum(i["price_rows"] for i in items_info),
+        "all_price_rows": sum(i["all_price_rows"] for i in items_info),
+        "distinct_codes": len(set().union(*(i["file_codes"] for i in items_info))),
+        "workbook_codes_found": len(set().union(*(i["found_codes"] for i in items_info))),
+        "code_types": {t: sum(i["code_types"].get(t, 0) for i in items_info)
+                       for t in sorted({t for i in items_info for t in i["code_types"]})},
+        "workers": workers,
         "seconds": round(time.time() - t0, 2),
     }
     return info

@@ -12,6 +12,7 @@ import argparse
 import csv
 import gzip
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -124,9 +125,16 @@ def run(args) -> int:
             info = ingest_file(con, db_path, file_id, url, cfg, codes, log, args.max_items)
             row.update(local_path=info["local_path"], status="ok", items=info["items"],
                        items_in_scope=info["items_in_scope"], price_rows=info["price_rows"], seconds=info["seconds"],
+                       all_price_rows=info["all_price_rows"], distinct_codes=info["distinct_codes"],
+                       workbook_codes_found=info["workbook_codes_found"], code_types=info["code_types"],
+                       references=info["refs"], size_bytes=os.path.getsize(info["local_path"]),
                        **{k: info["top"].get(k) for k in ("last_updated_on", "version", "reporting_entity_name")})
             log(f"[c4]   {info['items']:,} in_network items ({info['items_in_scope']:,} in code scope), "
                 f"{info['price_rows']:,} price rows, {info['refs']:,} references in {info['seconds']}s")
+            log(f"[c4]   whole file: {row['size_bytes']:,} bytes, {info['all_price_rows']:,} price rows over "
+                f"{info['distinct_codes']:,} distinct codes (items by code type: {info['code_types']}); "
+                + (f"{info['workbook_codes_found']:,} of the {len(codes):,} workbook codes are in the file"
+                   if codes is not None else "no code scope"))
             t1 = time.time()
             network_reports[url] = tag_references(con, file_id, meta, cfg, c2cfg, directory, log)
             t2 = time.time()
