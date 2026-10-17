@@ -46,9 +46,10 @@ def _input_warnings(c4: dict, c5: dict) -> list[str]:
         w.append("No HiLabs workbook (--workbook): every billing code was extracted and C7 weights codes equally.")
     used = (c5.get("sources_used") or {}) if c5 else None
     if used is not None:
-        if "nppes" not in used:
+        if "nppes" not in used and "npi_api" not in used:
             w.append("No NPPES file (C5 --nppes): no taxonomy, name or NPPES address for any NPI, so most addresses "
-                     "and specialties are missing. Download the monthly NPPES ZIP and pass it with --nppes.")
+                     "and specialties are missing. Pass the monthly NPPES ZIP with --nppes, or let C5 use the NPI "
+                     "Registry API (--npi-api auto, the default, needs internet access).")
         if "dac" not in used:
             w.append("No CMS Doctors and Clinicians file (C5 --dac): one fewer independent address source.")
         if "zip_county" not in used:
@@ -178,7 +179,7 @@ def run_all(args) -> int:
         "c5": lambda: c5(["run", "--db", db, "--out", str(out / "c5")] + as_of
                          + sum(([f"--{k.replace('_', '-')}", str(getattr(args, k))] for k in
                                 ("nppes", "nppes_pl", "dac", "directory", "zip_county") if getattr(args, k)), [])
-                         + (["--npi-api", str(args.npi_api)] if args.npi_api else [])),
+                         + (["--npi-api", str(args.npi_api)] if args.npi_api is not None else [])),
         "c6": lambda: c6(["run", "--db", db, "--out", str(out / "c6")] + wb + (["--nucc", args.nucc] if args.nucc else [])),
         "c7": lambda: c7(["run", "--db", db, "--out", str(out / "c7"), "--c6-out", str(out / "c6")] + wb
                          + (["--network-tags", *args.network_tags] if args.network_tags else [])),
@@ -220,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--nppes-pl", help="C5: NPPES Practice Location Reference File")
     a.add_argument("--dac", help="C5: CMS Doctors and Clinicians file")
     a.add_argument("--zip-county", help="C5: ZIP to county CSV")
-    a.add_argument("--npi-api", type=int, help="C5: NPI Registry API lookups for NPIs missing from the files")
+    a.add_argument("--npi-api", help="C5: NPI Registry API: auto (default), always, off, or a number of lookups")
     a.add_argument("--nucc", help="C6: NUCC taxonomy CSV")
     a.add_argument("--network-tags", nargs="+", help="C7: benchmark only these network tags (e.g. PPO)")
     a.add_argument("--grade-by-network", action="store_true", help="re-run C3 split by C4's network tags")

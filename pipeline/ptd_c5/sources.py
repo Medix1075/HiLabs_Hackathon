@@ -18,8 +18,10 @@ import io
 import json
 import re
 import sys
+import threading
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
 
@@ -254,31 +256,86 @@ def directory_candidates(directory, npis: set[int], as_of: date) -> list[dict]:
 
 
 # ------------------------------------------------------------------ NPI Registry API
+def _api_get(session, n: int, ac: dict):
+    """One NPI Registry call, retrying 429/5xx with backoff. Returns the result dict, None (not found), or raises."""
+    delay = 1.0
+    for attempt in range(ac.get("retries", 3) + 1):
+        resp = session.get(ac["base_url"], params={"version": "2.1", "number": n}, timeout=ac["timeout_seconds"])
+        if resp.status_code in (429, 500, 502, 503, 504) and attempt < ac.get("retries", 3):
+            time.sleep(delay)
+            delay *= 2
+            continue
+        resp.raise_for_status()
+        body = resp.json()
+        if body.get("Errors"):
+            raise ValueError(str(body["Errors"])[:200])
+        return (body.get("results") or [None])[0]
+
+
 def npi_api_lookup(npis: list[int], cfg: dict, cache_path: Path, log=print) -> tuple[dict, list[dict]]:
+    """Look NPIs up in the CMS NPI Registry API (https://npiregistry.cms.hhs.gov/api-page, version 2.1).
+
+    The API serves the same records as the NPPES file, but live: taxonomies, name, entity type,
+    status, mailing + practice address and secondary practice locations. Answers (including "not
+    found") are cached in a JSONL file, so a rerun only asks for NPIs it hasn't seen within
+    cache_days. Calls run on a few threads under one shared rate limit.
+    """
     ac = cfg["npi_api"]
-    cache = {}
+    cache: dict[int, dict] = {}
+    fetched: dict[int, str] = {}
+    cutoff = (date.today().toordinal() - ac.get("cache_days", 30))
     if cache_path.exists():
         for line in cache_path.read_text().splitlines():
-            rec = json.loads(line)
-            cache[rec["npi"]] = rec["result"]
-    todo = [n for n in npis if n not in cache][: ac["max_lookups"]]
-    fails = 0
-    with open(cache_path, "a") as fh:
-        for n in todo:
             try:
-                resp = requests.get(ac["base_url"], params={"version": "2.1", "number": n},
-                                    timeout=ac["timeout_seconds"], headers={"User-Agent": ac["user_agent"]})
-                resp.raise_for_status()
-                result = (resp.json().get("results") or [None])[0]
-            except (requests.RequestException, ValueError) as exc:
-                fails += 1
-                if fails >= ac["stop_after_failures"]:
-                    log(f"[c5]   NPI API: stopping after {fails} failures ({exc.__class__.__name__}: {exc})")
-                    break
+                rec = json.loads(line)
+            except ValueError:
                 continue
+            day = rec.get("fetched") or "1970-01-01"
+            if date.fromisoformat(day).toordinal() >= cutoff:
+                cache[int(rec["npi"])] = rec["result"]
+                fetched[int(rec["npi"])] = day
+    todo = [n for n in npis if n not in fetched][: ac["max_lookups"]]
+    if todo:
+        eta = len(todo) / max(ac["requests_per_second"], 0.1)
+        log(f"[c5]   NPI Registry API: looking up {len(todo):,} NPIs ({len(npis) - len(todo):,} cached), "
+            f"about {eta / 60:.0f} min at {ac['requests_per_second']}/s")
+    fails, done = 0, 0
+    lock = threading.Lock()
+    next_slot = [time.monotonic()]
+    stop = threading.Event()
+    session = requests.Session()
+    session.headers["User-Agent"] = ac["user_agent"]
+
+    def work(n: int):
+        nonlocal fails, done
+        if stop.is_set():
+            return
+        with lock:  # one shared rate limit across threads
+            wait = next_slot[0] - time.monotonic()
+            next_slot[0] = max(next_slot[0], time.monotonic()) + 1.0 / ac["requests_per_second"]
+        if wait > 0:
+            time.sleep(wait)
+        try:
+            result = _api_get(session, n, ac)
+        except (requests.RequestException, ValueError) as exc:
+            with lock:
+                fails += 1
+                if fails >= ac["stop_after_failures"] and not stop.is_set():
+                    stop.set()
+                    log(f"[c5]   NPI Registry API: stopping after {fails} failures ({exc.__class__.__name__}: {exc})")
+            return
+        with lock:
             cache[n] = result
-            fh.write(json.dumps({"npi": n, "result": result}) + "\n")
-            time.sleep(1.0 / ac["requests_per_second"])
+            fh.write(json.dumps({"npi": n, "fetched": date.today().isoformat(), "result": result}) + "\n")
+            done += 1
+            if done % 500 == 0:
+                fh.flush()
+                log(f"[c5]   NPI Registry API: {done:,}/{len(todo):,} looked up")
+
+    if todo:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_path, "a") as fh, ThreadPoolExecutor(max_workers=ac.get("threads", 4)) as pool:
+            list(pool.map(work, todo))
     providers, cands = {}, []
     for n in npis:
         res = cache.get(n)
@@ -304,5 +361,5 @@ def npi_api_lookup(npis: list[int], cfg: dict, cache_path: Path, log=print) -> t
             cands.append({"npi": n, "source": "npi_api_secondary", "line1": a.get("address_1", ""),
                           "line2": a.get("address_2", ""), "city": a.get("city", ""), "state": a.get("state", ""),
                           "zip": a.get("postal_code", ""), "date": updated, "detail": "api"})
-    log(f"[c5]   NPI Registry API: {len(todo):,} looked up ({fails} failed), {len(providers):,} NPIs known")
+    log(f"[c5]   NPI Registry API: {done:,} looked up now ({fails} failed), {len(providers):,} of {len(npis):,} NPIs found")
     return providers, cands

@@ -331,8 +331,9 @@ def test_npi_registry_api_fallback(world, tmp_path):
     shutil.copy(world["db"], db)
     cfg = tmp_path / "c5.yaml"
     text = (Path(__file__).resolve().parent.parent / "config/c5.yaml").read_text()
-    cfg.write_text(text.replace("https://npiregistry.cms.hhs.gov/api/", base + "/api/").replace("requests_per_second: 5",
-                                                                                               "requests_per_second: 1000"))
+    cfg.write_text(text.replace("https://npiregistry.cms.hhs.gov/api/", base + "/api/").replace("requests_per_second: 8",
+                                                                                               "requests_per_second: 1000")
+               .replace("cache_path: data/npi_api_cache.jsonl", f"cache_path: {tmp_path / 'api.jsonl'}"))
     try:
         assert c5(["run", "--db", str(db), "--nppes", str(world["nppes"]), "--npi-api", "10", "--config", str(cfg),
                    "--out", str(tmp_path / "c5"), "--as-of", AS_OF]) == 0
@@ -341,6 +342,51 @@ def test_npi_registry_api_fallback(world, tmp_path):
     con = sqlite3.connect(db)
     assert con.execute("SELECT primary_taxonomy, source FROM c5_providers WHERE npi = ?", (n,)).fetchone() == \
         (ca_world.TAX_CARD, "npi_api")
+
+
+def test_npi_api_replaces_a_missing_nppes_file(world, tmp_path, monkeypatch):
+    """No NPPES file: auto mode asks the API for every NPI, gets taxonomies and addresses, and a rerun
+    is served from the cache."""
+    import shutil
+    calls = []
+
+    def routes(path, q, base):
+        n = int(q["number"][0])
+        calls.append(n)
+        if len(calls) == 1:
+            return {"results": []}  # an unknown NPI is cached as not found too
+        return {"results": [{"enumeration_type": "NPI-1", "basic": {"last_updated": "2026-08-01", "first_name": "A",
+                                                                     "last_name": str(n)},
+                             "taxonomies": [{"code": ca_world.TAX_CARD, "primary": True}],
+                             "addresses": [{"address_purpose": "LOCATION", "address_1": "455 N Brand Blvd",
+                                            "city": "Glendale", "state": "CA", "postal_code": "91203"}]}]}
+    srv, base = _serve(routes)
+    db = tmp_path / "r.sqlite"
+    shutil.copy(world["db"], db)
+    cfg = tmp_path / "c5.yaml"
+    text = (Path(__file__).resolve().parent.parent / "config/c5.yaml").read_text()
+    cfg.write_text(text.replace("https://npiregistry.cms.hhs.gov/api/", base + "/api/")
+                   .replace("requests_per_second: 8", "requests_per_second: 1000")
+                   .replace("cache_path: data/npi_api_cache.jsonl", f"cache_path: {tmp_path / 'api.jsonl'}"))
+    monkeypatch.delenv("PTD_NPI_API", raising=False)
+    args = ["run", "--db", str(db), "--config", str(cfg), "--out", str(tmp_path / "c5"), "--as-of", AS_OF]
+    try:
+        assert c5(args) == 0
+        con = sqlite3.connect(db)
+        npis = con.execute("SELECT COUNT(DISTINCT npi) FROM c4_pairs").fetchone()[0]
+        assert sorted(calls) == sorted(set(calls)) and len(calls) >= npis - 5     # each NPI asked once
+        found = con.execute("SELECT COUNT(*) FROM c5_providers WHERE source = 'npi_api' AND primary_taxonomy = ?",
+                            (ca_world.TAX_CARD,)).fetchone()[0]
+        assert found == len(calls) - 1
+        assert con.execute("SELECT COUNT(*) FROM c5_addresses WHERE address != ''").fetchone()[0] > 0
+        con.close()
+        before = len(calls)
+        assert c5(args) == 0
+        assert len(calls) == before                                              # all from the cache
+        summary = json.loads((tmp_path / "c5" / "c5_run_summary.json").read_text())
+        assert "npi_api" in summary["sources_used"]
+    finally:
+        srv.shutdown()
 
 
 def test_extract_nppes_state_from_monthly_zip(world, tmp_path):

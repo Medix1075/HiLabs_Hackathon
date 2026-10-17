@@ -2,7 +2,7 @@
 
   python -m ptd_c5 run --nppes NPPES.zip --dac DAC_NationalDownloadableFile.csv     # addresses for C4's pairs
   python -m ptd_c5 run --nppes data/nppes_ca.csv --nppes-pl data/nppes_pl_ca.csv --directory data/directory.csv
-  python -m ptd_c5 run --npi-api 500           # no NPPES file: look up at most 500 NPIs live
+  python -m ptd_c5 run --npi-api always        # look every NPI up live in the NPI Registry API
   python -m ptd_c5 fetch --dest data/public     # download NPPES, Doctors & Clinicians, NUCC
   python -m ptd_c5 extract-nppes --nppes data/public/NPPES_Data_Dissemination_....zip --state CA
 """
@@ -40,8 +40,12 @@ PROVIDER_FIELDS = ["npi", "entity_type", "name", "primary_taxonomy", "taxonomies
 
 def run(args) -> int:
     cfg = load_config(args.config, args.as_of)
-    if args.npi_api is not None:
-        cfg["npi_api"]["max_lookups"] = args.npi_api
+    if args.npi_api is not None:  # auto | always | off | a number (= auto, at most N lookups)
+        v = str(args.npi_api).lower()
+        if v.isdigit():
+            cfg["npi_api"]["mode"], cfg["npi_api"]["max_lookups"] = ("auto" if int(v) else "off"), int(v)
+        else:
+            cfg["npi_api"]["mode"] = v
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     log_lines: list[str] = []
@@ -88,12 +92,17 @@ def run(args) -> int:
         cands += c
         used["directory"] = args.directory
         log(f"[c5]   directory: {len(c):,} addresses for our NPIs")
-    if cfg["npi_api"]["max_lookups"]:
-        missing = sorted(npis - set(providers))
-        p, c = npi_api_lookup(missing, cfg, out / "npi_api_cache.jsonl", log)
-        providers.update(p)
-        cands += c
-        used["npi_api"] = f"{len(p)} NPIs"
+    mode = cfg["npi_api"]["mode"]
+    if mode in ("auto", "always") and cfg["npi_api"]["max_lookups"]:
+        # auto: only NPIs the NPPES file doesn't have (all of them when no file was given);
+        # always: every NPI, live, on top of the file
+        ask = sorted(npis) if mode == "always" else sorted(npis - set(providers))
+        if ask:
+            p, c = npi_api_lookup(ask, cfg, Path(cfg["npi_api"]["cache_path"]), log)
+            providers.update(p)
+            cands += c
+            if p:
+                used["npi_api"] = f"{len(p)} NPIs"
     if not used:
         log("[input] no address source given (--nppes, --dac, --directory, --npi-api): every pair stays unresolved. "
             "See `python -m ptd_c5 fetch`.")
@@ -214,7 +223,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--nppes-pl", help="NPPES Practice Location Reference File (found inside the ZIP if not given)")
     r.add_argument("--dac", help="CMS Doctors and Clinicians National Downloadable File (CSV)")
     r.add_argument("--directory", help="payer directory table (CSV/XLSX with npi and address columns)")
-    r.add_argument("--npi-api", type=int, help="look up at most N NPIs missing from the files in the NPI Registry API")
+    r.add_argument("--npi-api", help="NPI Registry API: auto (default: NPIs missing from the NPPES file, or all "
+                   "when there is none), always (every NPI, live), off, or a number N (auto, at most N lookups)")
     r.add_argument("--zip-county", help="ZIP to county CSV (gives C7 county-level peer groups)")
     r.add_argument("--config", help="config YAML (default config/c5.yaml)")
     r.add_argument("--as-of", help="date for recency (YYYY-MM-DD); default today")
