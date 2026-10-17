@@ -52,7 +52,8 @@ def run(args) -> int:
     npis = {npi for npi, _ in pairs}
     log(f"C5 DEMO: {len(rows)} CSV rows; {len(pairs)} unique NPI+TIN pairs; {len(npis)} unique NPIs; "
         f"{len({tin for _, tin in pairs})} TINs")
-    con = connect(args.db)
+    db_path = Path(args.db)
+    con = connect(db_path)
     if not table_exists(con, "c4_pairs"):
         log("[demo] C4 database has not been created yet; addresses will be resolved using CSV roster directly.")
     providers, dac_facts, cands, used = {}, {}, [], {}
