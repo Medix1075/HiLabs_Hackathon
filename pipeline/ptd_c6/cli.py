@@ -2,6 +2,7 @@
 
   python -m ptd_c6 run --workbook "Rate Benchmarking Individual Weights_Hackathon.xlsx"   # -> out/c6/
   python -m ptd_c6 run --workbook ... --nucc nucc_taxonomy_251.csv
+  python -m ptd_c6 check-network --sample out/c6/c6_network_check_sample.csv   # after filling it in by hand
 
 Reads the rate store (C4 rates, C5 addresses and provider facts) and writes deliverable 1:
 one row per NPI x TIN x address x billing code with the specialty and the headline rate.
@@ -23,6 +24,7 @@ from ptd_c2.cli import write_csv
 from ptd_c4.db import DEFAULT_DB, connect, table_exists
 
 from . import __version__
+from .network_check import coverage, make_sample, score_sample, write_report, write_sample
 from .specialty import assign, load_specialties
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "config" / "c6.yaml"
@@ -35,12 +37,12 @@ COLUMNS = [
     ("Address Rank", "address_rank"), ("Address Confidence", "address_confidence"),
     ("Address Verified", "address_verified"), ("Address Sources", "address_sources"), ("City", "city"),
     ("ZIP", "zip5"), ("Region", "region"), ("Specialty Code", "spec_cd"), ("Specialty Source", "specialty_source"),
-    ("Code Expected for Specialty", "code_expected"), ("Network Tag", "network_tag"),
+    ("Code Expected for Specialty", "code_expected"), ("Network Status", "network_status"), ("Network Tag", "network_tag"),
     ("Network Confidence", "network_confidence"), ("Rate Pick Rule", "pick_rule"), ("Source File", "source_file"),
 ]
 C6_FIELDS = ["npi", "tin", "npi_type", "spec_cd", "specialty", "specialty_source", "region", "address_verified",
              "code_type", "code", "negotiated_type", "billing_class", "setting", "pos", "modifier", "rate",
-             "code_expected", "network_tag", "network_confidence", "file_id"]
+             "code_expected", "network_status", "network_tag", "network_confidence", "file_id"]
 ABOUT = {
     "NPI / TIN": "From the rate file's provider_groups (C4). NPPES hides TINs, so the pairing comes only from the rate file.",
     "Address": "C5's resolved practice address. A pair practising at several sites has one row per site (Address Rank). "
@@ -52,7 +54,15 @@ ABOUT = {
                  "else NUCC. Specialty Source says which.",
     "Code Expected for Specialty": "TRUE if the code is in the specialty's HiLabs code list, FALSE if not (worth a look), "
                                    "blank if the specialty has no code list.",
-    "Network Tag": "C4: PPO, or UNKNOWN when the file gives no evidence either way (Health Net CA leaves network_name blank).",
+    "Network Status": "C4: CONFIRMED_PPO (direct evidence: a PPO directory listing that can only be about this "
+                      "contract, the reference's own network name, or a PPO-only file). The candidate file holds "
+                      "PPO_CANDIDATE (inferred or weak evidence) and UNRESOLVED rows; see c4_network_tags.csv for the "
+                      "evidence behind each provider reference.",
+    "Network Tag": "C4's evidence vote (PPO / NON_PPO / UNKNOWN) behind the status, with its confidence.",
+}
+OUTPUTS = {  # file stem -> which network statuses go in it (config/c6.yaml `network`)
+    "c6_provider_rate_file": "rate_file_statuses",
+    "c6_provider_rate_file_candidates": "candidate_file_statuses",
 }
 
 
@@ -178,12 +188,20 @@ def run(args) -> int:
     con.execute("DROP TABLE IF EXISTS c6_rates")
     con.execute(f"CREATE TABLE c6_rates ({', '.join(C6_FIELDS)})")
     hc = cfg["headline"]
-    xl = ExcelWriter(out / "c6_provider_rate_file.xlsx", cfg["excel"])
-    csv_path = out / "c6_provider_rate_file.csv.gz"
+    route: dict[str, str] = {}
+    for stem, key in OUTPUTS.items():
+        for st in cfg["network"][key]:
+            route[st] = stem
+    sinks = {stem: {"xl": ExcelWriter(out / f"{stem}.xlsx", cfg["excel"]),
+                    "fh": gzip.open(out / f"{stem}.csv.gz", "wt", newline="", encoding="utf-8")} for stem in OUTPUTS}
+    for sk in sinks.values():
+        sk["csv"] = csv.writer(sk["fh"])
+        sk["csv"].writerow([c for c, _ in COLUMNS])
     stats = Counter()
+    by_file = {stem: Counter() for stem in OUTPUTS}
     c6_buf: list[tuple] = []
     var_cols = ["code_type", "code", "negotiated_type", "billing_class", "setting", "pos", "modifier", "rate",
-                "expiration_date", "network_tag", "network_confidence", "pick_rule"]
+                "expiration_date", "network_status", "network_tag", "network_confidence", "pick_rule"]
 
     def emit_sig(key, variants_by_code: dict) -> None:
         fid, _ = key
@@ -197,8 +215,8 @@ def run(args) -> int:
                 expected = sp.code_expected(s["spec_cd"], code) if s["spec_cd"] else None
                 c6_buf.append((npi, tin, s["npi_type"], s["spec_cd"], s["specialty"], s["specialty_source"], region,
                                bool(addrs[0][6]), ctype, code, v["negotiated_type"], v["billing_class"], v["setting"],
-                               v["pos"], v["modifier"], v["rate"], expected, v["network_tag"], v["network_confidence"],
-                               fid))
+                               v["pos"], v["modifier"], v["rate"], expected, v["network_status"], v["network_tag"],
+                               v["network_confidence"], fid))
                 stats["pair_codes"] += 1
                 for rank, address, city, zip5, reg, conf, verified, srcs in addrs:
                     row = {**v, "npi": npi, "tin": tin, "address": address, "specialty": s["specialty"],
@@ -209,30 +227,35 @@ def run(args) -> int:
                            "specialty_source": s["specialty_source"], "code_expected": expected,
                            "source_file": files.get(fid, "")}
                     cells = [row.get(k, "") for _, k in COLUMNS]
-                    writer.writerow(cells)
-                    xl.add(cells)
                     stats["rows"] += 1
+                    stem = route.get(v["network_status"])
+                    if stem is None:
+                        stats["rows_not_written"] += 1
+                        continue
+                    sinks[stem]["csv"].writerow(cells)
+                    sinks[stem]["xl"].add(cells)
+                    by_file[stem]["rows"] += 1
+                    by_file[stem]["rows_with_address"] += bool(address)
                     stats["rows_with_address"] += bool(address)
                     stats["rows_code_unexpected"] += expected is False
         if len(c6_buf) >= 50000:
             con.executemany(f"INSERT INTO c6_rates VALUES ({','.join('?' * len(C6_FIELDS))})", c6_buf)
             c6_buf.clear()
 
-    with gzip.open(csv_path, "wt", newline="", encoding="utf-8") as fh:
-        writer = csv.writer(fh)
-        writer.writerow([c for c, _ in COLUMNS])
-        cur, by_code = None, defaultdict(list)
-        for r in con.execute(f"SELECT file_id, sig_id, {', '.join(var_cols)} FROM c4_sig_rates "
-                             "ORDER BY file_id, sig_id"):
-            key = (r[0], r[1])
-            if key != cur:
-                if cur is not None:
-                    emit_sig(cur, by_code)
-                cur, by_code = key, defaultdict(list)
-            v = dict(zip(var_cols, r[2:]))
-            by_code[(v["code_type"], v["code"])].append(v)
-        if cur is not None:
-            emit_sig(cur, by_code)
+    cur, by_code = None, defaultdict(list)
+    for r in con.execute(f"SELECT file_id, sig_id, {', '.join(var_cols)} FROM c4_sig_rates "
+                         "ORDER BY file_id, sig_id"):
+        key = (r[0], r[1])
+        if key != cur:
+            if cur is not None:
+                emit_sig(cur, by_code)
+            cur, by_code = key, defaultdict(list)
+        v = dict(zip(var_cols, r[2:]))
+        by_code[(v["code_type"], v["code"])].append(v)
+    if cur is not None:
+        emit_sig(cur, by_code)
+    for sk in sinks.values():
+        sk["fh"].close()
     if c6_buf:
         con.executemany(f"INSERT INTO c6_rates VALUES ({','.join('?' * len(C6_FIELDS))})", c6_buf)
     con.execute("CREATE INDEX ix_c6_rates ON c6_rates (code_type, code)")
@@ -242,23 +265,56 @@ def run(args) -> int:
         "version": __version__, "started": started.isoformat(), "finished": datetime.now(timezone.utc).isoformat(),
         "rows": stats["rows"], "rows_with_address": stats["rows_with_address"], "pair_codes": stats["pair_codes"],
         "rows_code_not_expected_for_specialty": stats["rows_code_unexpected"],
-        "excel_rows": xl.rows, "excel_sheets": xl.sheets, "excel_truncated": xl.truncated,
         "npis": len(npis), "specialty_sources": dict(Counter(s["specialty_source"] for s in spec.values())),
+        "files": {stem: {"statuses": cfg["network"][OUTPUTS[stem]], "rows": by_file[stem]["rows"],
+                         "rows_with_address": by_file[stem]["rows_with_address"], "excel_rows": sinks[stem]["xl"].rows,
+                         "excel_sheets": sinks[stem]["xl"].sheets, "excel_truncated": sinks[stem]["xl"].truncated}
+                  for stem in OUTPUTS},
+        "pair_codes_by_network_status": dict(con.execute("SELECT network_status, COUNT(*) FROM c6_rates GROUP BY 1")),
     }
-    about = [["Provider rate file (deliverable 1)", ""], ["Generated", summary["finished"]],
-             ["Rows", stats["rows"]], ["Rows with an address", stats["rows_with_address"]],
-             ["Excel complete", "no: see c6_provider_rate_file.csv.gz" if xl.truncated else "yes"], ["", ""],
-             ["Column", "Meaning"]] + [[k, v] for k, v in ABOUT.items()]
-    xl.close(about)
+    titles = {"c6_provider_rate_file": "Provider rate file (deliverable 1): confirmed PPO providers only",
+              "c6_provider_rate_file_candidates": "Candidate PPO rates: not confirmed, kept for review (NOT deliverable 1)"}
+    for stem, sk in sinks.items():
+        xl = sk["xl"]
+        about = [[titles[stem], ""], ["Generated", summary["finished"]],
+                 ["Network statuses in this file", ", ".join(cfg["network"][OUTPUTS[stem]])],
+                 ["Rows", by_file[stem]["rows"]], ["Rows with an address", by_file[stem]["rows_with_address"]],
+                 ["Excel complete", f"no: see {stem}.csv.gz" if xl.truncated else "yes"], ["", ""],
+                 ["Column", "Meaning"]] + [[k, v] for k, v in ABOUT.items()]
+        xl.close(about)
     write_csv(out / "c6_providers.csv",
               [{"npi": n, **s} for n, s in sorted(spec.items())],
               ["npi", "npi_type", "name", "spec_cd", "specialty", "specialty_source", "specialty_note"])
     (out / "c6_run_summary.json").write_text(json.dumps(summary, indent=2, default=str))
-    log(f"[c6] {stats['rows']:,} rows ({stats['rows_with_address']:,} with an address); Excel {xl.rows:,} rows in "
-        f"{xl.sheets} sheet(s)" + (" (truncated: the CSV has every row)" if xl.truncated else ""))
+    for stem in OUTPUTS:
+        f = summary["files"][stem]
+        log(f"[c6] {stem}: {f['rows']:,} rows ({f['rows_with_address']:,} with an address), network status "
+            f"{', '.join(f['statuses'])}; Excel {f['excel_rows']:,} rows in {f['excel_sheets']} sheet(s)"
+            + (" (truncated: the CSV has every row)" if f["excel_truncated"] else ""))
+    if not summary["files"]["c6_provider_rate_file"]["rows"]:
+        log("[c6] NOTE: no rate has a confirmed PPO status, so the provider rate file is empty. Confirmation needs "
+            "target-specific evidence, usually a PPO directory table (python -m ptd_c4 run --directory ...). "
+            "The candidate file holds the unconfirmed rates.")
+    sample = make_sample(con, cfg["network"]["check_sample_per_status"])
+    write_sample(out / "c6_network_check_sample.csv", sample)
+    write_report(out / "c6_network_accuracy.md", coverage(con), None, str(out / "c6_network_check_sample.csv"))
+    log(f"[c6] network check sample: {len(sample)} NPI-TIN pairs to look up in the PPO directory "
+        f"({out / 'c6_network_check_sample.csv'}); coverage in {out / 'c6_network_accuracy.md'}")
     (out / "c6_run_log.txt").write_text("\n".join(log_lines) + "\n")
     con.close()
     log(f"[done] outputs in {out}")
+    return 0
+
+
+def check_network(args) -> int:
+    """Score a hand-checked network sample and rewrite the accuracy report."""
+    con = connect(args.db)
+    checked = score_sample(Path(args.sample))
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    write_report(out / "c6_network_accuracy.md", coverage(con), checked, args.sample)
+    con.close()
+    print(json.dumps(checked, indent=2))
     return 0
 
 
@@ -272,6 +328,11 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--config", help="config YAML (default config/c6.yaml)")
     r.add_argument("--out", default="out/c6")
     r.set_defaults(func=run)
+    c = sub.add_parser("check-network", help="score a hand-checked c6_network_check_sample.csv (PPO precision)")
+    c.add_argument("--sample", required=True, help="the sample with directory_result filled in")
+    c.add_argument("--db", default=str(DEFAULT_DB))
+    c.add_argument("--out", default="out/c6")
+    c.set_defaults(func=check_network)
     args = ap.parse_args(argv)
     return args.func(args)
 

@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS c4_files (
 CREATE TABLE IF NOT EXISTS c4_refs (
     file_id INTEGER, ref_id TEXT, network_name TEXT, n_groups INTEGER, source TEXT,
     tag TEXT, tag_confidence TEXT, ppo_evidence REAL, non_ppo_evidence REAL, evidence TEXT,
+    status TEXT, status_basis TEXT,
     PRIMARY KEY (file_id, ref_id));
 CREATE TABLE IF NOT EXISTS c4_ref_members (
     file_id INTEGER, ref_id TEXT, npi INTEGER, tin TEXT, tin_type TEXT);
@@ -53,7 +54,7 @@ CREATE TABLE IF NOT EXISTS c4_sig_rates (
     file_id INTEGER, sig_id INTEGER, code_type TEXT, code TEXT, negotiated_type TEXT,
     billing_class TEXT, setting TEXT, pos TEXT, modifier TEXT, rate REAL, expiration_date TEXT,
     network_tag TEXT, network_confidence TEXT, candidates INTEGER, distinct_rates INTEGER,
-    rate_min REAL, rate_max REAL, pick_rule TEXT);
+    rate_min REAL, rate_max REAL, pick_rule TEXT, network_status TEXT);
 """
 
 INDEXES = """

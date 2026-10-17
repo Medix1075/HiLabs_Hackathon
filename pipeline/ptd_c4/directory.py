@@ -43,28 +43,48 @@ def side_of(label: str, ppo_labels) -> str | None:
 
 
 class Directory:
+    """Directory rows indexed for matching. A row's network side comes from its network name through
+    C2's rules: a named PPO network (target-specific), a named non-PPO network, or neither (a generic
+    "Health Net" listing, which says the provider is with the payer but not in which network)."""
     enabled = True
 
     def __init__(self, rows: list[dict], c2cfg: dict, ppo_labels):
         self.rows = rows
         self.by_npi: dict[int, set] = defaultdict(set)
         self.by_tin: dict[str, set] = defaultdict(set)
+        self.tins_of_npi: dict[int, set] = defaultdict(set)   # TINs the directory lists for an NPI (PPO rows)
+        self.generic_npis: set[int] = set()
         for r in rows:
             label = r.get("network_label") or label_network_name(str(r.get("network_name") or ""), c2cfg)
             side = side_of(label, ppo_labels)
             r["_side"] = side
             if side is None:
+                if r.get("npi"):
+                    self.generic_npis.add(int(r["npi"]))
                 continue
             if r.get("npi"):
                 self.by_npi[int(r["npi"])].add(side)
+                if r.get("tin") and side == PPO:
+                    self.tins_of_npi[int(r["npi"])].add(str(r["tin"]))
             if r.get("tin"):
                 self.by_tin[str(r["tin"])].add(side)
 
     def sides(self, npi, tin) -> set:
+        return set(self.match(npi, tin)[0])
+
+    def match(self, npi, tin) -> tuple[set, str]:
+        """(sides, kind). kind: 'npi' (the NPI is listed and the TIN agrees or is not given),
+        'npi_tin_mismatch' (the NPI is listed, but only under other TINs), 'tin' (only the TIN is
+        listed: a group link, not proof for this NPI), or '' (no match)."""
         s = set(self.by_npi.get(int(npi), ())) if npi is not None else set()
-        if not s and tin:  # a TIN match only counts when the NPI itself is not listed
-            s = set(self.by_tin.get(str(tin), ()))
-        return s
+        if s:
+            tins = self.tins_of_npi.get(int(npi))
+            if PPO in s and tins and tin and str(tin) not in tins:
+                return s, "npi_tin_mismatch"
+            return s, "npi"
+        if tin and self.by_tin.get(str(tin)):
+            return set(self.by_tin[str(tin)]), "tin"
+        return set(), ""
 
 
 def read_table(path: str | Path) -> list[dict]:

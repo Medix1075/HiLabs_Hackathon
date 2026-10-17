@@ -65,10 +65,26 @@ network:
     min_seeds_per_side: 5         # spreading needs known PPO AND known non-PPO references to be checked
     seed: 7
   decide_min_share: 0.65          # a side needs this share of the evidence to win; otherwise UNKNOWN
-  # Which tags go forward to the rate table. UNKNOWN is kept by default because on the real CA file
-  # most references have no evidence at all; every rate row carries its tag and confidence so the
-  # analyst can filter.
-  include_tags: [PPO, UNKNOWN]
+  # Directory matches that only link a provider to a group (TIN-only match, or the NPI listed under a
+  # different TIN) count this fraction of the directory weight, and never confirm on their own.
+  directory_weak_factor: 0.4
+  # Allowed-amount (out-of-network) files, listed by C2 per rate file. An NPI paid out of network by a
+  # file that only PPO plans list is outside the PPO network; a shared file only adds a note.
+  oon:
+    enabled: true
+    weight: 0.8
+  # Each reference ends with a network status (see network.py, network_status):
+  #   CONFIRMED_PPO      direct PPO evidence: its own network_name, a PPO-only file, or a PPO directory
+  #                      listing that can only be about this reference (the NPI's only reference, or its
+  #                      other references are confirmed non-PPO)
+  #   PPO_CANDIDATE      PPO evidence that is inferred (price gap, label spreading), weak (TIN-only or
+  #                      shared directory match) or generic (listed with the payer, no network named)
+  #   UNRESOLVED         no PPO evidence, or conflicting evidence
+  #   CONFIRMED_NON_PPO  direct non-PPO evidence: capitation, a non-PPO directory listing, its own
+  #                      network_name, or paid out of network by a PPO plan
+  # Rates are extracted for these statuses. C6 then splits them: confirmed rows go to the provider
+  # rate file, the rest to a separate candidate file (config/c6.yaml).
+  include_statuses: [CONFIRMED_PPO, PPO_CANDIDATE, UNRESOLVED]
 
 # --------------------------------------------------------------- picking one rate
 extract:
@@ -80,7 +96,7 @@ extract:
   # After cleaning, one provider can still have several rates for the same code and the same
   # variant (negotiated_type, billing_class, setting, place of service, modifiers), e.g. when it is
   # listed in two contracts. The tie-break, in order:
-  #   1. network   - the rate from the reference with the strongest PPO evidence
+  #   1. network   - the rate from the reference with the best network status (then tag confidence)
   #   2. expiry    - the latest expiration_date (evergreen 9999-12-31 counts as latest)
   #   3. support   - the rate backed by the most price rows / references
   #   4. lowest    - the lower rate (conservative, deterministic)

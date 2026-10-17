@@ -20,3 +20,12 @@ specialty:
 excel:
   max_rows: 3000000                # beyond this the Excel stops and the CSV holds everything
   rows_per_sheet: 1000000          # Excel's limit is 1,048,576
+
+# Which C4 network statuses go where (see config/c4.yaml). Deliverable 1 holds confirmed PPO rates only;
+# the candidate file keeps the rest for review so nothing potentially useful is thrown away.
+network:
+  rate_file_statuses: [CONFIRMED_PPO]
+  candidate_file_statuses: [PPO_CANDIDATE, UNRESOLVED]
+  # c6_network_check_sample.csv: this many NPI-TIN pairs per status to look up by hand in the PPO
+  # directory; `python -m ptd_c6 check-network` turns the filled-in sample into precision figures.
+  check_sample_per_status: 30

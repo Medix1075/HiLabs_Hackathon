@@ -174,6 +174,17 @@ def test_supporting_oon(run_out):
     assert rows["CA L HMO 40/1500d/6500"]["oon_signal"] == "HMO-leaning"
 
 
+def test_allowed_amount_files_are_listed_with_who_uses_them(run_out):
+    out, rows = run_out
+    assert rows["CA L PPO 30/500/4000/30%"]["allowed_amount_file_url"].endswith("hn_ppo_allowed-amounts.json")
+    aa = {Path(r["allowed_amount_file_url"]).name: r for r in read(out / "c2_allowed_amount_files.csv")}
+    ppo, hmo = aa["hn_ppo_allowed-amounts.json"], aa["hn_hmo_allowed-amounts.json"]
+    assert ppo["ppo_only"] == "True" and int(ppo["ppo_plan_rows"]) >= 12 and ppo["status"] == "has_records"
+    assert hmo["ppo_only"] == "False" and hmo["ppo_plan_rows"] == "0" and hmo["status"] == "empty"
+    files = {Path(r["rate_file_url"]).name: r for r in read(out / "c2_ppo_rate_files.csv")}
+    assert files["hn_ppo_in-network.json.gz"]["allowed_amount_file_urls"].endswith("hn_ppo_allowed-amounts.json")
+
+
 def test_every_row_has_reason_and_outputs_exist(run_out):
     out, rows = run_out
     assert all(r["reason"] for r in rows.values())
