@@ -32,7 +32,7 @@ def file_age_days(last_updated: str | None, as_of: date) -> int | None:
         return None
 
 
-def bucket_metrics(scan: FileScan, bucket: str, cfg: dict, expected: dict[str, set] | None) -> list[dict]:
+def bucket_metrics(scan: FileScan, bucket: str, cfg: dict, expected=None) -> list[dict]:
     a: Acc = scan.acc[bucket]
     tol, rc = cfg["tolerance"], cfg["rates"]
     out = []
@@ -55,12 +55,18 @@ def bucket_metrics(scan: FileScan, bucket: str, cfg: dict, expected: dict[str, s
 
     # 2. code coverage
     if expected:
-        want = expected["(all)"]
+        want = expected.codes
         hit = len(want & a.codes)
-        cov = _share(hit, len(want))
-        out.append(_metric("code_coverage", _pct(cov), cov,
-                           f"{hit:,} of {len(want):,} expected billing codes appear in the file "
-                           f"({len(a.codes):,} distinct codes in total)."))
+        plain = _share(hit, len(want))
+        weighted = expected.weighted_coverage(a.codes) if expected.weights else None
+        score = weighted if weighted is not None else plain
+        why = (f"{hit:,} of {len(want):,} expected billing codes ({_pct(plain)}) from {expected.source} appear in the "
+               f"file ({len(a.codes):,} distinct codes in total).")
+        if weighted is not None:
+            why += (f" Weighted by specialty volume x code volume, coverage is {_pct(weighted)}, and that is the score"
+                    + (f"; {len(expected.unweighted_specialties)} specialties with no specialty weight are left out "
+                       "of the weighting" if expected.unweighted_specialties else "") + ".")
+        out.append(_metric("code_coverage", _pct(score), score, why))
     else:
         out.append(_metric("code_coverage", f"{len(a.codes):,} distinct codes", None,
                            "Not measured: no expected-code list (the HiLabs specialty to billing code Excel has not "
@@ -150,7 +156,7 @@ def overall(metrics: list[dict], cfg: dict) -> dict:
             "metrics_used": len(used), "metrics_not_measured": ",".join(skipped)}
 
 
-def grade_scan(scan: FileScan, cfg: dict, expected: dict[str, set] | None) -> tuple[list[dict], list[dict]]:
+def grade_scan(scan: FileScan, cfg: dict, expected=None) -> tuple[list[dict], list[dict]]:
     """Returns (score rows, metric rows), one score row per bucket."""
     score_rows, metric_rows = [], []
     buckets = [ALL] + sorted(b for b in scan.acc if b != ALL)
@@ -173,13 +179,16 @@ def grade_scan(scan: FileScan, cfg: dict, expected: dict[str, set] | None) -> tu
     return score_rows, metric_rows
 
 
-def code_coverage_rows(scan: FileScan, expected: dict[str, set]) -> list[dict]:
+def code_coverage_rows(scan: FileScan, expected) -> list[dict]:
     rows = []
+    specs = [("(all)", expected.codes)] + sorted(expected.by_specialty.items())
     for b in [ALL] + sorted(x for x in scan.acc if x != ALL):
         codes = scan.acc[b].codes
-        for spec, want in sorted(expected.items()):
+        for spec, want in specs:
             hit = want & codes
+            wc = expected.weighted_coverage(codes, None if spec == "(all)" else spec)
             rows.append({"rate_file_url": scan.url, "bucket": b, "specialty": spec, "expected_codes": len(want),
                          "present": len(hit), "coverage": round(len(hit) / len(want), 4) if want else None,
+                         "weighted_coverage": None if wc is None else round(wc, 4),
                          "missing_sample": ",".join(sorted(want - codes)[:20])})
     return rows

@@ -19,7 +19,7 @@ python3 -m venv .venv && source .venv/bin/activate      # Windows: .\.venv\Scrip
 pip install -r requirements.txt
 
 python -m ptd_c3 run --run-c2 --run-c1 # Step 0 + C1 + C2 + C3 in one go
-pytest                                 # 64 offline tests
+pytest                                 # 65 offline tests
 ```
 
 You can also run the stages separately:
@@ -118,7 +118,7 @@ From `python -m ptd_c2 run --no-probe` on C1's output. Rate files were not reach
 ```bash
 python -m ptd_c3 run                                   # grade C2's PPO rate files
 python -m ptd_c3 run --files a.json.gz https://.../b.json   # grade any files
-python -m ptd_c3 run --expected-codes specialty_codes.xlsx  # measure code coverage
+python -m ptd_c3 run --expected-codes "Rate Benchmarking Individual Weights_Hackathon.xlsx"  # code coverage
 python -m ptd_c3 run --provider-tags tags.csv          # also grade each provider tag (e.g. PPO only)
 python -m ptd_c3 run --max-bytes 200000000             # quick sample of each file, flagged "sampled"
 python -m ptd_c3 run --as-of 2026-10-17                # fixed grading date, for reproducible runs
@@ -131,7 +131,7 @@ Each metric gives a raw value, a 0-1 score and a one-line justification (`c3_met
 | Metric | Weight | What it measures |
 |---|---|---|
 | `schema_validity` | 15 | Problems per record against CMS v2.0.0: required fields, enums (`negotiation_arrangement`, `negotiated_type`, `billing_class`, `setting`, `tin.type`, `billing_code_type`), code formats (CPT, HCPCS, MS-DRG, RC, CDT, NDC), date format, `service_code` on professional rows, bundles without codes, references to undefined `provider_group_id`s, blank `network_name`. Halved if a top-level field is missing. |
-| `code_coverage` | 15 | Share of expected billing codes present, from the HiLabs specialty to billing code Excel. That file hasn't been provided, so this is "not measured" until `--expected-codes` is passed, and its weight is spread over the rest. With a specialty column it also writes coverage per specialty. |
+| `code_coverage` | 15 | Coverage of the codes in HiLabs' *Rate Benchmarking Individual Weights* workbook (`--expected-codes`; 583 CPT/HCPCS codes over 54 specialties). Each code is weighted by specialty weight × its share of that specialty's code weight, and the weighted share is the score, so missing 99214 (13% of the weight) costs far more than missing a rare code. The plain share is in the justification. Six facility specialties (Urgent Care, Skilled Nursing, ...) have no specialty weight, so they count in the plain share and the per-specialty sheet but not in the score. Without `--expected-codes` the metric is "not measured" and its weight is spread over the rest. Any CSV/XLSX with a code column also works, unweighted. |
 | `provider_coverage` | 15 | Share of price rows tied to at least one provider group with a valid NPI (10 digits and a correct check digit). Also counts distinct NPIs and TINs. California-only counts need the NPPES extract (C5). |
 | `zero_rates` | 10 | Rows with a rate of 0 or less. |
 | `outliers` | 10 | Rates outside a log-IQR fence (k = 3) **and** at least 3x from the median of rates for the same code, `negotiated_type`, `billing_class`, `setting` and modifiers, plus percentages above 100. Those splits are legitimately different prices, so they are never compared with each other. Groups under 5 rates are not tested. |
@@ -156,18 +156,18 @@ The hook for later: `--provider-tags` takes a CSV/XLSX with `npi` and/or `tin` a
 | `c3_metrics.csv` | One row per file, bucket and metric: raw value, score, weight, justification |
 | `c3_schema_problems.csv` | Count of each schema problem per file |
 | `c3_examples.csv` | Up to 5 example rows per issue per file (zero rates, outliers, duplicates, expired, TIN-only groups, schema problems) |
-| `c3_code_coverage.csv` | Only with `--expected-codes`: coverage per specialty, with missing codes |
+| `c3_code_coverage.csv` | Only with `--expected-codes`: plain and weighted coverage per specialty, with missing codes |
 | `c3_results.xlsx`, `c3_run_summary.json`, `c3_run_log.txt` | Workbook, counts, log |
 
 Rate files couldn't be reached from the build machine, so C3 has been run on synthetic files only. Run it locally on the real Health Net file.
 
 ## Tests
 
-`pytest` runs 64 offline tests.
+`pytest` runs 65 offline tests.
 
 - **C1 (9 tests):** scraper structure on a saved page, employee exclusion, date parsing, flattening, dedup, gzip.
 - **C2 (41 tests):** a miniature Centene world served over local HTTP. It covers gzip, `network_name` as string, list or blank, `in_network` before `provider_references`, `location` references, mixed and unreachable files, the scope traps, the EnhancedCare flag, and the real EOA/EC/CUSPPO name shapes.
-- **C3 (13 tests):** hand-built clean and dirty rate files with every problem counted in advance, NPI check digits, expected-code coverage, provider tags (including references after `in_network`), `location` references, byte-cap sampling, unreachable files and the CLI.
+- **C3 (14 tests):** hand-built clean and dirty rate files with every problem counted in advance, NPI check digits, plain and weighted code coverage (a workbook in the HiLabs layout), provider tags (including references after `in_network`), `location` references, byte-cap sampling, unreachable files and the CLI.
 - **Integration (1 test):** `--run-c1` going from a saved page through C1 into C2.
 
 ## Layout

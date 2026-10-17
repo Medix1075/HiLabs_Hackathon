@@ -181,7 +181,7 @@ def test_expected_codes_coverage(files, cfg):
     from ptd_c3.codes import load_expected_codes
 
     exp = load_expected_codes(files / "expected.csv")
-    assert exp["(all)"] == {"99213", "99214", "99215", "27447"}
+    assert exp.codes == {"99213", "99214", "99215", "27447"} and not exp.weights
     m = metrics_of(scan_file(str(files / "dirty.json"), cfg), cfg, exp)
     assert m["code_coverage"]["score"] == 0.75 and m["code_coverage"]["measured"]
 
@@ -252,3 +252,43 @@ def test_cli_files_and_tags(files, tmp_path):
 
 def test_cli_missing_c2_list(tmp_path):
     assert main(["run", "--c2", str(tmp_path / "none.csv"), "--out", str(tmp_path)]) == 1
+
+
+def test_hilabs_weights_workbook_weighted_coverage(files, cfg, tmp_path):
+    """Same sheet layout as the HiLabs 'Rate Benchmarking Individual Weights' workbook, saved without an extension."""
+    import openpyxl
+
+    from ptd_c3.codes import load_expected_codes
+
+    wb = openpyxl.Workbook()
+    wb.active.title = "Taxonomy-Spec Xwalk"
+    wb.active.append(["SPEC_TYPE", "SPEC_CD", "SPEC_DESCR", "Taxonomy Code"])
+    wb.active.append(["Individual", "PCP", "Primary Care", "207Q00000X"])
+    sw = wb.create_sheet("Specialty Weights")
+    sw.append(["Spec Code", "Specialty", "Specialty Weight"])
+    sw.append(["PCP", "Primary Care", 300])
+    sw.append(["025", "Orthopedic Surgery", 100])
+    sp = wb.create_sheet("Spec-Proc Weights")
+    sp.append(["SPEC_CD", "SPEC_DESCRIPTION", "PROC_CD", "SPEC_PROC_RANK", "SPEC_PROC_WEIGHT"])
+    sp.append(["PCP", "Primary Care", "99213", 2, 10])
+    sp.append(["PCP", "Primary Care", "27447", 1, 20])
+    sp.append(["025", "Orthopedic Surgery", "99214", 1, 7])
+    sp.append(["080", "Urgent Care", "99215", 1, 5])         # facility: no specialty weight
+    path = tmp_path / "weights_no_extension"
+    wb.save(path)
+
+    exp = load_expected_codes(path)
+    assert exp.codes == {"99213", "27447", "99214", "99215"}
+    assert exp.weights == {"99213": 100.0, "27447": 200.0, "99214": 100.0}
+    assert exp.unweighted_specialties == ["080 Urgent Care"]
+    m = metrics_of(scan_file(str(files / "dirty.json"), cfg), cfg, exp)["code_coverage"]
+    assert m["score"] == 0.5                                  # 99213 + 99214 = 200 of 400, while 3 of 4 codes are present
+    assert "75.00%" in m["justification"] and "50.00%" in m["justification"]
+
+    out = tmp_path / "c3w"
+    assert main(["run", "--files", str(files / "dirty.json"), "--expected-codes", str(path), "--as-of", AS_OF,
+                 "--out", str(out)]) == 0
+    with open(out / "c3_code_coverage.csv") as fh:
+        rows = {r["specialty"]: r for r in csv.DictReader(fh)}
+    assert rows["PCP Primary Care"]["coverage"] == "0.5" and rows["PCP Primary Care"]["weighted_coverage"] == "0.3333"
+    assert "Urgent Care" in (out / "c3_run_log.txt").read_text()

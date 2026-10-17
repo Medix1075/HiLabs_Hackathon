@@ -86,7 +86,11 @@ def run(args) -> int:
     expected = None
     if args.expected_codes:
         expected = load_expected_codes(args.expected_codes, args.expected_codes_sheet)
-        log(f"[input] expected codes: {len(expected['(all)']):,} codes, {len(expected) - 1} specialties")
+        log(f"[input] expected codes: {len(expected.codes):,} codes, {len(expected.by_specialty)} specialties "
+            f"from {expected.source}; " + ("weighted by specialty and code volume" if expected.weights else "unweighted"))
+        if expected.unweighted_specialties:
+            log(f"[input] no specialty weight, left out of the weighted coverage: "
+                f"{'; '.join(expected.unweighted_specialties)}")
     else:
         log("[input] no expected-code list: code coverage not measured, its weight spread over the other metrics")
     tagger = None
@@ -159,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--run-c2", action="store_true", help="run C2 first (python -m ptd_c2 run)")
     r.add_argument("--run-c1", action="store_true", help="with --run-c2: run C1 before C2")
     r.add_argument("--c2-no-probe", action="store_true", help="with --run-c2: run C2 without reading rate files")
-    r.add_argument("--expected-codes", help="CSV/XLSX of expected billing codes (the specialty to code Excel)")
+    r.add_argument("--expected-codes", help="CSV/XLSX of expected billing codes, e.g. the HiLabs Rate Benchmarking Individual Weights workbook")
     r.add_argument("--expected-codes-sheet", help="sheet name for --expected-codes")
     r.add_argument("--provider-tags", help="CSV/XLSX with npi and/or tin and a tag column: also grade each tag")
     r.add_argument("--config", help="config YAML (default config/c3.yaml)")
