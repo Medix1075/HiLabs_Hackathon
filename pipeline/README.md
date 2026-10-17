@@ -211,9 +211,14 @@ python -m ptd_c4 run --files a.json.gz --codes all           # any rate file, ev
 python -m ptd_c4 run --directory data/directory.csv          # payer directory as network evidence (see ptd_dir)
 python -m ptd_c4 run --directory data/directory.csv --directory-checks "data/directory/*.coverage.jsonl" \
     --npis ppo_check_results.csv                              # only these NPIs (drop --npis for the whole file)
+python -m ptd_c4 run --workbook weights.xlsx --check-directory   # search every NPI on Health Net's site first
 python -m ptd_c4 run --files a.json --oon oon.json --oon-ppo-only   # allowed-amount file as evidence
 python -m ptd_c4 directory --fhir-base https://.../fhir      # a directory from a Plan-Net FHIR API instead
 ```
+
+### Checking every NPI on Health Net's site (`--check-directory`)
+
+After reading the rate file, C4 searches every NPI of its provider references (or just `--npis`) on findaprovider.healthnetcalifornia.com under the 2026 Group PPO network, with `--check-workers` browsers side by side (default 3, about 30 s per NPI per browser). Every `--save-every` NPIs (default 50) it rebuilds the directory table from what the site returned, re-tags the references and rewrites `c4_ppo_check.csv` with every NPI searched so far; the rate columns fill in when the rates are extracted at the end. Stopping is safe: rerunning the same command skips every NPI already searched. `python -m ptd_run all --from c4 --check-directory ...` does the same and then runs C5 to C7 with the site's addresses.
 
 ### Reading a 700 MB file fast, in flat memory
 
@@ -289,6 +294,7 @@ TIN-only groups (no NPI) can't produce NPI rows. They are counted and logged.
 | `c4_hypotheses.csv` | What each hypothesis scored, and whether it was used |
 | `c4_extraction_log.csv` | Rows dropped by reason, and how often each tie-break rule decided |
 | `c4_ppo_check.csv` | With `--directory`, `--directory-checks` or `--npis`. One row per NPI × TIN: the rate file's side (TIN name, references, network status, rates extracted) next to what Health Net's Find a Provider site returned (searched where and under which network, listing name, product, address, specialty, the name/TIN fallback) and a `verdict` |
+| `<check-out>_w<k>.jsonl`, `_directory.csv` | With `--check-directory`: the site's responses and coverage log per browser, and the directory table built from them (C5 reads it for addresses when run through `ptd_run`) |
 | `c4_results.xlsx`, `c4_run_summary.json`, `c4_run_log.txt` | Workbook with a sample of rates, counts, timings, log |
 | `c4_rates.csv.gz` | Only with `rates_csv: true`. Every rate as CSV; off by default because it is large and C6 writes the deliverable anyway. |
 

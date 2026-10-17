@@ -190,6 +190,15 @@ def run_all(args) -> int:
         args.dac = args.dac or got.get("dac")
         args.nucc = args.nucc or got.get("nucc")
     as_of = ["--as-of", args.as_of] if args.as_of else []
+    check_out = args.check_out or str(Path(args.data) / "directory" / "hn_check_all")
+    check = (["--check-directory", "--check-out", check_out, "--check-workers", str(args.check_workers),
+              "--save-every", str(args.save_every)]
+             + (["--check-year", args.check_year] if args.check_year else [])
+             + (["--browser", args.browser] if args.browser else [])) if args.check_directory else []
+    if args.check_directory:  # C5 reads the addresses the site lists (with any --directory rows) from C4's table
+        args.c5_directory = str(Path(check_out).parent / (Path(check_out).name + "_directory.csv"))
+    else:
+        args.c5_directory = args.directory
     wb = ["--workbook", args.workbook] if args.workbook else []
     steps = {
         "c1": lambda: c1(["--html-file", args.html_file] if args.html_file else []),
@@ -201,7 +210,7 @@ def run_all(args) -> int:
                           "--db", db, "--out", str(out / "c4")] + wb + as_of
                          + (["--directory", args.directory] if args.directory else [])
                          + (["--directory-checks", *args.directory_checks] if args.directory_checks else [])
-                         + (["--npis", *args.npis] if args.npis else [])
+                         + (["--npis", *args.npis] if args.npis else []) + check
                          + (["--files", *args.files] if args.files else [])
                          + (["--workers", str(args.workers)] if args.workers else [])),
         "c3net": lambda: (c3(["run", "--c2", str(out / "c2/c2_ppo_rate_files.csv"), "--out", str(out / "c3_by_network"),
@@ -211,7 +220,8 @@ def run_all(args) -> int:
                           if args.grade_by_network else 0),
         "c5": lambda: c5(["run", "--db", db, "--out", str(out / "c5")] + as_of
                          + sum(([f"--{k.replace('_', '-')}", str(getattr(args, k))] for k in
-                                ("nppes", "nppes_pl", "dac", "directory", "zip_county") if getattr(args, k)), [])
+                                ("nppes", "nppes_pl", "dac", "zip_county") if getattr(args, k)), [])
+                         + (["--directory", args.c5_directory] if args.c5_directory and Path(args.c5_directory).exists() else [])
                          + (["--npi-api", str(args.npi_api)] if args.npi_api is not None else [])),
         "c6": lambda: c6(["run", "--db", db, "--out", str(out / "c6")] + wb + (["--nucc", args.nucc] if args.nucc else [])),
         "c7": lambda: (c7(["run", "--db", db, "--out", str(out / "c7"), "--c6-out", str(out / "c6")] + wb
@@ -253,6 +263,13 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--no-probe", action="store_true", help="C2: do not open rate files")
     a.add_argument("--directory", help="payer directory table (C4 network evidence, C5 addresses)")
     a.add_argument("--directory-checks", nargs="+", help="C4: ptd_dir check coverage logs, for c4_ppo_check.csv")
+    a.add_argument("--check-directory", action="store_true",
+                   help="C4: search every rate-file NPI (or --npis) on Health Net's Find a Provider site; resumable")
+    a.add_argument("--check-out", help="C4: base path of the site's captures (default <data>/directory/hn_check_all)")
+    a.add_argument("--check-workers", type=int, default=3, help="C4: browsers searching side by side")
+    a.add_argument("--save-every", type=int, default=50, help="C4: rewrite c4_ppo_check.csv every N NPIs")
+    a.add_argument("--check-year", help="C4: network year on the site (default: this year)")
+    a.add_argument("--browser", help="C4: path to a Chromium-based browser executable")
     a.add_argument("--npis", nargs="+", help="C4 onwards: only these NPIs (list, text file or CSV with an npi column)")
     a.add_argument("--nppes", help="C5: NPPES monthly ZIP / npidata CSV / state extract")
     a.add_argument("--nppes-pl", help="C5: NPPES Practice Location Reference File")

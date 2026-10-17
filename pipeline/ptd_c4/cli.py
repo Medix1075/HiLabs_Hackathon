@@ -33,7 +33,7 @@ from .oon import read_oon_providers, store_oon
 from .extract import build_pairs, fanout_counts, pick_rates, tag_table_rows
 from .ingest import ingest_file
 from .network import STATUSES, tag_references
-from . import ppo_check
+from . import dircheck, ppo_check
 
 DEFAULT_C2_FILES = Path("out/c2/c2_ppo_rate_files.csv")
 DEFAULT_C3_SCORES = Path("out/c3/c3_file_scores.csv")
@@ -189,6 +189,8 @@ def run(args) -> int:
                 + (f"{info['workbook_codes_found']:,} of the {len(codes):,} workbook codes are in the file"
                    if codes is not None else "no code scope"))
             row["oon_files"] = _read_oon(con, file_id, t.get("oon_files") or [], cfg, log)
+            if args.check_directory:
+                directory = _check_directory(args, con, file_id, meta, cfg, c2cfg, npis, directory, out, log)
             t1 = time.time()
             network_reports[url] = tag_references(con, file_id, meta, cfg, c2cfg, directory, log)
             t2 = time.time()
@@ -241,8 +243,9 @@ def run(args) -> int:
              for kind in ("pick_rules", "dropped") for k, v in rep[kind].items()]
     write_csv(out / "c4_extraction_log.csv", picks, ["rate_file_url", "kind", "key", "count"])
     check_rows = []
-    if directory or args.directory_checks or npis is not None:
-        check_rows = ppo_check.build_rows(con, directory, ppo_check.read_coverage(args.directory_checks or []), npis)
+    checks = (args.directory_checks or []) + (dircheck.coverage_paths(Path(args.check_out)) if args.check_directory else [])
+    if directory or checks or npis is not None:
+        check_rows = ppo_check.build_rows(con, directory, ppo_check.read_coverage(checks), npis)
         ppo_check.write(out / "c4_ppo_check.csv", check_rows)
         verdicts = Counter(r["verdict"] for r in check_rows)
         log(f"[c4]   PPO check table: {len(check_rows):,} NPI-TIN rows -> {out / 'c4_ppo_check.csv'}; "
@@ -273,6 +276,42 @@ def run(args) -> int:
     return status
 
 
+def _check_directory(args, con, file_id, meta, cfg, c2cfg, npis, directory, out, log):
+    """Search the file's NPIs on Health Net's site (see dircheck), saving c4_ppo_check.csv every
+    --save-every NPIs. Returns the directory to tag the references with (the given one plus the site's)."""
+    base = Path(args.check_out)
+    table = base.parent / (base.name + "_directory.csv")
+    given = list(csv.DictReader(open(args.directory, encoding="utf-8"))) if args.directory and \
+        str(args.directory).lower().endswith(".csv") else []
+    reader = dircheck.CaptureRows(base)
+    state = {"directory": directory}
+
+    def checkpoint():
+        rows = reader.update()
+        if not rows and not given:
+            return
+        dircheck.write_table(table, given + rows)
+        state["directory"] = load_directory(table, c2cfg, cfg["network"]["ppo_labels"])
+        tag_references(con, file_id, meta, cfg, c2cfg, state["directory"], lambda *_: None)
+        con.commit()
+        done = dircheck.checked_npis(dircheck.coverage_paths(base))
+        rows_out = ppo_check.build_rows(con, state["directory"], ppo_check.read_coverage(
+            (args.directory_checks or []) + dircheck.coverage_paths(base)), done if npis is None else done & npis)
+        ppo_check.write(out / "c4_ppo_check.csv", rows_out)
+
+    todo_all = dircheck.targets(con, npis)
+    done = dircheck.checked_npis(dircheck.coverage_paths(base))
+    todo = [t for t in todo_all if t["npi"] not in done]
+    log(f"[c4]   directory check on Health Net Find a Provider ({args.check_network!r}, {args.check_year or 'this year'}): "
+        f"{len(todo_all):,} NPIs, {len(todo_all) - len(todo):,} already searched, {len(todo):,} to go with "
+        f"{args.check_workers} browser(s); c4_ppo_check.csv saved every {args.save_every} NPIs")
+    n = dircheck.run(todo, base, args.check_workers, args.save_every, checkpoint, log,
+                     network=args.check_network, year=args.check_year, executable=args.browser, channel=args.channel,
+                     delay=args.check_delay, fallback=not args.no_fallback)
+    log(f"[c4]   directory check done: {n:,} NPIs searched in all; directory table {table}")
+    return state["directory"]
+
+
 def directory_cmd(args) -> int:
     c2cfg = load_c2_config(args.c2_config)
     n = crawl_plannet(args.fhir_base, args.out, c2cfg, args.network_filter, args.state, args.max_pages)
@@ -294,6 +333,19 @@ def main(argv: list[str] | None = None) -> int:
                    "e.g. ptd_dir's ppo_check_results.csv): a trial run; leave out for the whole file")
     r.add_argument("--directory-checks", nargs="+", help="ptd_dir check coverage logs (<out>.coverage.jsonl, globs "
                    "allowed): which NPIs were searched on the site, where, and the name/TIN fallback")
+    r.add_argument("--check-directory", action="store_true",
+                   help="search every NPI of the rate file (or --npis) on Health Net's Find a Provider site and use "
+                        "what it lists as network evidence; resumable")
+    r.add_argument("--check-out", default="data/directory/hn_check_all",
+                   help="base path for the site's captures and coverage logs (<base>_w<k>.jsonl)")
+    r.add_argument("--check-workers", type=int, default=3, help="browsers searching side by side (default 3)")
+    r.add_argument("--save-every", type=int, default=50, help="rewrite c4_ppo_check.csv every N NPIs (default 50)")
+    r.add_argument("--check-network", default="PPO - Large Group/Small Group", help="network option to choose (substring)")
+    r.add_argument("--check-year", help="network year (default: this year)")
+    r.add_argument("--check-delay", type=float, default=1.0, help="seconds between searches per browser")
+    r.add_argument("--no-fallback", action="store_true", help="do not search missed NPIs by their TIN's name")
+    r.add_argument("--browser", help="path to a Chromium-based browser executable")
+    r.add_argument("--channel", help="chrome or msedge (default: try both, then Playwright's Chromium)")
     r.add_argument("--db", default=str(DEFAULT_DB), help=f"rate store (default {DEFAULT_DB})")
     r.add_argument("--oon", nargs="*", help="with --files: allowed-amount (out-of-network) files to read as evidence")
     r.add_argument("--oon-ppo-only", action="store_true", help="with --oon: those files are listed only by PPO plans")

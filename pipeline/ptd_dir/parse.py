@@ -198,24 +198,30 @@ def read_capture(path: Path):
                     continue
 
 
+def parse_record(rec: dict, network_override: str | None = None) -> list[dict]:
+    """The provider x location rows of one captured response."""
+    if int(rec.get("status") or 200) >= 400:
+        return []
+    body = rec.get("body")
+    if is_pces(body):  # Health Net Find a Provider: read its schema exactly (Par listings only)
+        found = parse_pces(body, int(rec["network_year"]) if rec.get("network_year") else None)
+        if rec.get("query_tin"):  # a name search done for one TIN: other providers' listings are noise
+            found = [r for r in found if r["tin"] == rec["query_tin"]]
+    else:
+        found = providers_in(body)
+    for r in found:
+        r.update(network_name=network_override or rec.get("network_name", ""),
+                 npi_source="listed" if r["npi"] else "", source=urlparse(rec.get("url", "")).netloc,
+                 last_updated=str(rec.get("t", ""))[:10], request_url=rec.get("url", ""))
+    return found
+
+
 def parse_captures(paths: list[Path], network_override: str | None = None) -> list[dict]:
     """Every provider x location in the captured responses, de-duplicated."""
     seen, out = set(), []
     for p in paths:
         for rec in read_capture(p):
-            if int(rec.get("status") or 200) >= 400:
-                continue
-            body = rec.get("body")
-            if is_pces(body):  # Health Net Find a Provider: read its schema exactly (Par listings only)
-                found = parse_pces(body, int(rec["network_year"]) if rec.get("network_year") else None)
-                if rec.get("query_tin"):  # a name search done for one TIN: other providers' listings are noise
-                    found = [r for r in found if r["tin"] == rec["query_tin"]]
-            else:
-                found = providers_in(body)
-            for r in found:
-                r.update(network_name=network_override or rec.get("network_name", ""),
-                         npi_source="listed" if r["npi"] else "", source=urlparse(rec.get("url", "")).netloc,
-                         last_updated=str(rec.get("t", ""))[:10], request_url=rec.get("url", ""))
+            for r in parse_record(rec, network_override):
                 key = (r["npi"], r["name"].upper(), r["address_line1"].upper(), r["zip"], r["network_name"])
                 if key not in seen:
                     seen.add(key)

@@ -736,3 +736,53 @@ def test_c5_same_tin_directory_site_only_corroborates():
     from datetime import date
     got = directory_tin_candidates(d, [(1194926279, "95-1643325")], nppes, date(2026, 10, 17))
     assert [(c["source"], c["zip"]) for c in got] == [("directory_tin", "92835")]
+
+
+def _fake_site(shard, out, kw):
+    """Stands in for the browser: lists every NPI whose last digit is even under the PPO network."""
+    import time as _t
+    net = "PPO - Large Group/Small Group (Platinum, Gold, Silver, Bronze, GF Plans, HSA Compatible, HDHP)"
+    out = Path(out)
+    for t in shard:
+        found = int(t["npi"]) % 2 == 0
+        ent = [_pces_entity(int(t["npi"]), t.get("tin") or "", "Listed", "1 Main St", "Fresno", "93701",
+                            [("Par", "2021-01-01", "4000-01-01")])] if found else []
+        with open(out, "a") as fh:
+            fh.write(json.dumps({"status": 200, "network_name": net, "network_year": "2026", "query_kind": "npi",
+                                 "query_npi": t["npi"], "body": {"results": ent}}) + "\n")
+        with open(out.with_suffix(".coverage.jsonl"), "a") as fh:
+            fh.write(json.dumps({"npi": t["npi"], "tin": t.get("tin"), "status": "found" if found else "not_found",
+                                 "location": "Fresno, CA", "network": net, "year": "2026"}) + "\n")
+        _t.sleep(0.02)
+
+
+def test_c4_checks_every_npi_on_the_site_and_saves_the_table_as_it_goes(world, tmp_path, monkeypatch):
+    """C4 --check-directory searches every NPI of the file (resumable), rewrites c4_ppo_check.csv every
+    --save-every NPIs, and tags the references with what the site lists."""
+    from ptd_c4 import dircheck, ppo_check
+    monkeypatch.setattr(dircheck, "_worker", _fake_site)
+    monkeypatch.setattr(dircheck, "MP_CONTEXT", "fork")
+    monkeypatch.setattr(dircheck, "POLL_SECONDS", 0.05)
+    saved = []
+    real_write = ppo_check.write
+    monkeypatch.setattr(ppo_check, "write", lambda path, rows: (saved.append(len(rows)), real_write(path, rows)))
+    db, out, base = str(tmp_path / "r.sqlite"), tmp_path / "c4", tmp_path / "dir" / "hn_all"
+    args = ["run", "--files", str(world["rate_file"]), "--workbook", str(world["workbook"]), "--db", db,
+            "--out", str(out), "--workers", "1", "--as-of", AS_OF, "--check-directory", "--check-out", str(base),
+            "--check-workers", "2", "--save-every", "5"]
+    assert c4(args) == 0
+    con = sqlite3.connect(db)
+    all_npis = {str(n) for (n,) in con.execute("SELECT DISTINCT npi FROM c4_ref_members WHERE npi IS NOT NULL")}
+    assert dircheck.checked_npis(dircheck.coverage_paths(base)) == all_npis     # every NPI searched once
+    assert len(saved) >= 3 and saved == sorted(saved)                            # the table grew as it went
+    rows = list(csv.DictReader(open(out / "c4_ppo_check.csv")))
+    assert {r["npi"] for r in rows} == all_npis and {r["site_checked"] for r in rows} == {"yes"}
+    found = [r for r in rows if int(r["npi"]) % 2 == 0]
+    assert found and {r["verdict"] for r in found} <= {"FOUND_PPO_BY_NPI", "FOUND_PPO_NPI_OTHER_TIN"}
+    single = [r for r in found if r["ref_count"] == "1" and r["verdict"] == "FOUND_PPO_BY_NPI"]
+    assert "CONFIRMED_PPO" in {r["pair_status"] for r in single}                 # tagged with what the site listed
+    assert (base.parent / "hn_all_directory.csv").exists()
+    lines = sum(len(open(p).read().splitlines()) for p in dircheck.coverage_paths(base))
+    saved.clear()
+    assert c4(args) == 0                                                        # a rerun searches nothing again
+    assert sum(len(open(p).read().splitlines()) for p in dircheck.coverage_paths(base)) == lines
