@@ -46,7 +46,7 @@ def _restrict_and_clone_pairs(con, file_id: int, pair_status: dict, log) -> dict
     ).fetchall()
     wanted = {}
     for npi, tin, tin_type, sig_id in original:
-        norm_tin = re.sub(r"\\D", "", str(tin or ""))
+        norm_tin = re.sub(r"\D", "", str(tin or ""))
         key = (int(npi), norm_tin)
         if key in pair_status and norm_tin:
             wanted[key] = (str(tin or ""), str(tin_type or ""), int(sig_id))
