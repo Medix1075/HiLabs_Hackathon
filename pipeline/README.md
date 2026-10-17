@@ -1,6 +1,6 @@
 # Centene price transparency pipeline (C1 + C2 + C3)
 
-This pipeline reads Centene's Transparency in Coverage files and finds the rate files and plans for Health Net's **California commercial group PPO network**.
+This pipeline reads Centene's Transparency in Coverage files and finds the rate files and plans for Health Net's **California commercial group PPO network**, then grades the data quality of each of those rate files.
 
 | Stage | Package | What it produces |
 |---|---|---|
@@ -28,6 +28,7 @@ You can also run the stages separately:
 python -m ptd_pipeline                 # Step 0 + C1 -> data/
 python -m ptd_c2 run                   # C2 on data/index_table.csv and data/raw/
 python -m ptd_c2 run --no-probe        # C2 without reading rate files (offline)
+python -m ptd_c3 run                   # C3 on out/c2/c2_ppo_rate_files.csv -> out/c3/
 python -m ptd_c2 run --c1 other_table.xlsx --index other_raw_dir/   # C2 on any C1-shaped table
 python -m ptd_c2 validate --sample out/c2/c2_validation_sample.csv  # score the hand-filled spot check
 ```
