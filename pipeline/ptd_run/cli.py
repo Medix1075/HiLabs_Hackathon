@@ -257,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--npi-api", help="C5: NPI Registry API: auto (default), always, off, or a number of lookups")
     a.add_argument("--nucc", help="C6: NUCC taxonomy CSV")
     a.add_argument("--network-tags", nargs="+", help="C7: benchmark only these network tags (e.g. PPO)")
-    a.add_argument("--grade-by-network", action="store_true", help="re-run C3 split by C4's network tags")
+    a.add_argument("--grade-by-network", action="store_true", help="re-run C3 split by C4's network status")
     a.add_argument("--fetch-public", action="store_true", help="download NPPES, CMS D&C and NUCC first")
     a.add_argument("--workers", type=int, help="C4 worker processes")
     a.add_argument("--as-of", help="date for expiry and recency (YYYY-MM-DD)")

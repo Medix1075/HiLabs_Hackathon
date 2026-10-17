@@ -111,6 +111,9 @@ class ExcelWriter:
         self.sheet_rows += 1
 
     def close(self, about_rows: list[list]) -> None:
+        if self.ws is None:  # no rows: still give the columns
+            self.ws = self.wb.create_sheet("Rates")
+            self.ws.append(self.header)
         for r in about_rows:
             self.about.append(r)
         self.wb.save(self.path)

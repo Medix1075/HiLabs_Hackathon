@@ -1,21 +1,25 @@
-"""Tag every provider reference in a rate file as PPO, NON_PPO or UNKNOWN.
+"""Give every provider reference in a rate file a network status.
 
 Why this exists: C2 found that all of Health Net's California group plans share one rate file
 whose network_name is blank, so PPO and HMO providers sit in the same file with nothing on the
 reference saying which is which. A provider can also be in both networks under two different
-references, with two different prices, so the tag belongs to the reference, not to the NPI.
+references, with two different prices, so the status belongs to the reference, not to the NPI.
 
-Evidence, strongest first (weights in config/c4.yaml):
-  network_name  the reference's own network_name, mapped with C2's network-name rules
-  file_label    C2 says the whole file is a single PPO network (no mixing)
-  directory     the reference's NPIs/TINs appear in a payer directory under a PPO or non-PPO network
-  capitation    the reference is paid per member per month for some services, an HMO arrangement
-  dual_contract (hypothesis) one TIN in two references with different prices: the higher-paid one is PPO
-  propagation   (hypothesis) label spreading over references that are listed together for the same price
+Evidence (weights in config/c4.yaml), graded by what it can prove:
+  network_name   (direct) the reference's own network_name, mapped with C2's network-name rules
+  file_label     (direct) C2 says the whole file is a single PPO network (no mixing)
+  directory      (direct) an NPI listed in a PPO / non-PPO network, when the listing can only be
+                 about this reference; TIN-only, name + ZIP, shared or generic matches are weak
+  capitation     (direct, non-PPO) paid per member per month for some services: an HMO arrangement
+  oon_ppo_plan   (direct, non-PPO) paid out of network by a PPO plan (allowed-amount file)
+  dual_contract  (inferred) one TIN in two references with different prices: the higher-paid one is PPO
+  propagation    (inferred) label spreading over references that are listed together for the same price
 
-The two hypotheses are measured against references whose network is already known and are used
-only when they pass (precision / held-out accuracy in the config), the same rule C2 uses for its
-plan-name hypotheses. Every decision keeps its evidence string.
+The evidence is weighed into a tag (PPO / NON_PPO / UNKNOWN), then network_status() turns tag plus
+evidence grades into CONFIRMED_PPO / PPO_CANDIDATE / UNRESOLVED / CONFIRMED_NON_PPO: only direct
+evidence confirms. The two hypotheses are measured against references whose network is already known
+and are used only when they pass (precision / held-out accuracy in the config), the same rule C2 uses
+for its plan-name hypotheses. Every decision keeps its evidence string.
 """
 from __future__ import annotations
 
@@ -100,8 +104,9 @@ def _seed_directory(ev: Evidence, con, file_id: int, directory, cfg: dict) -> tu
     - an NPI in several references (e.g. a PPO and an HMO contract under one TIN) only says that
       at least one of them is in that network. That evidence is held back as "shared" and given
       out later by exclusion (see _allocate_shared);
-    - a listing that matches only by TIN, or lists the NPI under a different TIN, links the provider
-      to a group, not to this contract: weak evidence ("directory_weak"), a candidate at most;
+    - a listing that matches only by TIN, lists the NPI under a different TIN, or was linked to the
+      NPI by name + ZIP only, does not pin the provider to this contract: weak evidence
+      ("directory_weak"), a candidate at most;
     - a listing under a generic payer name (no network named) is only noted ("directory_generic").
     """
     if not directory or not directory.enabled:
@@ -148,7 +153,8 @@ def _seed_directory(ev: Evidence, con, file_id: int, directory, cfg: dict) -> tu
         if ref not in ev.index:
             continue
         k = sum(kinds.values())
-        why = ", ".join(f"{v} by {'TIN only' if kk == 'tin' else 'NPI under another TIN'}" for kk, v in kinds.items())
+        what = {"tin": "TIN only", "npi_tin_mismatch": "NPI under another TIN", "name_zip": "name + ZIP, no NPI shown"}
+        why = ", ".join(f"{v} by {what.get(kk, kk)}" for kk, v in kinds.items())
         ev.add(ev.index[ref], side, w_weak * k / members[ref], "directory_weak",
                f"{k}/{members[ref]} members matched a {'PPO' if side == PPO else 'non-PPO'} listing weakly ({why})")
     pending = [{"side": side, "refs": sorted(refs), "npis": k, "w": w, "members": members, "done": False}
@@ -502,7 +508,7 @@ def tag_references(con: sqlite3.Connection, file_id: int, file_meta: dict, cfg: 
     for i, ref in enumerate(ev.ref_ids):
         p, n = float(ev.ppo[i]), float(ev.non[i])
         if p + n == 0:
-            tag, conf, note = UNKNOWN, "none", "no network evidence"
+            tag, conf, note = UNKNOWN, "none", "; ".join(ev.notes[i])[:500] or "no network evidence"
         else:
             share = max(p, n) / (p + n)
             if share >= min_share:

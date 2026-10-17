@@ -5,3 +5,4 @@ PyYAML>=6.0
 openpyxl>=3.1
 numpy>=1.24
 pytest>=7.4
+playwright>=1.40   # only for python -m ptd_dir capture (uses an installed Chrome/Edge)

@@ -450,3 +450,135 @@ def test_network_check_sample_and_precision(world, tmp_path):
     assert conf["share_ppo"] == 1.0 and conf["checked"] == min(30, conf["checked"]) and conf["ci95"][0] > 0.85
     text = (tmp_path / "c6_network_accuracy.md").read_text()
     assert "| CONFIRMED_PPO |" in text and "Provider references:" in text
+
+
+# ------------------------------------------------------------------ PPO directory: capture -> replay -> build -> C4
+def _browser():
+    import glob as _glob
+    import importlib.util
+    import os
+    if importlib.util.find_spec("playwright") is None:
+        return None
+    for p in [os.environ.get("PTD_TEST_BROWSER", "")] + _glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome"):
+        if p and Path(p).exists():
+            return p
+    return None
+
+
+def _directory_site(listings):
+    """A tiny directory app: the page POSTs a search; the API answers per ZIP, two providers a page."""
+    html = b"""<html><body>search<script>
+      fetch('/api/search', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({criteria: {zip: '%s', network: 'PPO'}, paging: {page: 1, size: 2}})})
+        .then(r => r.json()).then(d => { document.body.innerText = 'results ' + d.data.results.length; });
+    </script></body></html>"""
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            self.wfile.write(html % listings[0]["zip"].encode())
+
+        def do_POST(self):
+            q = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            z, page = q["criteria"]["zip"], int(q["paging"]["page"])
+            hits = [l for l in listings if l["zip"] == z][(page - 1) * 2: page * 2]
+            body = {"data": {"results": [
+                {**({"npiNumber": str(l["npi"])} if l.get("show_npi") else {}),
+                 "provider": {"name": {"first": l["first"], "last": l["last"] + ", MD"}},
+                 "locations": [{"name": "Clinic", "address": {"street1": l["street"], "city": l["city"],
+                                                              "state": "CA", "zip": l["zip"] + "-0001"}}],
+                 "networks": [{"name": "Health Net PPO"}]} for l in hits]}}
+            data = json.dumps(body).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(data)
+
+        def log_message(self, *a):
+            pass
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, f"http://127.0.0.1:{srv.server_address[1]}"
+
+
+def test_directory_capture_replay_build_confirms_ppo(world, tmp_path):
+    from ptd_dir.cli import main as ptd_dir
+    browser = _browser()
+    if browser is None:
+        pytest.skip("playwright / a Chromium browser is not available")
+    con, truth = world["con"], world["truth"]
+    names = dict(rows(con, "SELECT npi, name FROM c5_providers"))
+    listings = []
+    for g, mode in ((37, "npi"), (38, "name+address"), (39, "name+zip")):
+        tin = str(950000000 + g)
+        site = truth["tin_site"][tin]
+        n = sorted(m for m in truth["tin_npis"][tin] if names.get(m))[0]
+        first, last = names[n].split()[0], names[n].split()[-1]
+        street = site[0] if mode != "name+zip" else "99 Somewhere Else"
+        listings.append({"npi": n, "show_npi": mode == "npi", "first": first, "last": last, "street": street,
+                         "city": site[2], "zip": site[3], "mode": mode, "g": g})
+    srv, base = _directory_site(listings)
+    try:
+        cap = tmp_path / "capture.jsonl"
+        assert ptd_dir(["capture", "--url", base + "/", "--network", "Health Net PPO", "--out", str(cap),
+                        "--browser", browser, "--headless", "--stop-after", "3"]) == 0
+        assert cap.exists() and 'criteria' in cap.read_text()
+        zips = tmp_path / "zips.txt"
+        zips.write_text("\n".join(sorted({l["zip"] for l in listings})) + "\n")
+        rep = tmp_path / "replay.jsonl"
+        assert ptd_dir(["replay", "--capture", str(cap), "--vary", f"zip=@{zips}", "--vary", "page=1..5",
+                        "--delay", "0", "--out", str(rep)]) == 0
+        out = tmp_path / "directory.csv"
+        assert ptd_dir(["build", "--capture", str(cap), str(rep), "--db", world["db"], "--out", str(out)]) == 0
+    finally:
+        srv.shutdown()
+    built = {int(r["npi"]): r for r in csv.DictReader(open(out))}
+    for l in listings:
+        assert built[l["npi"]]["npi_source"] == ("listed" if l["mode"] == "npi" else l["mode"])
+        assert built[l["npi"]]["network_name"] == "Health Net PPO"
+    # C4 with only this directory: listed and name+address confirm, name+zip stays a candidate
+    db = str(tmp_path / "r.sqlite")
+    assert c4(["run", "--files", str(world["rate_file"]), "--workbook", str(world["workbook"]), "--directory", str(out),
+               "--db", db, "--out", str(tmp_path / "c4"), "--workers", "1", "--as-of", AS_OF]) == 0
+    st = dict(sqlite3.connect(db).execute("SELECT ref_id, status FROM c4_refs WHERE ref_id IN ('37', '38', '39')"))
+    assert st == {"37": "CONFIRMED_PPO", "38": "CONFIRMED_PPO", "39": "PPO_CANDIDATE"}
+
+
+def test_directory_parser_finds_providers_in_any_shape():
+    from ptd_dir.match import name_key
+    from ptd_dir.parse import providers_in
+    n1, n2 = ca_world.npi(100000077), ca_world.npi(100000078)
+    body = {"data": {"results": [
+        {"npiNumber": str(n1), "provider": {"name": {"first": "Pat", "last": "Doe7"},
+                                            "specialties": [{"description": "Family Medicine"}]},
+         "locations": [{"name": "Main Clinic", "address": {"street1": "1200 West Third Street", "city": "Los Angeles",
+                                                           "zip": "90017-1234"}}],
+         "networks": [{"name": "Health Net PPO"}]},
+        {"provider": {"fullName": "Group X"}, "practitioners": [{"npi": str(n2), "firstName": "Bo", "lastName": "Z"}],
+         "address": {"line1": "1 Medical Plaza Dr", "city": "Irvine", "zip": "92618"}}]}}
+    got = {(r["npi"], r["name"]): r for r in providers_in(body)}
+    a = got[(str(n1), "Pat Doe7")]
+    assert (a["zip"], a["specialty"], a["listing_networks"]) == ("90017", "Family Medicine", "Health Net PPO")
+    assert got[(str(n2), "Bo Z")]["address_line1"] == "1 Medical Plaza Dr"   # practitioner takes the group's site
+    assert ("", "Main Clinic") not in got                                     # a location is not a provider
+    assert name_key("", "", "LEE, ANN M MD") == name_key("Ann", "Lee, MD") == ("ANN", "LEE")
+
+
+def test_allowed_amount_file_of_ppo_plans_is_non_ppo_evidence(world, tmp_path):
+    n46 = sorted(world["truth"]["tin_npis"]["950000046"])[0]     # HMO ref 46: only inferred non-PPO so far
+    oon = tmp_path / "oon.json"
+    oon.write_text(json.dumps({"reporting_entity_name": "x", "out_of_network": [
+        {"name": "visit", "billing_code_type": "CPT", "billing_code": "99213", "allowed_amounts": [
+            {"tin": {"type": "ein", "value": "950000046"}, "billing_class": "professional", "payments": [
+                {"allowed_amount": 70.0, "providers": [{"billed_charge": 150.0, "npi": [n46]}]}]}]}]}))
+    db = str(tmp_path / "r.sqlite")
+    args = ["run", "--files", str(world["rate_file"]), "--workbook", str(world["workbook"]), "--db", db,
+            "--out", str(tmp_path / "c4"), "--workers", "1", "--as-of", AS_OF, "--oon", str(oon)]
+    assert c4(args + ["--oon-ppo-only"]) == 0
+    st, basis = sqlite3.connect(db).execute("SELECT status, status_basis FROM c4_refs WHERE ref_id = '46'").fetchone()
+    assert st == "CONFIRMED_NON_PPO" and "oon_ppo_plan" in basis
+    assert c4(args) == 0                                           # a shared file is only a note
+    st, ev = sqlite3.connect(db).execute("SELECT status, evidence FROM c4_refs WHERE ref_id = '46'").fetchone()
+    assert st != "CONFIRMED_NON_PPO" and "shared allowed-amount file" in ev

@@ -84,7 +84,7 @@ def write_metrics(path: Path, cfg: dict, rows: list[dict], providers: list[dict]
               "- Negotiated rates are not paid amounts: a cheap rate on a code a provider rarely bills matters little, "
               "which is why codes are weighted by specialty volume.",
               "- Without utilisation per provider, the weights are the specialty's typical mix, not the provider's own.",
-              "- Health Net's CA file mixes PPO and HMO references; rates carry C4's network tag so the benchmark can be "
-              "re-run on PPO-tagged rates only once the tagging has evidence.",
+              "- Health Net's CA file mixes PPO and HMO references. Confirmed PPO rates and candidate rates are scored "
+              "separately (`--set`), so unconfirmed rates never enter the confirmed peer medians.",
               ""]
     path.write_text("\n".join(lines))

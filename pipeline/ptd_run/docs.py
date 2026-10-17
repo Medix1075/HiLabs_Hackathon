@@ -64,7 +64,10 @@ def write_logic(out: Path) -> Path:
     if c2:
         L += [f"- Final labels: {c2.get('final_types')}.", f"- PPO plan rows: **{c2.get('in_scope_ppo_rows')}**; "
               f"PPO rate files: **{c2.get('ppo_rate_files')}**.",
-              f"- EnhancedCare PPO included: {c2.get('include_enhancedcare_ppo')}.", ""]
+              f"- EnhancedCare PPO included: {c2.get('include_enhancedcare_ppo')}.",
+              f"- Allowed-amount (out-of-network) files listed by in-scope plans: {c2.get('allowed_amount_files')}, of "
+              f"which {c2.get('allowed_amount_files_ppo_only')} are listed only by PPO plans "
+              "(`c2_allowed_amount_files.csv`; C4 reads them as network evidence).", ""]
     if conflicts:
         kinds = defaultdict(int)
         for r in conflicts:
@@ -84,25 +87,50 @@ def write_logic(out: Path) -> Path:
           "When PPO and HMO plans share one rate file and `network_name` is blank (Health Net CA), the file itself must "
           "be split. The unit is the **provider reference** (one TIN with its NPIs under one contract), not the NPI, "
           "because the same doctor can hold a PPO and an HMO contract at different prices.", "",
-          "| Evidence | Weight | Meaning |", "|---|---|---|",
-          "| network_name | 1.0 | The reference's own network label |",
-          "| file label | 0.9 | C2 says the whole file is one PPO network |",
-          "| payer directory | 0.9 | The reference's NPIs are listed in a PPO or non-PPO network (Plan-Net FHIR directory) |",
-          "| capitation | 0.8 | The reference is paid per member per month for some services: an HMO arrangement |",
-          "| dual contract (hypothesis) | 0.5 | One TIN in two references with mostly the same NPIs at different prices: the higher-paid one is PPO |",
-          "| label spreading (hypothesis) | spread | References priced together for the same codes share a contract |",
-          "", "A reference is tagged PPO or NON_PPO when one side holds >= 65% of its evidence, otherwise UNKNOWN. "
-          "Hypotheses are used only after passing a held-out test (precision >= 0.9 on >= 10 pairs; 5-fold accuracy "
-          ">= 0.9). **PPO and UNKNOWN references are kept, NON_PPO are dropped**, so no rate is thrown away without "
-          "evidence; every row carries its tag and confidence.", ""]
+          "Two questions are kept apart: *is this the right provider and address?* (C5) and *is this contract the PPO?* "
+          "(C4). Evidence for the first never answers the second.", "",
+          "| Evidence | Strength | Meaning |", "|---|---|---|",
+          "| network_name | direct | The reference's own network label |",
+          "| file label | direct | C2 says the whole file is one PPO network (not used for a mixed file) |",
+          "| PPO directory, NPI listed | direct | The NPI is listed in the PPO network (Health Net's directory, "
+          "`python -m ptd_dir`) and the listing can only be about this reference: it is the NPI's only reference in "
+          "the file, or its other references are confirmed non-PPO |",
+          "| directory, name + street address | direct | A listing without an NPI matched to exactly one provider by "
+          "first + last name AND the same street site |",
+          "| capitation | direct (non-PPO) | Paid per member per month for some services: an HMO arrangement |",
+          "| allowed-amount file of PPO plans only | direct (non-PPO) | Paid out of network by a PPO plan |",
+          "| directory, shared / TIN only / name + ZIP / NPI under another TIN | weak | Links the provider to a group "
+          "or to the payer, not to this contract |",
+          "| listed under the payer's name only | weak | 'Accepts Health Net', no network named |",
+          "| dual contract (hypothesis) | inferred | One TIN in two references at different prices: the higher-paid one "
+          "is PPO. Used only after >= 90% precision on >= 10 known pairs |",
+          "| label spreading (hypothesis) | inferred | References priced together share a contract. Used only after "
+          ">= 90% 5-fold held-out accuracy |", "",
+          "Each reference then gets one **network status**:", "",
+          "| Status | Rule | Where its rates go |", "|---|---|---|",
+          "| CONFIRMED_PPO | Decided PPO with direct PPO evidence and no direct non-PPO evidence | Deliverable 1 |",
+          "| PPO_CANDIDATE | Some PPO evidence, all weak or inferred | Candidate file (1b) |",
+          "| UNRESOLVED | No PPO evidence, non-PPO by inference only, or direct evidence on both sides | Candidate file (1b) |",
+          "| CONFIRMED_NON_PPO | Decided non-PPO with direct non-PPO evidence | Not extracted |", "",
+          "Inference (price gaps, graph similarity, an address alone) is never enough to confirm. Hypotheses only add "
+          "evidence to references that have none, and are measured first. A pair in several contracts takes its rates "
+          "from the contracts with its best status only. C7 scores confirmed and candidate rates separately, so "
+          "unconfirmed rates never move the confirmed benchmark. `c6_network_accuracy.md` gives coverage per status "
+          "and, once the hand-check sample is filled in, precision with a 95% Wilson interval.", ""]
     for url, rep in (c4.get("network") or {}).items():
         L += [f"**{Path(url).name}**: {rep.get('references')} references. Evidence found: {rep.get('seeded_by')}. "
               f"Dual-contract hypothesis: {rep.get('dual_contract')}. Label spreading: {rep.get('propagation')}. "
-              f"Result: {rep.get('tags')}.", ""]
+              f"Network status: **{rep.get('statuses')}**.", ""]
+    for f in (c4.get("files") or []):
+        for o in f.get("oon_files") or []:
+            L.append(f"- Allowed-amount file {Path(str(o.get('url'))).name}: "
+                     + (f"{o.get('providers', 0):,} NPI-TIN pairs paid out of network; "
+                        f"{'listed only by PPO plans (non-PPO evidence)' if o.get('ppo_only') else 'shared with non-PPO plans (note only)'}"
+                        if not o.get("error") else f"not read ({o['error']})"))
     if c4 and not c4.get("directory"):
-        L += ["No payer directory was available in this run, so PPO membership could not be confirmed. References "
-              "without capitation stay UNKNOWN and are kept. A directory (`python -m ptd_c4 directory`) is the input "
-              "that would close this gap.", ""]
+        L += ["", "No PPO directory was available in this run, so no provider could be confirmed PPO from a listing. "
+              "Build one with `python -m ptd_dir` (capture the Health Net PPO search, replay it for the ZIPs where C4's "
+              "providers practise, build) and re-run from C4 with `--directory`.", ""]
     L += ["# Part B: linking TIN -> NPI -> address", ""]
     c5_logic = out / "c5/c5_logic.md"
     if c5_logic.exists():
