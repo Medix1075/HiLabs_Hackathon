@@ -25,7 +25,7 @@ pip install -r requirements.txt
 
 # Everything, C1 to C7, with the public provider files downloaded first:
 python -m ptd_run all --fetch-public --workbook "Rate Benchmarking Individual Weights_Hackathon.xlsx"
-pytest                                 # 89 offline tests
+pytest                                 # 90 offline tests
 ```
 
 `ptd_run all` runs C1, C2, C3, C4, C5, C6 and C7 in order and then writes `out/summary.md` and copies the four deliverables into `out/deliverables/`:
@@ -284,12 +284,12 @@ Reading took about 10 seconds with 3 workers, tagging under a second and extract
 ```bash
 python -m ptd_c5 fetch --what nppes dac nucc        # download into data/public/
 python -m ptd_c5 extract-nppes --nppes data/public/NPPES_Data_Dissemination_....zip --state CA   # optional, smaller file
-python -m ptd_c5 run --nppes ... --dac ... [--nppes-pl ...] [--directory ...] [--zip-county ...] [--npi-api 500]
+python -m ptd_c5 run --nppes ... --dac ... [--nppes-pl ...] [--directory ...] [--zip-county ...] [--npi-api auto|always|off|N]
 ```
 
 NPPES is self-reported and mostly stale, so C5 treats every source as a witness with a known reliability and adds the one thing only the rate file knows: **which other NPIs bill under the same TIN.** The full write-up, with this run's numbers and the closest calls, is generated as `c5_logic.md` (deliverable 2).
 
-1. **Gather candidates.** Each NPI's addresses come from NPPES (practice, mailing and the Practice Location Reference File), CMS Doctors & Clinicians (current Medicare enrolment, with the group's `org_pac_id`), the payer directory (with TIN when it has one), the NPI Registry API (optional, only for NPIs missing from the files), and the practice address of any Type 2 (organisation) NPI under the same TIN.
+1. **Gather candidates.** Each NPI's addresses come from NPPES (practice, mailing and the Practice Location Reference File), CMS Doctors & Clinicians (current Medicare enrolment, with the group's `org_pac_id`), the payer directory (with TIN when it has one), the [NPI Registry API](https://npiregistry.cms.hhs.gov/api-page), and the practice address of any Type 2 (organisation) NPI under the same TIN.
 2. **Standardise.** A local USPS Publication 28 standardiser (`address.py`: suffixes, directionals, unit designators, ordinal numbers, ZIP+4 trimmed) makes "123 North Main Street, Suite 4" and "123 N MAIN ST STE 4" the same address. Addresses are compared on **site** (number + street + ZIP5), so two suites in one building are one practice site.
 3. **Score each site** with a noisy-OR across independent source families: `p = 1 − Π(1 − best weight in family × recency)`. Sources in one family (all the NPPES variants) share their data, so only the best one counts. NPPES evidence decays with the record's age (half-life 3 years, floor 0.4). Weights: directory 0.75, CMS D&C 0.70, NPPES practice 0.45, mailing 0.10.
 4. **Make it TIN-specific.**
@@ -300,6 +300,8 @@ NPPES is self-reported and mostly stale, so C5 treats every source as a witness 
 5. **Penalties:** out of state × 0.3, PO box × 0.1. NPIs NPPES marks deactivated keep their rates but get no address.
 6. **Choose.** Up to 3 sites per NPI + TIN are kept: the best, plus any with confidence ≥ 0.5 and ≥ 75% of the best (doctors often work at several sites of one group). A site is **verified** when two independent families agree, when the payer directory lists it, or when confidence is ≥ 0.8.
 7. **Region** for C7 comes from the county (`--zip-county`, e.g. HUD's ZIP-county file) or else from the ZIP's first three digits, mapped to California market areas in the config.
+
+**NPI Registry API.** The API serves the NPPES record of one NPI live: name, entity type, taxonomies, status, practice and mailing address, and secondary practice locations. By default (`--npi-api auto`) C5 asks it for every NPI the NPPES file doesn't have, which means every NPI when no NPPES file is given. That way a run without the ~1 GB monthly ZIP still gets taxonomies (so C6 can assign specialties) and NPPES addresses. `--npi-api always` asks for every NPI even with a file, `off` never calls it, and a number caps the lookups. Calls run on 4 threads under one shared limit of 8 per second, retry on 429/5xx, and stop after 20 failures (e.g. when the API is blocked). Every answer, including "not found", is cached in `data/npi_api_cache.jsonl` for 30 days, so a rerun only asks for new NPIs. About 2,800 NPIs take roughly 6 minutes the first time. Set `PTD_NPI_API=off` for offline runs.
 
 The summary compares the chosen address with the NPPES practice address, which shows how much the resolution changed. Every candidate and its score is in `c5_candidates.csv` for audit.
 
@@ -365,17 +367,17 @@ If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even noth
 
 ## Tests
 
-`pytest` runs 89 offline tests in about 6 seconds.
+`pytest` runs 90 offline tests in about 6 seconds.
 
 - **C1 (9 tests):** scraper structure on a saved page, employee exclusion, date parsing, flattening, dedup, gzip.
 - **C2 (41 tests):** a miniature Centene world served over local HTTP. It covers gzip, `network_name` as string, list or blank, `in_network` before `provider_references`, `location` references, mixed and unreachable files, the scope traps, the EnhancedCare flag, and the real EOA/EC/CUSPPO name shapes.
 - **C3 (14 tests):** hand-built clean and dirty rate files with every problem counted in advance, NPI check digits, plain and weighted code coverage (a workbook in the HiLabs layout), provider tags (including references after `in_network`), `location` references, byte-cap sampling, unreachable files and the CLI.
 - **Integration (1 test):** `--run-c1` going from a saved page through C1 into C2.
-- **C4 to C7 (24 tests):** one synthetic California world (`tests/ca_world.py`) run through C4, C5, C6, C7 and the summary, with the truth known in advance:
+- **C4 to C7 (25 tests):** one synthetic California world (`tests/ca_world.py`) run through C4, C5, C6, C7 and the summary, with the truth known in advance:
   - C4: no reference gets the wrong network tag; HMO-only and capitated references are excluded; the hypotheses are gated; variants are never mixed; the tie-break picks the right rate; code scope works; the result is the same with 1 or 3 workers and with `in_network` before or after `provider_references`.
   - C5: every NPI + TIN's rank-1 address is its true site, including the NPI under two TINs, stale NPPES records, deactivated NPIs and NPIs missing from NPPES. Also the standardiser, the logic file and a run with no sources.
   - C6 and C7: the required column order, headline variant and specialty source; the cost index rises with the true price tier; benchmark statistics; the metrics file and scored rate file.
-  - The Plan-Net FHIR crawler, the NPI Registry API and the NPPES extractor, against local HTTP servers.
+  - The Plan-Net FHIR crawler, the NPI Registry API (as a fallback for missing NPIs, as the only source with its cache reused on a rerun) and the NPPES extractor, against local HTTP servers.
 
 ## Layout
 

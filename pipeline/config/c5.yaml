@@ -68,11 +68,20 @@ verified:
 
 # --------------------------------------------------------------- live lookups (optional)
 npi_api:
+  # CMS NPI Registry API (https://npiregistry.cms.hhs.gov/api-page): the NPPES record of one NPI, live.
+  #   auto    look up only the NPIs the NPPES file doesn't have; every NPI when no NPPES file is given
+  #   always  look up every NPI, even with a file (fresher than the monthly file)
+  #   off     never call it
+  mode: auto
   base_url: https://npiregistry.cms.hhs.gov/api/
-  max_lookups: 0                 # 0 = off; --npi-api N looks up at most N NPIs missing from the files
-  requests_per_second: 5
+  max_lookups: 50000             # cap per run; answers are cached, so a rerun continues where this stopped
+  requests_per_second: 8         # shared across threads; CMS publishes no limit, so stay polite
+  threads: 4
+  retries: 3                     # on 429 / 5xx, with backoff
   timeout_seconds: 20
-  stop_after_failures: 5
+  stop_after_failures: 20        # e.g. the API is blocked: give up and carry on with the other sources
+  cache_path: data/npi_api_cache.jsonl
+  cache_days: 30                 # re-ask after this many days
   user_agent: "hilabs-c5-pipeline/1.0"
 
 # --------------------------------------------------------------- geography (used by C7's peer groups)

@@ -36,6 +36,27 @@ def _count_csv(path: str | Path) -> int | None:
         return max(0, sum(1 for _ in csv.reader(fh)) - 1)
 
 
+def _input_warnings(c4: dict, c5: dict) -> list[str]:
+    """Inputs whose absence changes the numbers above, so nobody mistakes a missing file for a finding."""
+    w = []
+    if c4 and not c4.get("directory"):
+        w.append("No payer directory (C4 --directory): PPO providers can't be confirmed, so references without "
+                 "capitation stay UNKNOWN and are kept.")
+    if c4 and c4.get("code_scope") == "all":
+        w.append("No HiLabs workbook (--workbook): every billing code was extracted and C7 weights codes equally.")
+    used = (c5.get("sources_used") or {}) if c5 else None
+    if used is not None:
+        if "nppes" not in used and "npi_api" not in used:
+            w.append("No NPPES file (C5 --nppes): no taxonomy, name or NPPES address for any NPI, so most addresses "
+                     "and specialties are missing. Pass the monthly NPPES ZIP with --nppes, or let C5 use the NPI "
+                     "Registry API (--npi-api auto, the default, needs internet access).")
+        if "dac" not in used:
+            w.append("No CMS Doctors and Clinicians file (C5 --dac): one fewer independent address source.")
+        if "zip_county" not in used:
+            w.append("No ZIP-county file (C5 --zip-county): C7's regions come from ZIP3 areas, not counties.")
+    return w
+
+
 def write_summary(out: Path, data: Path) -> dict:
     """Deliverable 4: one page of run statistics, from whatever stage outputs exist."""
     c2, c3, c4 = _load(out / "c2/c2_run_summary.json"), _load(out / "c3/c3_run_summary.json"), _load(out / "c4/c4_run_summary.json")
@@ -52,12 +73,18 @@ def write_summary(out: Path, data: Path) -> dict:
         "file_quality_scores": c3.get("scores"),
         "rate_files_processed": len([f for f in c4.get("files", []) if f.get("status") == "ok"]) if c4 else None,
         "price_rows_read": sum(f.get("price_rows") or 0 for f in c4.get("files", [])) if c4 else None,
+        "file_shape": {f["url"]: {"MB": round((f.get("size_bytes") or 0) / 1e6, 1), "references": f.get("references"),
+                                  "in_network_items": f.get("items"), "price_rows_all_codes": f.get("all_price_rows"),
+                                  "distinct_codes": f.get("distinct_codes"),
+                                  "workbook_codes_found": f.get("workbook_codes_found")}
+                       for f in c4.get("files", []) if f.get("status") == "ok"} if c4 else None,
         "network_tags": {u: r.get("tags") for u, r in c4.get("network", {}).items()} if c4 else None,
         "rates_extracted": (c4.get("totals") or {}).get("rate_rows"),
         "unique_npis": c4.get("distinct_npis"), "unique_tins": c4.get("distinct_tins"),
         "pct_npis_with_address": c5.get("pct_npis_with_address"),
         "pct_npis_with_verified_address": c5.get("pct_npis_with_verified_address"),
         "best_address_vs_nppes": c5.get("best_address_vs_nppes_practice"),
+        "address_sources_used": (", ".join(sorted(c5.get("sources_used") or {})) or "none") if c5 else None,
         "rate_file_rows": c6.get("rows"), "rate_file_rows_with_address": c6.get("rows_with_address"),
         "specialty_sources": c6.get("specialty_sources"),
         "providers_scored": c7.get("providers_scored"), "tins_scored": c7.get("tins_scored"),
@@ -69,10 +96,11 @@ def write_summary(out: Path, data: Path) -> dict:
         ("CA commercial group plan rows (C2)", "in_scope_plan_rows"), ("PPO plan rows (C2)", "ppo_plan_rows"),
         ("PPO rate files (C2)", "ppo_rate_files"), ("Plan types (C2)", "plan_types"),
         ("File quality score per file (C3)", "file_quality_scores"), ("Rate files processed (C4)", "rate_files_processed"),
-        ("Price rows read for in-scope codes (C4)", "price_rows_read"), ("Network tags of provider references (C4)", "network_tags"),
+        ("Rate file shape (C4)", "file_shape"), ("Price rows read for in-scope codes (C4)", "price_rows_read"), ("Network tags of provider references (C4)", "network_tags"),
         ("Rates extracted: NPI x TIN x code x variant (C4)", "rates_extracted"), ("Unique NPIs (C4)", "unique_npis"),
         ("Unique TINs (C4)", "unique_tins"), ("% NPIs linked to an address (C5)", "pct_npis_with_address"),
         ("% NPIs linked to a verified address (C5)", "pct_npis_with_verified_address"),
+        ("Address sources used (C5)", "address_sources_used"),
         ("Best address vs NPPES practice address (C5)", "best_address_vs_nppes"),
         ("Rows in the provider rate file (C6)", "rate_file_rows"), ("... of which with an address", "rate_file_rows_with_address"),
         ("Specialty source per NPI (C6)", "specialty_sources"), ("Providers scored (C7)", "providers_scored"),
@@ -85,6 +113,10 @@ def write_summary(out: Path, data: Path) -> dict:
         if isinstance(v, dict):
             v = "; ".join(f"{a}: {b}" if not isinstance(b, dict) else f"{Path(str(a)).name}: {b}" for a, b in v.items())
         lines.append(f"| {label} | {'not run' if v in (None, '') else v} |")
+    warnings = _input_warnings(c4, c5)
+    if warnings:
+        lines += ["", "## Inputs missing from this run", ""] + [f"- {w}" for w in warnings]
+    s["input_warnings"] = warnings
     lines += ["", "## Deliverables", "",
               "| # | Deliverable | File |", "|---|---|---|",
               "| 1 | Provider rate file | `out/c6/c6_provider_rate_file.xlsx` (with cost columns: `out/c7/c7_provider_rate_file_scored.xlsx`) |",
@@ -147,7 +179,7 @@ def run_all(args) -> int:
         "c5": lambda: c5(["run", "--db", db, "--out", str(out / "c5")] + as_of
                          + sum(([f"--{k.replace('_', '-')}", str(getattr(args, k))] for k in
                                 ("nppes", "nppes_pl", "dac", "directory", "zip_county") if getattr(args, k)), [])
-                         + (["--npi-api", str(args.npi_api)] if args.npi_api else [])),
+                         + (["--npi-api", str(args.npi_api)] if args.npi_api is not None else [])),
         "c6": lambda: c6(["run", "--db", db, "--out", str(out / "c6")] + wb + (["--nucc", args.nucc] if args.nucc else [])),
         "c7": lambda: c7(["run", "--db", db, "--out", str(out / "c7"), "--c6-out", str(out / "c6")] + wb
                          + (["--network-tags", *args.network_tags] if args.network_tags else [])),
@@ -189,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--nppes-pl", help="C5: NPPES Practice Location Reference File")
     a.add_argument("--dac", help="C5: CMS Doctors and Clinicians file")
     a.add_argument("--zip-county", help="C5: ZIP to county CSV")
-    a.add_argument("--npi-api", type=int, help="C5: NPI Registry API lookups for NPIs missing from the files")
+    a.add_argument("--npi-api", help="C5: NPI Registry API: auto (default), always, off, or a number of lookups")
     a.add_argument("--nucc", help="C6: NUCC taxonomy CSV")
     a.add_argument("--network-tags", nargs="+", help="C7: benchmark only these network tags (e.g. PPO)")
     a.add_argument("--grade-by-network", action="store_true", help="re-run C3 split by C4's network tags")

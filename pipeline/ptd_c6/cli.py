@@ -134,7 +134,9 @@ def run(args) -> int:
     if has_c5:
         cols = [d[1] for d in con.execute("PRAGMA table_info(c5_providers)")]
         providers = {r[0]: dict(zip(cols, r)) for r in con.execute("SELECT * FROM c5_providers")}
-    npis = [r[0] for r in con.execute("SELECT DISTINCT npi FROM c4_pairs")]
+    # only NPIs that have at least one extracted rate (pairs whose codes are all out of scope have no rows)
+    npis = [r[0] for r in con.execute("SELECT DISTINCT npi FROM c4_pairs WHERE sig_id IN "
+                                      "(SELECT sig_id FROM c4_sig_rates)")]
     need_codes = []
     for n in npis:
         p = providers.get(n, {})
