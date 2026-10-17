@@ -1,0 +1,95 @@
+# C4 configuration: tag each provider group's network, then extract one clean rate per
+# provider x billing code x price variant. Every threshold and judgement call lives here.
+
+# --------------------------------------------------------------- reading the file
+stream:
+  cache_dir: data/rate_files      # remote rate files are downloaded here once, then read locally
+  reuse_cache: true               # skip the download when a cached copy of the same size exists
+  timeout_seconds: 300
+  retries: 3
+  user_agent: "hilabs-c4-pipeline/1.0"
+  # in_network is split across this many worker processes. Each worker parses the file but only
+  # handles every Nth item, so the Python work (the slow part) is spread over the CPU cores.
+  # null = number of CPU cores minus one (at least 1).
+  workers: null
+  batch_rows: 50000               # SQLite insert batch size
+  max_location_fetches: 200       # provider_references given by URL ("location") fetched at most this many times
+  progress_every_items: 5000
+
+# Date the rates are judged against (expired rates). null = today (UTC).
+as_of: null
+
+# --------------------------------------------------------------- which codes to keep
+codes:
+  # workbook = only the CPT/HCPCS codes in the HiLabs "Rate Benchmarking Individual Weights" workbook
+  #            (583 codes; --workbook). Every item is still read for network evidence.
+  # all      = every billing code in the file.
+  # With scope "workbook" and no workbook given, C4 falls back to "all" and says so.
+  scope: workbook
+
+# --------------------------------------------------------------- network tagging (PPO vs not)
+# Health Net's CA file mixes PPO and HMO providers and leaves network_name blank (C2), so each
+# provider reference (provider_group_id) gets a network tag from the evidence below.
+network:
+  # Labels from C2's network-name rules (config/c2.yaml label_rules) that count as PPO.
+  ppo_labels: [PPO_FULL, PPO_ENHANCEDCARE]
+  # Evidence weights. A reference's evidence is summed per side (PPO / NON_PPO).
+  seed_weights:
+    network_name: 1.0            # network_name on the reference itself (strongest, when not blank)
+    file_label: 0.9              # C2 says the whole file is one network (no mixing)
+    directory: 0.9               # NPIs/TINs found in a payer directory for a PPO or non-PPO network
+    capitation: 0.8              # reference paid by capitation (per member per month): an HMO arrangement
+  capitation_min_share: 0.02     # at least this share of a reference's price rows must be capitation
+  # Hypothesis: when one TIN appears in two references with different rates for the same codes,
+  # the higher-paid reference is the PPO one. Used only if it reaches min_precision on references
+  # whose network is already known (same rule as C2's hypothesis signals).
+  dual_contract:
+    enabled: true
+    weight: 0.5
+    min_npi_overlap: 0.5          # the two references must list mostly the same NPIs
+    min_codes_compared: 3
+    min_ratio: 1.05               # median rate ratio needed to call one reference "higher"
+    min_precision: 0.90
+    min_tested: 10
+  # Label spreading over the "co-listed" graph: references listed together in one negotiated_rates
+  # entry share a price, which usually means they share a contract. Seeds spread to their neighbours.
+  # Used only if held-out seeds are recovered with at least min_holdout_accuracy.
+  propagation:
+    enabled: true
+    iterations: 30                # stops early once labels stop changing
+    alpha: 0.8                    # how strongly a seeded reference keeps its own label (label spreading)
+    max_refset_size: 5000         # very large co-listings (file-wide fee schedules) carry no contract signal
+    folds: 5                      # k-fold check: each seed is hidden once and must be recovered
+    min_holdout_accuracy: 0.90
+    min_holdout_seeds: 20
+    min_seeds_per_side: 5         # spreading needs known PPO AND known non-PPO references to be checked
+    seed: 7
+  decide_min_share: 0.65          # a side needs this share of the evidence to win; otherwise UNKNOWN
+  # Which tags go forward to the rate table. UNKNOWN is kept by default because on the real CA file
+  # most references have no evidence at all; every rate row carries its tag and confidence so the
+  # analyst can filter.
+  include_tags: [PPO, UNKNOWN]
+
+# --------------------------------------------------------------- picking one rate
+extract:
+  # Price rows paid this way are not per-service prices and are not extracted.
+  exclude_arrangements: [capitation]
+  drop_zero: true
+  drop_expired: true
+  evergreen_dates: ["9999-12-31"]
+  # After cleaning, one provider can still have several rates for the same code and the same
+  # variant (negotiated_type, billing_class, setting, place of service, modifiers), e.g. when it is
+  # listed in two contracts. The tie-break, in order:
+  #   1. network   - the rate from the reference with the strongest PPO evidence
+  #   2. expiry    - the latest expiration_date (evergreen 9999-12-31 counts as latest)
+  #   3. support   - the rate backed by the most price rows / references
+  #   4. lowest    - the lower rate (conservative, deterministic)
+  tie_break: [network, expiry, support, lowest]
+
+# --------------------------------------------------------------- outputs
+outputs:
+  rates_csv: false                # true writes out/c4/c4_rates.csv.gz: every NPI x TIN x code x variant rate.
+                                  # Off by default: 16M rows on a 385 MB file; the c4_rates view in the store has them all.
+  sample_rows_in_xlsx: 5000       # rows of the rate table copied into c4_results.xlsx for a quick look
+  # Files C3 graded below this score are skipped (null = extract from every file C2 listed).
+  min_c3_score: null

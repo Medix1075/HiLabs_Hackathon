@@ -1,0 +1,22 @@
+# C6 configuration: build the provider rate file (deliverable 1).
+
+# C4 keeps one rate per price variant. The rate file has one row per NPI x TIN x address x code,
+# so one variant is the "headline" rate. The preference, in order (first difference decides):
+headline:
+  negotiated_type: [negotiated, fee schedule, derived, per diem, percentage]
+  # Individuals (Type 1) bill professional claims; organisations (Type 2: hospitals, ASCs, labs)
+  # bill institutional ones when both exist. Unknown type is treated as Type 1.
+  billing_class:
+    "1": [professional, institutional]
+    "2": [institutional, professional]
+  setting: [outpatient, both, inpatient, ""]
+  preferred_pos: ["11"]            # office; a variant whose place-of-service list includes it is preferred
+  prefer_no_modifier: true
+
+specialty:
+  infer_min_codes: 3               # inference from billed codes needs at least this many workbook codes
+  infer_min_f: 0.25
+
+excel:
+  max_rows: 3000000                # beyond this the Excel stops and the CSV holds everything
+  rows_per_sheet: 1000000          # Excel's limit is 1,048,576
