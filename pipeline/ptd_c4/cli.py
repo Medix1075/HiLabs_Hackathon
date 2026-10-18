@@ -280,6 +280,8 @@ def run(args) -> int:
         "npi_limit": len(npis) if npis is not None else None,
         "ppo_check": dict(Counter(r["verdict"] for r in check_rows)) if check_rows else None,
         "network_status": {st: sum(rep["statuses"].get(st, 0) for rep in network_reports.values()) for st in STATUSES},
+        "pair_network_status": {st: sum(rep.get("pair_statuses", {}).get(st, 0) for rep in network_reports.values())
+                                for st in STATUSES},
         "files": summary_files, "network": network_reports, "extraction": extract_reports,
         "totals": {k: sum(r.get(k, 0) for r in extract_reports.values()) for k in ("rate_rows", "pairs", "signatures")},
         "distinct_npis": con.execute("SELECT COUNT(DISTINCT npi) FROM c4_pairs WHERE sig_id IN "

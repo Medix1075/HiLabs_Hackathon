@@ -28,6 +28,7 @@ from .fetch import extract_nppes, fetch, read_zip_county
 from .logic import write_logic
 from .address import standardize
 from .resolve import Resolver
+from .geocode import site_aliases
 from .sources import directory_candidates, directory_tin_candidates, npi_api_lookup, read_dac, read_nppes, read_nppes_pl
 
 ADDRESS_FIELDS = ["npi", "tin", "rank", "address", "line1", "unit", "city", "state", "zip5", "county", "region",
@@ -119,7 +120,17 @@ def run(args) -> int:
         log(f"[input] ZIP to county: {len(zip_county):,} ZIPs")
         used["zip_county"] = args.zip_county
 
-    res = Resolver(cfg, cfg["_as_of"], providers, dac_facts, zip_county)
+    # E9: one place spelled two ways. The Census geocoder gives each site a canonical address (geocode.py).
+    by_site = {}
+    for c in cands:
+        if c.get("line1"):
+            a = standardize(c["line1"], c.get("line2", ""), c.get("city", ""), c.get("state", ""), c.get("zip", ""))
+            if a.line1:
+                by_site.setdefault(a.site_key, a)
+    site_alias, geo_report = site_aliases(by_site, cfg, log)
+    if site_alias:
+        used["census_geocoder"] = f"{geo_report['merged_sites']} sites merged"
+    res = Resolver(cfg, cfg["_as_of"], providers, dac_facts, zip_county, site_alias)
     n = res.add_candidates(cands)
     log(f"[c5] {n:,} candidate addresses standardised into {len(res.addr):,} distinct sites")
     res.build_tin_view(pairs)
@@ -171,8 +182,8 @@ def run(args) -> int:
     nppes_site = {}
     for c in cands:
         if c["source"] in ("nppes_practice", "npi_api_practice") and c.get("line1"):
-            nppes_site[c["npi"]] = standardize(c["line1"], c.get("line2", ""), c.get("city", ""), c.get("state", ""),
-                                               c.get("zip", "")).site_key
+            nppes_site[c["npi"]] = res.site_key(standardize(c["line1"], c.get("line2", ""), c.get("city", ""),
+                                                            c.get("state", ""), c.get("zip", "")))
     vs_nppes = Counter("no NPPES address" if r["npi"] not in nppes_site else
                        "same as NPPES" if nppes_site[r["npi"]] == r["site_key"] else "differs from NPPES"
                        for r in best if r["address"])

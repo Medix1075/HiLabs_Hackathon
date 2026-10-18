@@ -263,6 +263,13 @@ The evidence is weighed (`seed_weights`; a side needs 65% to win) and then each 
 | `UNRESOLVED` | no PPO evidence, non-PPO by inference only, or direct evidence on both sides | the candidate file |
 | `CONFIRMED_NON_PPO` | decided non-PPO, with direct non-PPO evidence | not extracted |
 
+**Status per NPI + TIN.** The deliverables use each pair's own status (`decide_pair` in `network.py`, table `c4_pair_status`), not its reference's:
+
+- `CONFIRMED_PPO` only when the pair's contract is confirmed by contract-level evidence (`network_name`, `file_label`) or this NPI itself is listed PPO under this TIN. An own listing confirms the pair even when its references are shared.
+- A reference confirmed because *other* members are listed makes an unlisted member `PPO_CANDIDATE` (basis "inferred: other members of reference ... listed PPO"). One listed doctor no longer confirms a shared reference with dozens of NPIs and TINs.
+- An own PPO listing wins over capitation in another of the pair's references; the pair is flagged `dual_contract`. If every reference of the pair is non-PPO, it stays a candidate.
+- An NPI listed only in non-PPO networks makes its pair `CONFIRMED_NON_PPO`; otherwise the pair keeps its best reference status.
+
 Inference (a price gap, graph similarity, an address alone) is never enough to confirm. Weights are evidence scores, not probabilities; how well the statuses hold up is measured on a hand-checked sample (C6). `c4_network_tags.csv` gives every reference its status, the basis for it and its full evidence string, and `c4_hypotheses.csv` what each hypothesis scored and whether it was used.
 
 `c4_provider_tags.csv` (NPI, TIN, network status) plugs straight into C3's `--provider-tags`. `ptd_run all --grade-by-network` uses it to grade each status's part of the file on its own.
@@ -274,9 +281,10 @@ A code can legitimately have several prices for one provider: professional vs in
 1. Dropped: capitation rows, rates ≤ 0, rows past their expiration date (`9999-12-31` counts as evergreen) and exact repeats. Every drop is counted in `c4_extraction_log.csv`.
 2. If the provider still has several rates for the same variant, the tie-break is (`tie_break` in the config):
    1. `network`: the rate from the reference with the best network status (then the tag's confidence). A pair in several contracts takes its rates only from the contracts with its best status: once one is confirmed PPO, the others are other networks;
-   2. `expiry`: the latest expiration date;
-   3. `support`: the rate listed by the most references;
-   4. `lowest`: the lowest rate, as a last resort.
+   2. `ppo_evidence`: the reference with the larger share of PPO evidence (more of its members listed PPO), the likelier PPO contract when a pair sits in two;
+   3. `expiry`: the latest expiration date;
+   4. `support`: the rate listed by the most references;
+   5. `lowest`: the lowest rate, as a last resort.
 
    The rule that decided is stored with each rate (`pick_rule`), so a reviewer can see how often each one fired.
 
@@ -348,7 +356,7 @@ python -m ptd_run all --from c4 --directory data/directory.csv --workbook weight
 - A listing counts only when its network cycle is `Par` during the chosen year; a `Nonpar` listing is left out. Each row keeps the NPI, TIN, address, specialty and the listing's product/carrier (`listing_networks`).
 - `check` is resumable: `<out>.coverage.jsonl` records each NPI as `found` / `not_found` and is skipped on the next run. One NPI takes about 40 s; run several `check` processes on split NPI files to go faster.
 - Not finding an NPI is not evidence against PPO: the site finds only the NPI it stores (a hospital may bill under another NPI than the one listed), searches within 50 miles of the city, and behavioural-health providers are mostly not listed there.
-- An NPI listed as PPO confirms its reference only when it is that NPI's only reference in the file (see `directory` above). In the Health Net CA file most hospital NPIs sit in several references, which then stay candidates.
+- An NPI listed as PPO confirms its own NPI + TIN pair, however many references it sits in. As reference evidence it counts as direct only when it is that NPI's only reference (see `directory` above), and a reference confirmed that way does not confirm its unlisted members: they stay candidates.
 
 ## C5: which address each NPI + TIN practises at
 
@@ -372,6 +380,8 @@ NPPES is self-reported and mostly stale, so C5 treats every source as a witness 
 6. **Choose.** Up to 3 sites per NPI + TIN are kept: the best, plus any with confidence ≥ 0.5 and ≥ 75% of the best (doctors often work at several sites of one group). A site is **verified** when two independent families agree, when the payer directory lists it, or when confidence is ≥ 0.8.
 7. **Region** for C7 comes from the county (`--zip-county`, e.g. HUD's ZIP-county file) or else from the ZIP's first three digits, mapped to California market areas in the config.
 
+**Census geocoder (E9: one place, two spellings).** After standardising, C5 sends each California site to the US Census Bureau's free batch geocoder (no key, `geocode` in `config/c5.yaml`). Sites that match the same canonical street address with the same house number become one site, keyed by the first of their local keys, so "4300 Long Beach Blvd" and "4300 N Long Beach Boulevard" no longer split a provider's evidence. Answers, including "no match", are cached in `data/geocode_cache.jsonl` for a year; if the service can't be reached the run carries on with the local keys. Set `PTD_GEOCODE=off` for offline runs.
+
 **NPI Registry API.** The API serves the NPPES record of one NPI live: name, entity type, taxonomies, status, practice and mailing address, and secondary practice locations. By default (`--npi-api auto`) C5 asks it for every NPI the NPPES file doesn't have, which means every NPI when no NPPES file is given. That way a run without the ~1 GB monthly ZIP still gets taxonomies (so C6 can assign specialties) and NPPES addresses. `--npi-api always` asks for every NPI even with a file, `off` never calls it, and a number caps the lookups. Calls run on 4 threads under one shared limit of 8 per second, retry on 429/5xx, and stop after 20 failures (e.g. when the API is blocked). Every answer, including "not found", is cached in `data/npi_api_cache.jsonl` for 30 days, so a rerun only asks for new NPIs. About 2,800 NPIs take roughly 6 minutes the first time. Set `PTD_NPI_API=off` for offline runs.
 
 The summary compares the chosen address with the NPPES practice address, which shows how much the resolution changed. Every candidate and its score is in `c5_candidates.csv` for audit.
@@ -391,7 +401,7 @@ If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even noth
 
 `python -m ptd_c6 run --workbook weights.xlsx [--nucc nucc.csv]` writes **deliverable 1**: one row per **NPI + TIN + address + billing code**, for **confirmed PPO** rates only.
 
-- **Two files.** `c6_provider_rate_file.xlsx` holds rates with network status `CONFIRMED_PPO` (deliverable 1). `c6_provider_rate_file_candidates.xlsx` holds `PPO_CANDIDATE` and `UNRESOLVED` rates, with their status, so nothing potentially useful is thrown away but nothing unconfirmed is presented as PPO (`network` in `config/c6.yaml`). Without directory data, deliverable 1 is empty on the Health Net file and the log says so.
+- **Two files.** `c6_provider_rate_file.xlsx` holds rates whose NPI + TIN pair has network status `CONFIRMED_PPO` (deliverable 1). `Network Basis` says why; `NPI Deactivated` flags NPIs NPPES or the NPI Registry marks deactivated. `c6_provider_rate_file_candidates.xlsx` holds `PPO_CANDIDATE` and `UNRESOLVED` rates, with their status, so nothing potentially useful is thrown away but nothing unconfirmed is presented as PPO (`network` in `config/c6.yaml`). Without directory data, deliverable 1 is empty on the Health Net file and the log says so.
 - **How far to trust the statuses.** `c6_network_accuracy.md` gives coverage per status (references, NPI + TIN pairs, NPIs, rates). `c6_network_check_sample.csv` is a stratified sample, 30 NPI + TIN pairs per status with name and address, to look up by hand in Health Net's PPO directory: fill in `directory_result` (`PPO`, `NOT_PPO` or `NOT_LISTED`) and run `python -m ptd_c6 check-network --sample <file>`. The report then gives, per status, the share found in the PPO network with a 95% Wilson interval: the precision of deliverable 1, and how many PPO providers the strict rule leaves among the candidates. The sample only measures; it is never fed back as evidence.
 
 - **The first six columns are exactly the ones asked for:** NPI, TIN, Address, Billing Code, Specialty, Rate. Then come the details a reviewer needs to trust a row: code type and description, NPI type and name, the price variant, expiry, how many variants exist, address rank, confidence, verified flag and sources, city, ZIP, region, specialty code and source, whether the code is expected for that specialty, network status, network tag and confidence, the rate's pick rule and the source file.

@@ -39,6 +39,7 @@ COLUMNS = [
     ("ZIP", "zip5"), ("Region", "region"), ("Specialty Code", "spec_cd"), ("Specialty Source", "specialty_source"),
     ("Code Expected for Specialty", "code_expected"), ("Network Status", "network_status"), ("Network Tag", "network_tag"),
     ("Network Confidence", "network_confidence"), ("Rate Pick Rule", "pick_rule"), ("Source File", "source_file"),
+    ("Network Basis", "network_basis"), ("NPI Deactivated", "deactivated"),
 ]
 C6_FIELDS = ["npi", "tin", "npi_type", "spec_cd", "specialty", "specialty_source", "region", "address_verified",
              "code_type", "code", "negotiated_type", "billing_class", "setting", "pos", "modifier", "rate",
@@ -52,10 +53,15 @@ ABOUT = {
                            "many exist and the c4_rates view in out/rates.sqlite has them all.",
     "Specialty": "C6: NPPES taxonomy -> HiLabs crosswalk, else Medicare specialty, else inferred from billed codes, "
                  "else NUCC. Specialty Source says which.",
+    "Network Basis": "Why this NPI + TIN has its network status: its own directory listing, its contract's own "
+                     "network name, or (candidates) evidence from other members of its provider reference. "
+                     "'dual contract' marks a pair listed PPO that is also capitated in another reference.",
+    "NPI Deactivated": "TRUE if NPPES / the NPI Registry marks the NPI deactivated: its rates are in the rate file, "
+                       "but the provider may no longer practise (no address is given).",
     "Code Expected for Specialty": "TRUE if the code is in the specialty's HiLabs code list, FALSE if not (worth a look), "
                                    "blank if the specialty has no code list.",
-    "Network Status": "C4: CONFIRMED_PPO (direct evidence: a PPO directory listing that can only be about this "
-                      "contract, the reference's own network name, or a PPO-only file). The candidate file holds "
+    "Network Status": "C4, per NPI + TIN: CONFIRMED_PPO (this NPI listed PPO under this TIN in the payer's "
+                      "directory, or its contract's own network name, or a PPO-only file). The candidate file holds "
                       "PPO_CANDIDATE (inferred or weak evidence) and UNRESOLVED rows; see c4_network_tags.csv for the "
                       "evidence behind each provider reference.",
     "Network Tag": "C4's evidence vote (PPO / NON_PPO / UNKNOWN) behind the status, with its confidence.",
@@ -185,8 +191,10 @@ def run(args) -> int:
     descriptions = {(t, c): d for t, c, d in con.execute("SELECT code_type, code, description FROM c4_codes")}
     files = {fid: Path(str(url)).name for fid, url in con.execute("SELECT file_id, url FROM c4_files")}
     pairs_by_sig: dict[tuple, list] = defaultdict(list)
-    for fid, sig, npi, tin in con.execute("SELECT file_id, sig_id, npi, tin FROM c4_pairs"):
-        pairs_by_sig[(fid, sig)].append((npi, tin))
+    pair_cols = {r[1] for r in con.execute("PRAGMA table_info(c4_pairs)")}
+    own = "status, status_basis" if "status" in pair_cols else "NULL, NULL"  # older store: the reference's status
+    for fid, sig, npi, tin, st, basis in con.execute(f"SELECT file_id, sig_id, npi, tin, {own} FROM c4_pairs"):
+        pairs_by_sig[(fid, sig)].append((npi, tin, st, basis or ""))
 
     con.execute("DROP TABLE IF EXISTS c6_rates")
     con.execute(f"CREATE TABLE c6_rates ({', '.join(C6_FIELDS)})")
@@ -208,13 +216,16 @@ def run(args) -> int:
 
     def emit_sig(key, variants_by_code: dict) -> None:
         fid, _ = key
-        for npi, tin in pairs_by_sig.get(key, ()):
+        for npi, tin, pair_status, pair_basis in pairs_by_sig.get(key, ()):
             s = spec[npi]
+            deactivated = str(providers.get(npi, {}).get("deactivated") or "").lower() in ("1", "true")
             ntype = s["npi_type"] if s["npi_type"] in ("1", "2") else "1"
             addrs = addresses.get((npi, tin)) or [(1, "", "", "", "", 0.0, False, "")]
             region = addrs[0][4]
             for (ctype, code), vs in variants_by_code.items():
                 v = min(vs, key=lambda x: headline_key(x, ntype, hc))
+                if pair_status:  # the pair's own status (C4 decide_pair), not its reference's
+                    v = {**v, "network_status": pair_status}
                 expected = sp.code_expected(s["spec_cd"], code) if s["spec_cd"] else None
                 c6_buf.append((npi, tin, s["npi_type"], s["spec_cd"], s["specialty"], s["specialty_source"], region,
                                bool(addrs[0][6]), ctype, code, v["negotiated_type"], v["billing_class"], v["setting"],
@@ -228,7 +239,8 @@ def run(args) -> int:
                            "address_confidence": conf, "address_verified": bool(verified), "address_sources": srcs,
                            "city": city, "zip5": zip5, "region": reg, "spec_cd": s["spec_cd"],
                            "specialty_source": s["specialty_source"], "code_expected": expected,
-                           "source_file": files.get(fid, "")}
+                           "source_file": files.get(fid, ""), "network_basis": pair_basis,
+                           "deactivated": deactivated}
                     cells = [row.get(k, "") for _, k in COLUMNS]
                     stats["rows"] += 1
                     stem = route.get(v["network_status"])

@@ -9,7 +9,8 @@ C4 writes the file's structure in normalised form, close to how the rate file it
   c4_refset_stats     price rows per refset and how many are capitation (all codes, for network evidence)
   c4_codes            billing code descriptions
   c4_prices           one row per negotiated_prices entry for an in-scope code
-  c4_pairs            (NPI, TIN) -> signature: the set of references the pair belongs to
+  c4_pair_status      network status per (NPI, TIN): own directory listing or contract-level evidence
+  c4_pairs            (NPI, TIN) -> signature: the references its rates come from, and its status
   c4_sig_rates        the clean rates, one per signature x code x variant
 
 Rates are picked once per signature, not once per NPI: every NPI that sits in exactly the same
@@ -47,8 +48,12 @@ CREATE TABLE IF NOT EXISTS c4_prices (
     file_id INTEGER, refset_id INTEGER, code_type TEXT, code TEXT, arrangement TEXT,
     negotiated_type TEXT, rate REAL, expiration_date TEXT, billing_class TEXT, setting TEXT,
     pos TEXT, modifier TEXT);
+CREATE TABLE IF NOT EXISTS c4_pair_status (
+    file_id INTEGER, npi INTEGER, tin TEXT, status TEXT, status_basis TEXT, flags TEXT,
+    PRIMARY KEY (file_id, npi, tin));
 CREATE TABLE IF NOT EXISTS c4_pairs (
-    file_id INTEGER, npi INTEGER, tin TEXT, tin_type TEXT, sig_id INTEGER, PRIMARY KEY (file_id, npi, tin));
+    file_id INTEGER, npi INTEGER, tin TEXT, tin_type TEXT, sig_id INTEGER, status TEXT, status_basis TEXT,
+    flags TEXT, PRIMARY KEY (file_id, npi, tin));
 CREATE TABLE IF NOT EXISTS c4_sig_members (file_id INTEGER, sig_id INTEGER, ref_id TEXT);
 CREATE TABLE IF NOT EXISTS c4_sig_rates (
     file_id INTEGER, sig_id INTEGER, code_type TEXT, code TEXT, negotiated_type TEXT,
@@ -67,10 +72,14 @@ CREATE INDEX IF NOT EXISTS ix_sig_rates ON c4_sig_rates (file_id, sig_id);
 CREATE INDEX IF NOT EXISTS ix_pairs_sig ON c4_pairs (file_id, sig_id);
 """
 
-# One row per NPI x TIN x code x variant: the signature rates fanned out to every pair.
+# One row per NPI x TIN x code x variant: the signature rates fanned out to every pair. The network
+# status is the pair's own (c4_pair_status); the signature's is the status of the reference the rate came from.
 RATES_VIEW = """
 CREATE VIEW IF NOT EXISTS c4_rates AS
-SELECT p.npi, p.tin, p.tin_type, r.*
+SELECT p.npi, p.tin, p.tin_type, r.file_id, r.sig_id, r.code_type, r.code, r.negotiated_type, r.billing_class,
+       r.setting, r.pos, r.modifier, r.rate, r.expiration_date, r.network_tag, r.network_confidence, r.candidates,
+       r.distinct_rates, r.rate_min, r.rate_max, r.pick_rule, p.status AS network_status,
+       p.status_basis AS network_basis, r.network_status AS reference_status
 FROM c4_pairs p JOIN c4_sig_rates r ON r.file_id = p.file_id AND r.sig_id = p.sig_id;
 """
 

@@ -80,10 +80,14 @@ def build_rows(con, directory=None, coverage: dict | None = None, npis: set | No
         p["refs"][ref] = (st, basis or "")
         if name:
             p["names"].add(name)
+    own_status = {}
+    if con.execute("SELECT 1 FROM sqlite_master WHERE name = 'c4_pair_status'").fetchone():
+        own_status = {(n, t): (st, b or "") for n, t, st, b in
+                      con.execute("SELECT npi, tin, status, status_basis FROM c4_pair_status")}
     out = []
     for (npi, tin), p in pairs.items():
         sn, tn = str(npi), _digits(tin)
-        best = max(p["refs"].values(), key=lambda x: RANK.get(x[0], 0))
+        best = own_status.get((npi, tin)) or max(p["refs"].values(), key=lambda x: RANK.get(x[0], 0))
         cov = coverage.get(sn, {})
         own = by_npi.get(sn, [])
         own_tin = [r for r in own if not r.get("tin") or _digits(r["tin"]) == tn]

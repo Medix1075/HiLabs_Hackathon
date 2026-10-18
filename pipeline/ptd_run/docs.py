@@ -112,6 +112,13 @@ def write_logic(out: Path) -> Path:
           "| PPO_CANDIDATE | Some PPO evidence, all weak or inferred | Candidate file (1b) |",
           "| UNRESOLVED | No PPO evidence, non-PPO by inference only, or direct evidence on both sides | Candidate file (1b) |",
           "| CONFIRMED_NON_PPO | Decided non-PPO with direct non-PPO evidence | Not extracted |", "",
+          "Then each **NPI + TIN pair** gets its own status, and that is the status in the deliverables. A pair is "
+          "CONFIRMED_PPO only when its contract is confirmed by contract-level evidence (its own network name, a "
+          "PPO-only file) or when this NPI itself is listed PPO under this TIN, even if its references are shared. A "
+          "reference confirmed because some of its *other* members are listed makes an unlisted member a PPO_CANDIDATE: "
+          "one listed doctor never confirms a shared fee-schedule reference with dozens of NPIs. An own PPO listing wins "
+          "over capitation in another reference (flagged as a dual contract). When a pair's contracts have different "
+          "prices, the one with the larger share of PPO evidence wins before the lowest rate.", "",
           "Inference (price gaps, graph similarity, an address alone) is never enough to confirm. Hypotheses only add "
           "evidence to references that have none, and are measured first. A pair in several contracts takes its rates "
           "from the contracts with its best status only. C7 scores confirmed and candidate rates separately, so "
@@ -120,7 +127,8 @@ def write_logic(out: Path) -> Path:
     for url, rep in (c4.get("network") or {}).items():
         L += [f"**{Path(url).name}**: {rep.get('references')} references. Evidence found: {rep.get('seeded_by')}. "
               f"Dual-contract hypothesis: {rep.get('dual_contract')}. Label spreading: {rep.get('propagation')}. "
-              f"Network status: **{rep.get('statuses')}**.", ""]
+              f"Network status: **{rep.get('statuses')}**. Per NPI-TIN pair: **{rep.get('pair_statuses')}** "
+              f"({rep.get('pair_flags')}).", ""]
     for f in (c4.get("files") or []):
         for o in f.get("oon_files") or []:
             L.append(f"- Allowed-amount file {Path(str(o.get('url'))).name}: "

@@ -88,6 +88,7 @@ def write_summary(out: Path, data: Path) -> dict:
                                   "items_by_code_type": f.get("code_types")}
                        for f in c4.get("files", []) if f.get("status") == "ok"} if c4 else None,
         "network_status": c4.get("network_status") if c4 else None,
+        "pair_network_status": c4.get("pair_network_status") if c4 else None,
         "network_tags": {u: r.get("tags") for u, r in c4.get("network", {}).items()} if c4 else None,
         "rates_extracted": (c4.get("totals") or {}).get("rate_rows"),
         "unique_npis": c4.get("distinct_npis"), "unique_tins": c4.get("distinct_tins"),
@@ -113,6 +114,7 @@ def write_summary(out: Path, data: Path) -> dict:
         ("Allowed-amount (out-of-network) files (C2)", "allowed_amount_files"),
         ("File quality score per file (C3)", "file_quality_scores"), ("Rate files processed (C4)", "rate_files_processed"),
         ("Rate file shape (C4)", "file_shape"), ("Price rows read for in-scope codes (C4)", "price_rows_read"), ("Network status of provider references (C4)", "network_status"),
+        ("Network status of NPI-TIN pairs, decided per pair (C4)", "pair_network_status"),
         ("Network evidence vote / confidence (C4)", "network_tags"),
         ("Rates extracted: NPI x TIN x code x variant (C4)", "rates_extracted"), ("Unique NPIs (C4)", "unique_npis"),
         ("Unique TINs (C4)", "unique_tins"), ("% NPIs linked to an address (C5)", "pct_npis_with_address"),

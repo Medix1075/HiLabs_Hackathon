@@ -13,7 +13,9 @@ Steps (rules and their order are in config/c4.yaml, `extract`):
 3. Clean. Drop capitation rows (a per-member amount, not a service price), rates of 0 or less,
    missing rates and expired rates (9999-12-31 counts as evergreen). Exact repeats merge.
 4. Pick. When a variant still has several distinct rates, the tie-break picks one and records
-   which rule decided it: network status, then latest expiry, then support, then the lower rate.
+   which rule decided it: network status, then the reference with the larger share of PPO evidence
+   (when a pair sits in several contracts, the one more of whose members are listed PPO is the
+   likelier PPO contract), then latest expiry, then support, then the lower rate.
 """
 from __future__ import annotations
 
@@ -29,23 +31,35 @@ STATUS_RANK = {CONFIRMED_PPO: 3, PPO_CANDIDATE: 2, UNRESOLVED: 1}
 
 def build_pairs(con: sqlite3.Connection, file_id: int, include_statuses: list[str], log=print,
                 npis: set | None = None) -> dict:
-    """`npis`: keep only these NPIs (a trial run on a few providers); network tagging has already seen all."""
+    """`npis`: keep only these NPIs (a trial run on a few providers); network tagging has already seen all.
+
+    A pair is kept when its own status (c4_pair_status, see network.decide_pair) is included. Its rates
+    come from its included references with the best reference status: once one reference is confirmed
+    PPO, the pair's other references are other networks."""
+    pair_status = {(n, t): (st, b, f) for n, t, st, b, f in con.execute(
+        "SELECT npi, tin, status, status_basis, flags FROM c4_pair_status WHERE file_id = ?", (file_id,))}
     q = (f"SELECT m.npi, m.tin, m.tin_type, m.ref_id, r.status FROM c4_ref_members m "
          f"JOIN c4_refs r ON r.file_id = m.file_id AND r.ref_id = m.ref_id "
          f"WHERE m.file_id = ? AND m.npi IS NOT NULL AND r.status IN ({','.join('?' * len(include_statuses))}) "
          f"ORDER BY m.npi, m.tin")
     pairs, sig_rows, seen = [], [], set()
     cur_key, refs, tin_type = None, {}, ""
+    dropped_by_pair_status = 0
 
     def close():
+        nonlocal dropped_by_pair_status
         if cur_key is None:
             return
-        # A pair in several contracts takes its rates only from the contracts with the best status:
-        # once one reference is confirmed PPO, the pair's other references are other networks.
-        best = max(STATUS_RANK.get(st, 0) for st in refs.values())
-        rs = sorted(r for r, st in refs.items() if STATUS_RANK.get(st, 0) == best)
+        st, basis, flags = pair_status.get(cur_key) or (None, "", "")
+        best = max(STATUS_RANK.get(s, 0) for s in refs.values())
+        if st is None:  # no pair status (store from an older run): the best reference status, as before
+            st = next(s for s in refs.values() if STATUS_RANK.get(s, 0) == best)
+        if st not in include_statuses:
+            dropped_by_pair_status += 1
+            return
+        rs = sorted(r for r, s in refs.items() if STATUS_RANK.get(s, 0) == best)
         sig = stable_id(file_id, *rs)
-        pairs.append((file_id, cur_key[0], cur_key[1], tin_type, sig))
+        pairs.append((file_id, cur_key[0], cur_key[1], tin_type, sig, st, basis, flags))
         if sig not in seen:
             seen.add(sig)
             sig_rows.extend((file_id, sig, r) for r in rs)
@@ -58,7 +72,7 @@ def build_pairs(con: sqlite3.Connection, file_id: int, include_statuses: list[st
             cur_key, refs, tin_type = (npi, tin), {}, ttype
         refs[ref] = st
     close()
-    con.executemany("INSERT OR IGNORE INTO c4_pairs VALUES (?,?,?,?,?)", pairs)
+    con.executemany("INSERT OR IGNORE INTO c4_pairs VALUES (?,?,?,?,?,?,?,?)", pairs)
     con.executemany("INSERT INTO c4_sig_members VALUES (?,?,?)", sig_rows)
     con.execute("CREATE INDEX IF NOT EXISTS ix_sig_members ON c4_sig_members (file_id, sig_id)")
     con.commit()
@@ -69,16 +83,17 @@ def build_pairs(con: sqlite3.Connection, file_id: int, include_statuses: list[st
     tin_only = con.execute("SELECT COUNT(DISTINCT ref_id) FROM c4_ref_members WHERE file_id = ? AND npi IS NULL",
                            (file_id,)).fetchone()[0]
     info = {"pairs": len(pairs), "signatures": len(seen), "pairs_in_excluded_refs_only_or_partly": excluded,
-            "tin_only_references": tin_only}
+            "pairs_excluded_by_own_status": dropped_by_pair_status, "tin_only_references": tin_only}
     log(f"[c4]   {len(pairs):,} NPI-TIN pairs in {len(seen):,} distinct reference signatures "
         f"({tin_only:,} references have TIN-only groups and no NPI, so no NPI rows)")
     return info
 
 
 def _pick(cands: list[tuple], order: list[str]):
-    """cands: (rate, expiry, net_rank, tag, conf, support, status). Returns the winner and the deciding rule."""
+    """cands: (rate, expiry, net_rank, tag, conf, support, status, ppo_share). Returns the winner and the deciding rule."""
     keys = {
         "network": lambda c: -c[2],
+        "ppo_evidence": lambda c: -round(c[7], 6),
         "expiry": lambda c: tuple(-ord(ch) for ch in c[1]),
         "support": lambda c: -c[5],
         "lowest": lambda c: c[0],
@@ -99,7 +114,8 @@ def pick_rates(con: sqlite3.Connection, file_id: int, cfg: dict, as_of: str, log
     evergreen = set(ec["evergreen_dates"])
     order = ec["tie_break"]
     q = ("SELECT sm.sig_id, p.rowid, p.code_type, p.code, p.negotiated_type, p.billing_class, p.setting, p.pos, "
-         "p.modifier, p.rate, p.expiration_date, p.arrangement, r.tag, r.tag_confidence, r.status "
+         "p.modifier, p.rate, p.expiration_date, p.arrangement, r.tag, r.tag_confidence, r.status, "
+         "r.ppo_evidence, r.non_ppo_evidence "
          "FROM c4_sig_members sm "  # CROSS JOIN fixes the join order: signature -> refsets -> prices
          "CROSS JOIN c4_refset_members rm ON rm.file_id = sm.file_id AND rm.ref_id = sm.ref_id "
          "CROSS JOIN c4_prices p ON p.file_id = rm.file_id AND p.refset_id = rm.refset_id "
@@ -115,7 +131,7 @@ def pick_rates(con: sqlite3.Connection, file_id: int, cfg: dict, as_of: str, log
     def close():
         if cur is None or not by_rate:
             return
-        cands = [(rate, v[0], v[1], v[2], v[3], v[4], v[5]) for rate, v in by_rate.items()]
+        cands = [(rate, v[0], v[1], v[2], v[3], v[4], v[5], v[6]) for rate, v in by_rate.items()]
         win, rule = _pick(cands, order)
         rules[rule] += 1
         rates = [c[0] for c in cands]
@@ -129,7 +145,7 @@ def pick_rates(con: sqlite3.Connection, file_id: int, cfg: dict, as_of: str, log
         con.commit()
         out.clear()
 
-    for (sig, rowid, ctype, code, ntype, bclass, setting, pos, mod, rate, exp, arr, tag, conf, status) in \
+    for (sig, rowid, ctype, code, ntype, bclass, setting, pos, mod, rate, exp, arr, tag, conf, status, pe, ne) in \
             con.execute(q, (file_id,)):
         key = (sig, ctype, code, ntype, bclass, setting, pos, mod)
         if key != cur:
@@ -152,14 +168,16 @@ def pick_rates(con: sqlite3.Connection, file_id: int, cfg: dict, as_of: str, log
             continue
         n_cands += 1
         net = STATUS_RANK.get(status, 0) * 10 + CONF_RANK.get(conf, 0)
+        share = (pe or 0) / ((pe or 0) + (ne or 0)) if (pe or 0) + (ne or 0) > 0 else 0.0
         exp_key = exp or "0000-00-00"
         v = by_rate.get(rate)
         if v is None:
-            by_rate[rate] = [exp_key, net, tag, conf, 1, status]
+            by_rate[rate] = [exp_key, net, tag, conf, 1, status, share]
         else:
             if net > v[1]:
                 v[1], v[2], v[3], v[5] = net, tag, conf, status
             v[0] = max(v[0], exp_key)
+            v[6] = max(v[6], share)
             v[4] += 1
             dropped["exact_repeat_merged"] += 1
     close()
