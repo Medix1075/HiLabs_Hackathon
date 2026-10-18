@@ -15,6 +15,7 @@ Everything runs with one command (or one button in the browser UI), streams the 
 - [9. How long each step takes, and the bottlenecks](#9-how-long-each-step-takes-and-the-bottlenecks)
 - [10. Known limits](#10-known-limits)
 - [11. Repository layout](#11-repository-layout)
+- [12. Work division](#12-work-division)
 
 ---
 
@@ -699,3 +700,26 @@ pipeline/
 ```
 
 Context: Health Net is ending California commercial group plans, with most policies ending 2027-02-28.
+
+---
+
+## 12. Work division
+
+**Team MRI:** Medhansh Jindal, Ishan Tandon, Rajdeep Aher.
+
+| Part | Package / files | Owner |
+|---|---|---|
+| Step 0 + C1: scrape the Centene page and parse the index files | `pipeline/ptd_pipeline/` | Everyone (Medhansh, Ishan, Rajdeep) |
+| C2: find the PPO plans and rate files | `pipeline/ptd_c2/` | Everyone (Medhansh, Ishan, Rajdeep) |
+| C3: grade the rate files | `pipeline/ptd_c3/` | Medhansh Jindal |
+| C4: extract rates and decide which providers are PPO, including the Health Net directory check | `pipeline/ptd_c4/`, `pipeline/ptd_dir/` | Medhansh Jindal and Ishan Tandon |
+| C5: link TIN to NPI to address | `pipeline/ptd_c5/` | Medhansh Jindal |
+| C6: build the provider rate file | `pipeline/ptd_c6/` | Ishan Tandon |
+| C7: cost effectiveness | `pipeline/ptd_c7/` | Ishan Tandon |
+| UI: analyst views and pipeline runner | `run_ui.py`, `ptd_ui.py`, `ui/`, `design.md` | Rajdeep Aher |
+
+By member:
+
+- **Medhansh Jindal:** C3, C5, C4 (with Ishan), and C1 and C2 with the team.
+- **Ishan Tandon:** C6, C7, C4 (with Medhansh), and C1 and C2 with the team.
+- **Rajdeep Aher:** the UI, and C1 and C2 with the team.
