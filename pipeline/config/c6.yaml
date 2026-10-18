@@ -29,3 +29,13 @@ network:
   # c6_network_check_sample.csv: this many NPI-TIN pairs per status to look up by hand in the PPO
   # directory; `python -m ptd_c6 check-network` turns the filled-in sample into precision figures.
   check_sample_per_status: 30
+
+# Optional PPO probability model (ptd_c6 run --ppo-model [c4_ppo_check.csv]; see ptd_c6/ppo_model.py).
+# Positive-unlabelled: trained on the pairs searched on the payer's finder, listed = positive.
+ppo_model:
+  l2: 1.0                  # ridge penalty on the standardised coefficients
+  folds: 5                 # cross-validation folds, grouped by TIN
+  smoothing: 2.0           # pseudo-counts toward the overall listed share in the neighbour shares
+  other_tin_weight: 0.5    # an NPI listed under another TIN counts as a half-weight positive for this pair
+  min_region_pairs: 20     # regions with fewer pairs share the baseline
+  min_c: 0.2               # floor for c = P(listed | PPO)

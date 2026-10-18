@@ -25,6 +25,7 @@ from ptd_c4.db import DEFAULT_DB, connect, table_exists
 
 from . import __version__
 from .network_check import coverage, make_sample, score_sample, write_report, write_sample
+from .ppo_model import final_probability as ppo_model_final
 from .specialty import assign, load_specialties
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "config" / "c6.yaml"
@@ -40,10 +41,11 @@ COLUMNS = [
     ("Code Expected for Specialty", "code_expected"), ("Network Status", "network_status"), ("Network Tag", "network_tag"),
     ("Network Confidence", "network_confidence"), ("Rate Pick Rule", "pick_rule"), ("Source File", "source_file"),
     ("Network Basis", "network_basis"), ("NPI Deactivated", "deactivated"),
+    ("PPO Probability", "ppo_probability"),
 ]
 C6_FIELDS = ["npi", "tin", "npi_type", "spec_cd", "specialty", "specialty_source", "region", "address_verified",
              "code_type", "code", "negotiated_type", "billing_class", "setting", "pos", "modifier", "rate",
-             "code_expected", "network_status", "network_tag", "network_confidence", "file_id"]
+             "code_expected", "network_status", "network_tag", "network_confidence", "file_id", "ppo_probability"]
 ABOUT = {
     "NPI / TIN": "From the rate file's provider_groups (C4). NPPES hides TINs, so the pairing comes only from the rate file.",
     "Address": "C5's resolved practice address. A pair practising at several sites has one row per site (Address Rank). "
@@ -58,6 +60,10 @@ ABOUT = {
                      "'dual contract' marks a pair listed PPO that is also capitated in another reference.",
     "NPI Deactivated": "TRUE if NPPES / the NPI Registry marks the NPI deactivated: its rates are in the rate file, "
                        "but the provider may no longer practise (no address is given).",
+    "PPO Probability": "Only with --ppo-model: the chance this NPI + TIN is in the PPO network. 1 = confirmed, "
+                       "0 = capitated non-PPO, otherwise the positive-unlabelled model's estimate from the pair's "
+                       "surroundings (how many of its reference's and TIN's other NPIs the finder lists, contract "
+                       "shape, specialty, region). See c6_ppo_model.md. Blank when the model was not run.",
     "Code Expected for Specialty": "TRUE if the code is in the specialty's HiLabs code list, FALSE if not (worth a look), "
                                    "blank if the specialty has no code list.",
     "Network Status": "C4, per NPI + TIN: CONFIRMED_PPO (this NPI listed PPO under this TIN in the payer's "
@@ -182,6 +188,19 @@ def run(args) -> int:
     log("[c6] specialty source: " + ", ".join(f"{k} {v:,}" for k, v in
                                               Counter(s["specialty_source"] for s in spec.values()).most_common()))
 
+    # ------------------------------------------------------------ PPO probability (optional)
+    ppo_prob: dict[tuple, dict] = {}
+    model_report = None
+    if args.ppo_model:
+        from . import ppo_model
+        check_path = Path(args.ppo_model)
+        if not check_path.exists():
+            log(f"[input] --ppo-model: {check_path} not found; no PPO probabilities")
+        else:
+            feats = ppo_model.Features(con, ppo_model.read_check(check_path), spec, sp, cfg.get("ppo_model", {}))
+            scored = [(int(n), t) for n, t in con.execute("SELECT npi, tin FROM c4_pairs")]
+            ppo_prob, model_report = ppo_model.train_and_score(feats, scored, cfg.get("ppo_model", {}), log)
+
     # ------------------------------------------------------------ addresses, codes, files
     addresses: dict[tuple, list] = defaultdict(list)
     if has_c5:
@@ -226,11 +245,13 @@ def run(args) -> int:
                 v = min(vs, key=lambda x: headline_key(x, ntype, hc))
                 if pair_status:  # the pair's own status (C4 decide_pair), not its reference's
                     v = {**v, "network_status": pair_status}
+                pm = ppo_prob.get((int(npi), tin))
+                prob = ppo_model_final(v["network_status"], pm["model_p"]) if pm else None
                 expected = sp.code_expected(s["spec_cd"], code) if s["spec_cd"] else None
                 c6_buf.append((npi, tin, s["npi_type"], s["spec_cd"], s["specialty"], s["specialty_source"], region,
                                bool(addrs[0][6]), ctype, code, v["negotiated_type"], v["billing_class"], v["setting"],
                                v["pos"], v["modifier"], v["rate"], expected, v["network_status"], v["network_tag"],
-                               v["network_confidence"], fid))
+                               v["network_confidence"], fid, prob))
                 stats["pair_codes"] += 1
                 for rank, address, city, zip5, reg, conf, verified, srcs in addrs:
                     row = {**v, "npi": npi, "tin": tin, "address": address, "specialty": s["specialty"],
@@ -240,7 +261,7 @@ def run(args) -> int:
                            "city": city, "zip5": zip5, "region": reg, "spec_cd": s["spec_cd"],
                            "specialty_source": s["specialty_source"], "code_expected": expected,
                            "source_file": files.get(fid, ""), "network_basis": pair_basis,
-                           "deactivated": deactivated}
+                           "deactivated": deactivated, "ppo_probability": prob, "ppo_reasons": pm["reasons"] if pm else ""}
                     cells = [row.get(k, "") for _, k in COLUMNS]
                     stats["rows"] += 1
                     stem = route.get(v["network_status"])
@@ -300,6 +321,26 @@ def run(args) -> int:
     write_csv(out / "c6_providers.csv",
               [{"npi": n, **s} for n, s in sorted(spec.items())],
               ["npi", "npi_type", "name", "spec_cd", "specialty", "specialty_source", "specialty_note"])
+    if model_report is not None:
+        from . import ppo_model
+        rows_p = []
+        for npi, tin, st, basis in con.execute("SELECT npi, tin, status, status_basis FROM c4_pairs"):
+            pm = ppo_prob.get((int(npi), tin))
+            if pm:
+                rows_p.append({"npi": npi, "tin": tin, "network_status": st, "ppo_probability":
+                               ppo_model_final(st, pm["model_p"]), "model_p": round(pm["model_p"], 4),
+                               "p_listed": round(pm["g"], 4), "top_reasons": pm["reasons"], "status_basis": basis})
+        write_csv(out / "c6_ppo_probability.csv", sorted(rows_p, key=lambda r: (-r["ppo_probability"], r["npi"])),
+                  ["npi", "tin", "network_status", "ppo_probability", "model_p", "p_listed", "top_reasons", "status_basis"])
+        dist = {}
+        for st in sorted({r["network_status"] for r in rows_p}):
+            ps = [r["ppo_probability"] for r in rows_p if r["network_status"] == st]
+            dist[st] = {"pairs": len(ps), "mean": round(sum(ps) / len(ps), 3), "ge_05": sum(x >= 0.5 for x in ps),
+                        "ge_08": sum(x >= 0.8 for x in ps)}
+        ppo_model.write_report(out / "c6_ppo_model.md", model_report, dist)
+        summary["ppo_model"] = {**{k: v for k, v in model_report.items() if k != "coefficients"}, "by_status": dist}
+        log(f"[c6] PPO probabilities: {len(rows_p):,} pairs -> {out / 'c6_ppo_probability.csv'}; report "
+            f"{out / 'c6_ppo_model.md'}")
     (out / "c6_run_summary.json").write_text(json.dumps(summary, indent=2, default=str))
     for stem in OUTPUTS:
         f = summary["files"][stem]
@@ -342,6 +383,9 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--nucc", help="NUCC taxonomy CSV (names for taxonomies the crosswalk does not cover)")
     r.add_argument("--config", help="config YAML (default config/c6.yaml)")
     r.add_argument("--out", default="out/c6")
+    r.add_argument("--ppo-model", nargs="?", const="out/c4/c4_ppo_check.csv", default=None,
+                   help="score every NPI + TIN with the PPO probability model, trained on this PPO check table "
+                        "(default out/c4/c4_ppo_check.csv); adds the PPO Probability column")
     r.set_defaults(func=run)
     c = sub.add_parser("check-network", help="score a hand-checked c6_network_check_sample.csv (PPO precision)")
     c.add_argument("--sample", required=True, help="the sample with directory_result filled in")

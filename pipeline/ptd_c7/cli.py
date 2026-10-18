@@ -38,7 +38,7 @@ BENCH_FIELDS = ["npi", "tin", "npi_type", "specialty", "spec_cd", "region", "cod
 PROVIDER_FIELDS = ["npi", "tin", "npi_type", "specialty", "spec_cd", "region", "cost_score", "cost_index", "tier",
                    "score_confidence", "raw_cost_index", "n_eff", "codes_benchmarked", "share_cheapest_quartile",
                    "share_most_expensive_quartile", "specialty_code_coverage", "cohort", "cohort_size",
-                   "rank_in_cohort", "peer_levels_used"]
+                   "rank_in_cohort", "peer_levels_used", "ppo_probability"]
 EXTRA_COLUMNS = [("Peer Median", "peer_median"), ("Rate vs Peer Median", "rate_index"),
                  ("Peer Percentile", "percentile"), ("Peer Group", "peer_level"), ("Peers", "peer_n"),
                  ("Provider Cost Index", "cost_index"), ("Provider Cost Score", "cost_score"),
@@ -106,8 +106,14 @@ def run(args) -> int:
     for rec in con.execute("SELECT DISTINCT spec_cd, specialty FROM c6_rates"):
         names[rec[0] or rec[1]] = rec[1]
 
+    cfg["weight_by_ppo_probability"] = bool(cfg["sets"][args.set].get("weight_by_ppo_probability"))
+    if cfg["weight_by_ppo_probability"] and any(r.get("ppo_probability") not in (None, "") for r in rows):
+        log("[c7] peer benchmarks weighted by each rate's PPO probability (C6 --ppo-model)")
     benchmark(rows, cfg)
     providers = provider_scores(rows, cfg, sp, overall)
+    probs = {(r["npi"], r["tin"]): r.get("ppo_probability") for r in rows if r.get("ppo_probability") not in (None, "")}
+    for p in providers:
+        p["ppo_probability"] = probs.get((p["npi"], p["tin"]))
     for p in providers:
         p["specialty"] = names.get(p["specialty"], p["specialty"])
     for r in rows:

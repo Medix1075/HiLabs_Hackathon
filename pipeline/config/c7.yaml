@@ -57,3 +57,6 @@ sets:
   candidates:
     network_statuses: [PPO_CANDIDATE, UNRESOLVED]
     c6_file: c6_provider_rate_file_candidates
+    # With C6's PPO Probability column (ptd_c6 run --ppo-model), each candidate rate counts in its peers'
+    # benchmark in proportion to how likely it is a PPO rate, instead of every candidate counting fully.
+    weight_by_ppo_probability: true

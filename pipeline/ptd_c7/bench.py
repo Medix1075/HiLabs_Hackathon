@@ -50,6 +50,38 @@ def group_stats(gid: np.ndarray, values: np.ndarray, n_groups: int):
     return counts[gid], q1[gid], med[gid], q3[gid], pct
 
 
+def weighted_group_stats(gid: np.ndarray, values: np.ndarray, weights: np.ndarray, n_groups: int):
+    """group_stats with a weight per row (e.g. its PPO probability). Each sorted row sits at the middle of its
+    weight, (C_i - w_i/2 - w_first/2) / (W - w_first/2 - w_last/2) of its group (C cumulative weight, W total),
+    and Q1 / median / Q3 are read off
+    those positions by linear interpolation: with equal weights this is exactly numpy.quantile, so turning
+    weights on changes the benchmark only through the weights. The percentile is the row's position
+    (averaged over tied rates). Group size stays the row count, so min_peers means the same."""
+    weights = np.clip(np.asarray(weights, dtype=float), 1e-6, None)
+    q1, med, q3 = (np.full(n_groups, np.nan) for _ in range(3))
+    pct = np.full(len(values), 0.5)
+    order = np.lexsort((values, gid))
+    counts = np.bincount(gid, minlength=n_groups)
+    start = 0
+    for gi in range(n_groups):
+        n = counts[gi]
+        rows = order[start:start + n]
+        start += n
+        if n == 0:
+            continue
+        v, w = values[rows], weights[rows]
+        if n == 1:
+            q1[gi] = med[gi] = q3[gi] = v[0]
+            continue
+        c = np.cumsum(w)
+        pos = (c - w / 2 - w[0] / 2) / (c[-1] - w[0] / 2 - w[-1] / 2)
+        q1[gi], med[gi], q3[gi] = np.interp([0.25, 0.5, 0.75], pos, v)
+        for val in np.unique(v):  # ties share their mean position
+            m = v == val
+            pct[rows[m]] = pos[m].mean()
+    return counts[gid], q1[gid], med[gid], q3[gid], pct
+
+
 def assign_levels(level_keys: list[list[tuple]], min_peers: int):
     """Pick, per row, the first level whose group has at least min_peers rows. Returns (level, group id)."""
     n = len(level_keys[0]) if level_keys else 0
@@ -76,7 +108,13 @@ def benchmark(rows: list[dict], cfg: dict) -> list[dict]:
     level_keys = [[b + tuple(r[k] for k in lv["keys"]) for b, r in zip(base, rows)] for lv in levels]
     level, gid, n_groups = assign_levels(level_keys, cfg["min_peers"])
     rates = np.array([r["rate"] for r in rows], dtype=float)
-    size, q1, med, q3, pct = group_stats(gid, rates, n_groups)
+    if cfg.get("weight_by_ppo_probability") and any(r.get("ppo_probability") not in (None, "") for r in rows):
+        # candidates: each rate counts in its peers' benchmark as much as it is likely to be a PPO rate
+        wts = np.array([float(r["ppo_probability"]) if r.get("ppo_probability") not in (None, "") else 1.0
+                        for r in rows])
+        size, q1, med, q3, pct = weighted_group_stats(gid, rates, wts, n_groups)
+    else:
+        size, q1, med, q3, pct = group_stats(gid, rates, n_groups)
     for i, r in enumerate(rows):
         r["peer_level"] = levels[level[i]]["name"]
         r["peer_n"] = int(size[i])

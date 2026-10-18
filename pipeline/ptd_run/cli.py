@@ -25,6 +25,14 @@ from .docs import write_logic, write_quality_metrics
 STAGES = ["c1", "c2", "c3", "c4", "c3net", "c5", "c6", "c7"]
 
 
+
+def _ppo_model_line(m: dict) -> str:
+    auc = m.get("cv_auc_listed_vs_rest")
+    by = "; ".join(f"{st} mean P {d['mean']} ({d['ge_05']:,} of {d['pairs']:,} at 0.5+)"
+                   for st, d in (m.get("by_status") or {}).items() if st != "CONFIRMED_PPO")
+    return (f"{m['train_pairs']:,} searched pairs ({m['listed']:,} listed), held-out AUC "
+            f"{auc and round(auc, 3)}, c = {m['c_listed_given_ppo']}; {by}")
+
 def _load(path: str | Path) -> dict:
     p = Path(path)
     return json.loads(p.read_text()) if p.exists() else {}
@@ -105,6 +113,7 @@ def write_summary(out: Path, data: Path) -> dict:
         "providers_scored": c7.get("providers_scored"), "tins_scored": c7.get("tins_scored"),
         "cost_tiers": c7.get("tiers"),
         "candidate_providers_scored": c7c.get("providers_scored"),
+        "ppo_model": (_ppo_model_line(c6["ppo_model"]) if c6 and c6.get("ppo_model") else None),
     }
     labels = [
         ("Index files found on the Centene page", "index_files_found"), ("Index files parsed", "index_files_parsed"),
@@ -129,6 +138,7 @@ def write_summary(out: Path, data: Path) -> dict:
         ("Specialty source per NPI (C6)", "specialty_sources"), ("Providers scored (C7)", "providers_scored"),
         ("TINs scored (C7)", "tins_scored"), ("Cost tiers (C7)", "cost_tiers"),
         ("Candidate providers scored separately (C7)", "candidate_providers_scored"),
+        ("PPO probability model (C6, optional)", "ppo_model"),
     ]
     lines = ["# Run summary", "", f"Generated {s['generated']} by `python -m ptd_run summary`.", "",
              "| Measure | Value |", "|---|---|"]
@@ -230,7 +240,8 @@ def run_all(args) -> int:
                                 ("nppes", "nppes_pl", "dac", "zip_county") if getattr(args, k)), [])
                          + (["--directory", c5_directory()] if c5_directory() else [])
                          + (["--npi-api", str(args.npi_api)] if args.npi_api is not None else [])),
-        "c6": lambda: c6(["run", "--db", db, "--out", str(out / "c6")] + wb + (["--nucc", args.nucc] if args.nucc else [])),
+        "c6": lambda: c6(["run", "--db", db, "--out", str(out / "c6")] + wb + (["--nucc", args.nucc] if args.nucc else [])
+                         + (["--ppo-model", str(out / "c4" / "c4_ppo_check.csv")] if args.ppo_model else [])),
         "c7": lambda: (c7(["run", "--db", db, "--out", str(out / "c7"), "--c6-out", str(out / "c6")] + wb
                           + (["--network-tags", *args.network_tags] if args.network_tags else []))
                        or c7(["run", "--set", "candidates", "--db", db, "--out", str(out / "c7_candidates"),
@@ -288,6 +299,9 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--npi-api", help="C5: NPI Registry API: auto (default), always, off, or a number of lookups")
     a.add_argument("--nucc", help="C6: NUCC taxonomy CSV")
     a.add_argument("--network-tags", nargs="+", help="C7: benchmark only these network tags (e.g. PPO)")
+    a.add_argument("--ppo-model", action="store_true",
+                   help="C6/C7: PPO probability per NPI + TIN (positive-unlabelled model on the PPO check table); "
+                        "candidate benchmarks in C7 are weighted by it")
     a.add_argument("--grade-by-network", action="store_true", help="re-run C3 split by C4's network status")
     a.add_argument("--fetch-public", action="store_true", help="download NPPES, CMS D&C and NUCC first")
     a.add_argument("--workers", type=int, help="C4 worker processes")

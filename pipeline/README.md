@@ -40,7 +40,7 @@ pytest                                 # 96 offline tests
 | 4. Summary (run statistics, coverage, missing inputs) | `4_summary.md` |
 | 7b. Cost-effectiveness metrics (C7, brownie points) | `7b_cost_effectiveness_metrics.md`, `7b_cost_effectiveness.xlsx` |
 
-Useful options: `--from c4 --to c7` reruns part of the chain on earlier outputs. `--files a.json.gz` skips C1 to C3 and uses the given rate files. `--grade-by-network` reruns C3 split by C4's network status. `--nppes`, `--dac`, `--directory`, `--zip-county` and `--nucc` point at files you already have instead of `--fetch-public`. `--as-of 2026-10-17` fixes the date used for expiry and recency, so runs are reproducible.
+Useful options: `--from c4 --to c7` reruns part of the chain on earlier outputs. `--files a.json.gz` skips C1 to C3 and uses the given rate files. `--grade-by-network` reruns C3 split by C4's network status. `--ppo-model` adds C6's optional PPO probability per candidate and weights C7's candidate benchmarks by it. `--nppes`, `--dac`, `--directory`, `--zip-county` and `--nucc` point at files you already have instead of `--fetch-public`. `--as-of 2026-10-17` fixes the date used for expiry and recency, so runs are reproducible.
 
 You can also run the stages separately:
 
@@ -414,6 +414,23 @@ If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even noth
   5. the NUCC name for the taxonomy;
   6. otherwise `Unmapped`.
 - The Excel is written in streaming mode (flat memory), split into sheets of 1M rows, and stops at 3M rows. `c6_provider_rate_file.csv.gz` always has every row. An "About" sheet explains each column.
+
+### Optional: a PPO probability for every candidate (`--ppo-model`)
+
+`ptd_run all --ppo-model` (or `ptd_c6 run --ppo-model out/c4/c4_ppo_check.csv`) adds a `PPO Probability` column. It is off by default, and deliverable 1 stays confirmed-only either way.
+
+- **Why a model.** The Health Net finder search gives positives only. A listed NPI is PPO, but an unlisted one may still be PPO: many behavioural Type 1 NPIs and group Type 2 NPIs are never listed under their own NPI. So "not found" isn't a clean negative, and the model is trained as positive-unlabelled (Elkan and Noto). A logistic regression learns g = P(listed | features) on the searched pairs. It then estimates c = P(listed | PPO) from held-out listed pairs, and reports P(PPO) = min(1, g / c).
+- **Features describe the pair's surroundings, never its own search result:**
+  - the share of the other searched NPIs in its provider references, and under its TIN, that are listed;
+  - reference size and shape;
+  - capitation;
+  - NPI type;
+  - how well its codes fit its specialty in the HiLabs workbook;
+  - specialty family and region.
+
+  Rates are left out because C7 scores them. C5's "address verified" flag is left out because it is mostly set by the same finder listing that is the label.
+- **Checked** with 5-fold cross-validation grouped by TIN (`c6_ppo_model.md` has the AUC, c, a reliability table and the coefficients). Confirmed pairs are set to 1 and capitated non-PPO pairs to 0. `c6_ppo_probability.csv` gives each pair's probability and the three features that moved it most.
+- **C7** (`weight_by_ppo_probability` in `config/c7.yaml`, candidate set only): each candidate rate counts in its peers' median and quartiles in proportion to its PPO probability. A likely-HMO rate then barely moves the benchmark. With equal weights the statistics equal the unweighted ones exactly.
 
 ## C7: cost effectiveness against similar providers
 
