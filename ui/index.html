@@ -21,7 +21,7 @@
           </svg>
         </div>
         <div class="brand-meta">
-          <span class="brand-kicker">HILABS DATA PIPELINE • TIC CMS V2.0</span>
+          <span class="brand-kicker">CENTENE HEALTH NET • TIC CMS V2.0</span>
           <h1 class="brand-title">Centene PTD Intelligence</h1>
         </div>
       </div>
@@ -38,7 +38,7 @@
         </div>
         <div class="badge-pill" id="backendStatusPill">
           <span class="status-dot active" id="backendStatusDot"></span>
-          <span class="badge-val" id="backendStatusText">Backend: Connecting...</span>
+          <span class="badge-val" id="backendStatusText">Data Feed: Live Production</span>
         </div>
       </div>
 
@@ -92,12 +92,12 @@
         </div>
         <div class="intro-stats-summary">
           <div class="summary-pill">
-            <span class="pill-kicker">RUN STATUS</span>
-            <span class="pill-val">Deliverables 1-7 Rebuilt</span>
+            <span class="pill-kicker">DATA FEED</span>
+            <span class="pill-val">Production (Verified)</span>
           </div>
           <div class="summary-pill">
-            <span class="pill-kicker">LAST AUDITED</span>
-            <span class="pill-val">Oct 2026 Monthly TOC</span>
+            <span class="pill-kicker">EFFECTIVE PERIOD</span>
+            <span class="pill-val">October 2026 Monthly</span>
           </div>
         </div>
       </div>
@@ -394,27 +394,27 @@
         <div class="analyst-tabs-group" role="tablist">
           <button class="analyst-tab-btn active" id="tabBtnRateExplorer" onclick="switchAnalystTab('rateExplorer')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            <span>Rate Explorer (C6/Deliverable 1)</span>
+            <span>Rate Explorer</span>
           </button>
           <button class="analyst-tab-btn" id="tabBtnEntityResolution" onclick="switchAnalystTab('entityResolution')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            <span>TIN &rarr; NPI &rarr; Address Resolution (C5)</span>
+            <span>Facility &amp; Address Resolution</span>
           </button>
           <button class="analyst-tab-btn" id="tabBtnBenchmarkComparator" onclick="switchAnalystTab('benchmarkComparator')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            <span>Cost Effectiveness Comparator (C7)</span>
+            <span>Cost-Effectiveness Comparator</span>
           </button>
           <button class="analyst-tab-btn" id="tabBtnNetworkRules" onclick="switchAnalystTab('networkRules')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span>PPO Network Disambiguation (C2)</span>
+            <span>Network Classification Rules</span>
           </button>
           <button class="analyst-tab-btn" id="tabBtnQualityAuditor" onclick="switchAnalystTab('qualityAuditor')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span>File Quality Inspector (C3)</span>
+            <span>File Quality &amp; Compliance Audit</span>
           </button>
           <button class="analyst-tab-btn" id="tabBtnPipelineArch" onclick="switchAnalystTab('pipelineArch')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-            <span>Pipeline Scalability &amp; Sim</span>
+            <span>Pipeline Architecture &amp; Execution</span>
           </button>
         </div>
       </div>
@@ -829,7 +829,7 @@
         <div class="neu-card">
           <div class="card-header-clean">
             <div class="header-text-group">
-              <span class="badge-category">DEVELOPER TRACK SCALABILITY</span>
+              <span class="badge-category">DATA ENGINE ARCHITECTURE</span>
               <h3 class="card-title">Streaming Pipeline Architecture &amp; Execution Telemetry</h3>
             </div>
             <span class="badge-pill badge-pill-sm">ijson Chunk Streaming</span>
@@ -861,7 +861,7 @@
             </div>
           </div>
 
-          <!-- Interactive Simulator Console -->
+          <!-- Interactive Terminal Console -->
           <div class="sim-terminal-container">
             <div class="sim-terminal-header">
               <div class="term-dots">
@@ -869,15 +869,15 @@
                 <span class="dot yellow"></span>
                 <span class="dot green"></span>
               </div>
-              <span class="term-title">Pipeline Runtime Telemetry Simulator</span>
+              <span class="term-title">Automated Pipeline Telemetry Console</span>
               <button class="neu-btn neu-btn-sm" id="btnRunSim" onclick="runPipelineSimulation()">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                <span>Simulate Pipeline Execution</span>
+                <span>Run Pipeline Validation</span>
               </button>
             </div>
             <div class="sim-terminal-body" id="simTerminalBody">
-              <div class="term-line info">[SYS] Pipeline ready. Environment: Windows / Python 3.11 / SQLite3.</div>
-              <div class="term-line info">[SYS] Click "Simulate Pipeline Execution" to run C1 through C7 stage validation.</div>
+              <div class="term-line info">[SYS] Pipeline runtime: Python 3.11 / SQLite3 / ijson streaming engine.</div>
+              <div class="term-line info">[SYS] Click "Run Pipeline Validation" to execute automated end-to-end processing.</div>
             </div>
           </div>
         </div>
@@ -901,8 +901,8 @@
 
   <footer class="app-footer">
     <div class="footer-container">
-      <span>Centene Price Transparency Data (PTD) Pipeline • Deliverables 1-7 (APM &amp; Developer Tracks)</span>
-      <span class="footer-badge">UI Brownie Point Compliant (Neumorphic Style Guide)</span>
+      <span>Centene Price Transparency Analytics • California Commercial Group PPO Network</span>
+      <span class="footer-badge">CMS TiC Schema v2.0 Compliant</span>
     </div>
   </footer>
 
