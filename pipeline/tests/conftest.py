@@ -19,6 +19,8 @@ import pytest
 # Tests never call the live NPI Registry API; the one API test serves its own and passes --npi-api.
 os.environ.setdefault("PTD_NPI_API", "off")
 os.environ.setdefault("PTD_GEOCODE", "off")
+# ...and never start the live Health Net directory search when no saved PPO check is in pipeline/inputs.
+os.environ.setdefault("PTD_DIRECTORY_CHECK", "off")
 
 
 def _refs(network_names, n_refs=60, tin_base=100000000, npis=3, as_list=True):

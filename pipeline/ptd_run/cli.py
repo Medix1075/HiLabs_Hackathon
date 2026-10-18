@@ -6,6 +6,9 @@
   python -m ptd_run all --fetch-public --workbook ...     # download NPPES, CMS D&C and NUCC first
   python -m ptd_run summary                               # only rebuild the summary from existing outputs
 
+The HiLabs workbook and the saved PPO directory check (c4_ppo_check.csv) are read from pipeline/inputs/
+when they are not given on the command line (see ptd_run/inputs.py).
+
 Every stage can also be run on its own (python -m ptd_c4 run, ...); this runner only chains them
 with the same arguments and stops at the first stage that fails.
 """
@@ -21,6 +24,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .docs import write_logic, write_quality_metrics
+from .inputs import discover
+
+PIPELINE_DIR = Path(__file__).resolve().parents[1]
 
 STAGES = ["c1", "c2", "c3", "c4", "c3net", "c5", "c6", "c7"]
 
@@ -173,6 +179,35 @@ def _copy_deliverables(out: Path) -> None:
             shutil.copy(out / src, d / name)
 
 
+def _use_repo_inputs(args, start: int, stop: int) -> None:
+    """Fill the workbook and the saved PPO check from pipeline/inputs/ when not given on the command line.
+
+    With a saved check, C4 uses it alone (no site search). Without one, C4 searches the Health Net
+    directory live when Playwright is installed; --no-check-directory or PTD_DIRECTORY_CHECK=off turn that off."""
+    found = discover(args.inputs or PIPELINE_DIR / "inputs")
+    if not args.workbook and found["workbook"]:
+        args.workbook = found["workbook"]
+        print(f"[input] workbook from {found['inputs_dir']}: {Path(args.workbook).name}", flush=True)
+    elif not args.workbook:
+        print(f"[input] no HiLabs workbook in {found['inputs_dir']} and no --workbook: every billing code is "
+              "extracted and C7 weights codes equally", flush=True)
+    if not start <= STAGES.index("c4") <= stop or args.no_ppo_check_csv:
+        return
+    if not args.ppo_check_csv and found["ppo_check_csv"]:
+        args.ppo_check_csv = found["ppo_check_csv"]
+        print(f"[input] saved PPO directory check from {found['inputs_dir']}: {Path(args.ppo_check_csv).name} "
+              "(used as is; the directory site is not searched)", flush=True)
+    elif not args.ppo_check_csv and not args.check_directory and not args.no_check_directory:
+        if found["live_directory_check"]:
+            args.check_directory = True
+            print(f"[input] no saved PPO directory check in {found['inputs_dir']}: C4 searches the Health Net "
+                  "directory live (resumable; can take hours on the whole file)", flush=True)
+        else:
+            print(f"[input] no saved PPO directory check in {found['inputs_dir']} and no live search "
+                  f"({found['live_directory_check_unavailable']}): C4 confirms PPO only from other evidence",
+                  flush=True)
+
+
 def run_all(args) -> int:
     from ptd_c2.cli import main as c2
     from ptd_c3.cli import main as c3
@@ -192,6 +227,7 @@ def run_all(args) -> int:
         args.dac = args.dac or got.get("dac")
         args.nucc = args.nucc or got.get("nucc")
     as_of = ["--as-of", args.as_of] if args.as_of else []
+    _use_repo_inputs(args, start, stop)
     check_out = args.check_out or str(Path(args.data) / "directory" / "hn_check_all")
     check = (["--check-directory", "--check-out", check_out, "--check-workers", str(args.check_workers),
               "--save-every", str(args.save_every)]
@@ -264,7 +300,8 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("all", help="run Step 0 and C1 to C7 in order")
     a.add_argument("--from", dest="from_stage", default="c1", choices=STAGES)
     a.add_argument("--to", dest="to_stage", default="c7", choices=STAGES)
-    a.add_argument("--workbook", help="HiLabs Rate Benchmarking Individual Weights workbook")
+    a.add_argument("--workbook", help="HiLabs Rate Benchmarking Individual Weights workbook "
+                   "(default: the .xlsx in pipeline/inputs)")
     a.add_argument("--files", nargs="+", help="use these rate files instead of C1/C2's list (skips C1, C2)")
     a.add_argument("--html-file", help="C1: saved copy of the Centene page")
     a.add_argument("--no-probe", action="store_true", help="C2: do not open rate files")
@@ -273,8 +310,12 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--check-directory", action="store_true",
                    help="C4: search every rate-file NPI (or --npis) on Health Net's Find a Provider site; resumable")
     a.add_argument("--ppo-check-csv", help="C4: reuse this c4_ppo_check.csv instead of searching its NPIs again "
-                   "(default: <out>/c4/c4_ppo_check.csv when it exists)")
+                   "(default: pipeline/inputs/c4_ppo_check.csv, else <out>/c4/c4_ppo_check.csv when it exists)")
     a.add_argument("--no-ppo-check-csv", action="store_true", help="C4: ignore an existing c4_ppo_check.csv")
+    a.add_argument("--no-check-directory", action="store_true",
+                   help="C4: never start the live directory search, even with no saved PPO check")
+    a.add_argument("--inputs", help="folder with the HiLabs workbook and the saved c4_ppo_check.csv "
+                   "(default: pipeline/inputs)")
     a.add_argument("--check-out", help="C4: base path of the site's captures (default <data>/directory/hn_check_all)")
     a.add_argument("--check-workers", type=int, default=3, help="C4: browsers searching side by side")
     a.add_argument("--save-every", type=int, default=50, help="C4: rewrite c4_ppo_check.csv every N NPIs")

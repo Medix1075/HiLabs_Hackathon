@@ -58,10 +58,13 @@ def live(tmp_path_factory):
     code = root / 'pipeline'
     shutil.copytree(REPO / 'pipeline', code, ignore=shutil.ignore_patterns('data', 'out', '__pycache__', '.pytest_cache', '.venv'))
     inputs = ca_world.build(root / 'inputs')
+    # The workbook comes from pipeline/inputs/, never from the browser.
+    (code / 'inputs').mkdir(exist_ok=True)
+    shutil.copy(inputs['workbook'], code / 'inputs' / 'Rate Benchmarking Individual Weights_Hackathon.xlsx')
     data = PipelineData(code)
     job, server, base = serve(data)
     options = {'from_stage': 'c3', 'to_stage': 'c7', 'as_of': '2026-10-17', 'workers': 2,
-               'rate_files': [str(inputs['rate_file'])], 'workbook': str(inputs['workbook']),
+               'rate_files': [str(inputs['rate_file'])],
                'directory': str(inputs['directory']), 'nppes': str(inputs['nppes']),
                'nppes_pl': str(inputs['pl']), 'dac': str(inputs['dac']), 'zip_county': str(inputs['zip_county'])}
     status, initial = request(base, '/api/pipeline/run', options)
@@ -214,7 +217,9 @@ def test_failures_return_real_nonzero_exit_code_and_missing_exports(tmp_path):
 def test_run_validation_and_cross_origin_requests(tmp_path):
     job, server, base = serve(PipelineData(tmp_path))
     try:
-        for options in ({'command':'echo wrong'}, {'workers':0}, {'as_of':'bad'}, {'from_stage':'c7','to_stage':'c1'}, {'workbook':'missing.xlsx'}, {'rate_files':'bad'}):
+        for options in ({'command':'echo wrong'}, {'workers':0}, {'as_of':'bad'}, {'from_stage':'c7','to_stage':'c1'},
+                        {'workbook':'Rate.xlsx'}, {'ppo_check_csv':'c4_ppo_check.csv'}, {'check_directory':True},
+                        {'nppes':'missing.csv'}, {'rate_files':'bad'}):
             assert request(base, '/api/pipeline/run', options)[0] == 400
         assert request(base, '/api/pipeline/run', {}, {'Origin':'https://example.com'})[0] == 403
         assert request(base, '/api/status', headers={'Host':'attacker.example'})[0] == 403
@@ -223,3 +228,97 @@ def test_run_validation_and_cross_origin_requests(tmp_path):
         assert request(base, '/app.js')[0] == 200
     finally:
         server.shutdown();server.server_close();job.close()
+
+
+def test_runner_used_workbook_from_inputs_folder(live):
+    run = live['run']
+    assert any('[input] workbook from' in line['text'] for line in run['logs'])
+    assert '--workbook' not in run['command']
+    _, config = request(live['base'], '/api/pipeline/config')
+    assert config['inputs']['workbook'].endswith('Rate Benchmarking Individual Weights_Hackathon.xlsx')
+    assert config['inputs']['ppo_check_csv'] is None and config['inputs']['live_directory_check'] is False
+
+
+def test_rate_filters_by_npi_tin_provider_and_range(live):
+    base, data = live['base'], live['data']
+    _, first = request(base, '/api/rates?sort=rate_asc&pageSize=5')
+    rates = [r['rate'] for r in first['rates']]
+    assert rates == sorted(rates)
+    row = first['rates'][0]
+    with sqlite3.connect(data.db) as con:
+        n_npi = con.execute('SELECT COUNT(*) FROM c6_rates r JOIN c5_addresses a ON a.npi=r.npi AND a.tin=r.tin '
+                            'WHERE r.npi=?', (int(row['npi']),)).fetchone()[0]
+    _, by_npi = request(base, f"/api/rates?npi={row['npi']}&pageSize=200")
+    assert by_npi['total'] == n_npi and all(r['npi'] == row['npi'] for r in by_npi['rates'])
+    _, by_tin = request(base, f"/api/rates?tin={row['tin']}&pageSize=200")
+    assert by_tin['total'] and all(r['tin'] == row['tin'] for r in by_tin['rates'])
+    _, by_name = request(base, '/api/rates?provider=' + urllib.request.quote(row['name'][:6]))
+    assert by_name['total'] and all(row['name'][:6].lower() in r['name'].lower() for r in by_name['rates'])
+    _, ranged = request(base, '/api/rates?minRate=50&maxRate=150&pageSize=200')
+    assert ranged['total'] and all(50 <= r['rate'] <= 150 for r in ranged['rates'])
+    assert request(base, '/api/rates?minRate=abc')[0] == 400
+    assert request(base, '/api/rates?sort=drop')[0] == 400
+
+
+def test_code_spread_matches_c6_rates(live):
+    base, data = live['base'], live['data']
+    _, spread = request(base, '/api/rates/spread?code=99213')
+    v = spread['variant']
+    with sqlite3.connect(data.db) as con:
+        expected = sorted(r[0] for r in con.execute(
+            "SELECT rate FROM c6_rates WHERE code='99213' AND negotiated_type=? AND billing_class=? AND "
+            "COALESCE(setting,'')=? AND COALESCE(pos,'')=? AND COALESCE(modifier,'')=?",
+            (v['negotiated_type'], v['billing_class'], v['setting'], v['pos'], v['modifier'])))
+    assert spread['stats']['n'] == len(expected) == len(spread['providers'])
+    assert spread['stats']['min'] == expected[0] and spread['stats']['max'] == expected[-1]
+    assert sum(b['count'] for b in spread['histogram']) == len(expected)
+    assert [p['rate'] for p in spread['providers']] == expected
+    _, confirmed = request(base, '/api/rates/spread?code=99213&status=CONFIRMED_PPO')
+    assert confirmed['providers'] and all(p['network_status'] == 'CONFIRMED_PPO' for p in confirmed['providers'])
+    assert request(base, '/api/rates/spread')[0] == 400
+
+
+def test_compare_lines_up_same_code_and_variant(live):
+    base = live['base']
+    _, spread = request(base, '/api/rates/spread?code=99214')
+    cheap, dear = spread['providers'][0], spread['providers'][-1]
+    pairs = f"{cheap['npi']}:{cheap['tin']},{dear['npi']}:{dear['tin']}"
+    _, result = request(base, '/api/compare?pairs=' + pairs)
+    keys = [p['key'] for p in result['providers']]
+    assert keys == pairs.split(',')
+    line = next(r for r in result['rows'] if r['code'] == '99214' and r['negotiated_type'] == spread['variant']['negotiated_type']
+                and r['pos'] == spread['variant']['pos'])
+    assert line['rates'][keys[0]] == cheap['rate'] and line['rates'][keys[1]] == dear['rate']
+    assert line['cheapest'] == min(cheap['rate'], dear['rate'])
+    assert line['market']['n'] >= 2
+    if result['basket']:
+        common = [r for r in result['rows'] if all(k in r['rates'] for k in keys)]
+        assert result['basket'][keys[0]] == sum(r['rates'][keys[0]] for r in common)
+    _, missing = request(base, '/api/compare?pairs=1234567893:000000000')
+    assert missing['missing'] == ['1234567893:000000000'] and not missing['rows']
+    assert request(base, '/api/compare?pairs=' + ','.join(f'1{i:09d}:1' for i in range(7)))[0] == 400
+    assert request(base, '/api/compare?pairs=abc')[0] == 400
+
+
+def test_tin_npi_address_tree(live):
+    base, data = live['base'], live['data']
+    _, overview = request(base, '/api/c5/overview')
+    with sqlite3.connect(data.db) as con:
+        assert overview['tins'] == con.execute('SELECT COUNT(DISTINCT tin) FROM c5_addresses').fetchone()[0]
+        assert sum(overview['npisPerTin'].values()) == overview['tins']
+        assert sum(overview['tinsPerNpi'].values()) == overview['npis']
+        assert sum(overview['sitesPerPair'].values()) == overview['pairs']
+        _, groups = request(base, '/api/c5/search')
+        tin = groups['rows'][0]['tin']
+        npis = {str(r[0]) for r in con.execute('SELECT DISTINCT npi FROM c5_addresses WHERE tin=?', (tin,))}
+        ranks = con.execute("SELECT COUNT(*) FROM c5_addresses WHERE tin=? AND COALESCE(address,'')<>''", (tin,)).fetchone()[0]
+    assert [r['npis'] for r in groups['rows']] == sorted((r['npis'] for r in groups['rows']), reverse=True)
+    _, tree = request(base, '/api/c5/tin?tin=' + tin)
+    assert {r['npi'] for r in tree['rows']} == npis and tree['npis'] == len(npis)
+    assert sum(len(r['sites']) for r in tree['rows']) == ranks
+    for r in tree['rows']:
+        assert [s['rank'] for s in r['sites']] == list(range(1, len(r['sites']) + 1))
+    npi = next(iter(npis))
+    _, found = request(base, '/api/c5/search?q=' + npi)
+    assert tin in {r['tin'] for r in found['rows']} and found['npi'] == npi
+    assert request(base, '/api/c5/tin?tin=000')[0] == 404

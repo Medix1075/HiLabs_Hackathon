@@ -72,7 +72,7 @@ The run's own files are in the project folder `research/directory/pipeline-2603n
 |---|---|---|---|
 | Centene price transparency page and its 11 index files | https://www.centene.com/price-transparency-files.html (found by the scraper, never typed in) | Step 0, C1 | Yes |
 | Health Net CA in-network rate file (701.6 MB) and allowed-amount file | URLs inside the Health Net index | C2 to C4 | Yes |
-| HiLabs workbook *Rate Benchmarking Individual Weights_Hackathon.xlsx* (taxonomy crosswalk, specialty weights, 946 specialty x code weights over 583 codes) | Given by HiLabs; put it in `pipeline/` (not in git) | C3, C4, C6, C7 | Strongly recommended |
+| HiLabs workbook *Rate Benchmarking Individual Weights_Hackathon.xlsx* (taxonomy crosswalk, specialty weights, 946 specialty x code weights over 583 codes) | Given by HiLabs; put it in `pipeline/inputs/` | C3, C4, C6, C7 | Strongly recommended |
 | `c4_ppo_check.csv`: Health Net Find a Provider result per NPI + TIN | Made by C4 `--check-directory` (findaprovider.healthnetcalifornia.com), or a saved copy | C4, C5 | Needed to confirm any PPO provider |
 | NPPES monthly file (1.16 GB zip, includes the Practice Location file) | CMS, downloaded by `--fetch-public` | C5, C6 | Recommended |
 | CMS Doctors and Clinicians file (900 MB) | CMS, downloaded by `--fetch-public` | C5 | Recommended |
@@ -476,8 +476,20 @@ The UI reads the real `pipeline/out/rates.sqlite` database, C2/C3/C5/C6/C7 repor
 and C7 benchmark CSVs. There is no sample-data fallback. Before the first pipeline
 run, the dashboard shows missing results and exports remain disabled.
 
-Use **Run pipeline** to choose the start/end stages, workbook, saved PPO check and
-optional public input files. Paths refer to files on the machine running the
+The analyst views: **Rate explorer** (filter by NPI, TIN, provider name, billing
+code, specialty, region, network status, cost tier or rate range, sort by rate),
+**Compare providers** (up to six NPI + TIN providers side by side, code by code and
+price variant by price variant, against the market median, with a basket total over
+the codes they all bill), **Price spread by code** (quartiles, distribution and a
+ranked list of every provider's rate for one code and variant), **TIN → NPI →
+address** (how many NPIs each TIN has, how many sites each pair keeps, and one TIN's
+tree of NPIs and ranked practice sites with confidence and sources), plus the C7
+benchmarks, C2 plan decisions and C3 file quality.
+
+The HiLabs workbook and the saved PPO directory check are not typed into the UI:
+the runner reads them from `pipeline/inputs/` (see "Inputs kept in the repo"
+below), and **Run pipeline** shows which ones it found. Use **Run pipeline** to
+choose the start/end stages and optional public input files. Paths refer to files on the machine running the
 server and can be absolute or relative to `pipeline/`. The server executes
 `python -u -m ptd_run all` from `pipeline/`, streams its actual logs and reports
 its exit code. Only one run can execute at a time. Results refresh after it ends;
@@ -504,7 +516,16 @@ pip install -r requirements.txt
 python -m playwright install chromium   # only needed for the Health Net site check
 ```
 
-Copy the HiLabs workbook into `pipeline/` as `Rate Benchmarking Individual Weights_Hackathon.xlsx`.
+### Inputs kept in the repo
+
+Put these two files in `pipeline/inputs/` and every run picks them up without flags:
+
+| File | If it is missing |
+|---|---|
+| `pipeline/inputs/Rate Benchmarking Individual Weights_Hackathon.xlsx` (HiLabs workbook) | every billing code is extracted and C7 weights codes equally |
+| `pipeline/inputs/c4_ppo_check.csv` (saved Health Net PPO directory check) | C4 searches the Health Net directory live (Playwright; resumable; 12 to 13 hours on the whole file) |
+
+With the saved check present, C4 uses it as is and does not search the site. A path on the command line (`--workbook`, `--ppo-check-csv`) always wins; `--no-check-directory` or `PTD_DIRECTORY_CHECK=off` stop the live search. Details: `pipeline/inputs/README.md`.
 
 ### The whole pipeline, reusing a saved PPO check (about 6 minutes)
 
@@ -512,23 +533,21 @@ This is the command used for the results above. It downloads the public files, r
 
 ```bash
 python -m ptd_run all --fetch-public \
-  --workbook "Rate Benchmarking Individual Weights_Hackathon.xlsx" \
-  --ppo-check-csv c4_ppo_check.csv \
-  --npis c4_ppo_check.csv \
+  --npis inputs/c4_ppo_check.csv \
   --as-of 2026-10-18
 ```
 
-- `--ppo-check-csv` is the saved site check (the project keeps the latest at `research/directory/c4-all-npis-2026-10-17/c4_ppo_check.csv`). If `out/c4/c4_ppo_check.csv` exists, C4 uses it automatically.
+- The workbook and the saved site check come from `pipeline/inputs/`.
 - `--npis` limits C4 to C7 to the NPIs that were searched. Leave it out to cover every NPI in the file; unsearched NPIs can then only be candidates or unresolved.
 - `--as-of` fixes the date used for expiry and record age, so two runs give the same rows.
 
 ### The whole pipeline from scratch, including the site search (about 12 to 13 hours)
 
 ```bash
-python -m ptd_run all --fetch-public \
-  --workbook "Rate Benchmarking Individual Weights_Hackathon.xlsx" \
-  --check-directory --check-year 2026 --as-of 2026-10-18
+python -m ptd_run all --fetch-public --check-year 2026 --as-of 2026-10-18
 ```
+
+With no `pipeline/inputs/c4_ppo_check.csv`, the runner turns the live search on by itself (`--check-directory` does the same explicitly).
 
 The search runs 3 browsers, rewrites `out/c4/c4_ppo_check.csv` every 50 NPIs and can be stopped and restarted: it skips NPIs already searched. Run it on a machine that stays awake (a cloud container that pauses kills the browsers).
 

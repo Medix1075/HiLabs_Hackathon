@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Centene PTD Intelligence Platform</title>
-  <meta name="description" content="Explore actual Centene pipeline results, provider rates, network evidence, practice addresses and cost benchmarks.">
+  <meta name="description" content="Analyst views over the real Centene pipeline results: provider rates, side-by-side comparisons, price spreads, TIN to NPI to address links and cost benchmarks.">
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
 </head>
 <body>
 <header class="app-header">
   <div class="header-container">
-    <div><strong class="brand-title">Centene PTD Intelligence</strong><p class="muted">California commercial group PPO</p></div>
+    <div><strong class="brand-title">Centene PTD Intelligence</strong><p class="muted">California commercial group PPO · analyst workspace</p></div>
     <div class="header-actions">
       <span class="badge-pill" id="backendStatusText" role="status">Connecting…</span>
       <button class="neu-btn neu-btn-sm" id="refreshButton">Refresh results</button>
@@ -22,37 +22,62 @@
   <div id="message" class="notice" role="alert" hidden></div>
   <nav class="workspace-nav" aria-label="Workspace">
     <button class="analyst-tab-btn active" data-tab="overview" aria-current="page">Overview</button>
-    <button class="analyst-tab-btn" data-tab="rates">Provider rates</button>
-    <button class="analyst-tab-btn" data-tab="plans">Network plans</button>
-    <button class="analyst-tab-btn" data-tab="entities">Practice addresses</button>
+    <button class="analyst-tab-btn" data-tab="rates">Rate explorer</button>
+    <button class="analyst-tab-btn" data-tab="compare">Compare providers <span class="compare-counter-badge" id="compareBadge" hidden>0</span></button>
+    <button class="analyst-tab-btn" data-tab="spread">Price spread by code</button>
+    <button class="analyst-tab-btn" data-tab="entities">TIN → NPI → address</button>
     <button class="analyst-tab-btn" data-tab="benchmarks">Cost benchmarks</button>
+    <button class="analyst-tab-btn" data-tab="plans">Network plans</button>
     <button class="analyst-tab-btn" data-tab="quality">File quality</button>
     <button class="analyst-tab-btn" data-tab="pipeline">Run pipeline</button>
   </nav>
 
+  <div id="compareBar" class="compare-floating-bar" hidden>
+    <div class="compare-bar-left"><strong id="compareBarText">0 providers</strong> selected to compare side by side</div>
+    <div class="export-actions"><button class="neu-btn neu-btn-sm" id="clearCompare">Clear</button><button class="neu-btn neu-btn-primary neu-btn-sm" data-goto="compare">Compare side by side →</button></div>
+  </div>
+
   <section id="overview" class="workspace-panel">
-    <div class="view-intro"><div><h2>Network curation & contracting dashboard</h2><p>Figures come from your latest pipeline reports. Missing results appear as “Not available”.</p></div></div>
+    <div class="view-intro"><div><h2>Network curation &amp; contracting overview</h2><p>Every figure is read from the latest pipeline reports. Missing results appear as “Not available”.</p></div></div>
     <p id="dataState" class="notice">Loading pipeline state…</p>
     <div class="live-kpi-grid" id="kpis"></div>
     <div class="live-grid">
-      <article class="neu-card"><h3>File quality scores</h3><div id="overviewQuality"></div></article>
-      <article class="neu-card"><h3>Plan classifications</h3><div id="planDistribution"></div></article>
-      <article class="neu-card"><h3>Confirmed provider cost tiers</h3><div id="costTiers"></div></article>
+      <article class="neu-card"><h3>Network status of NPI + TIN pairs (C4)</h3><div id="pairStatus"></div>
+        <details class="status-help"><summary>What do these statuses mean?</summary>
+          <dl class="metric-list">
+            <dt>CONFIRMED_PPO</dt><dd>Direct PPO evidence for this NPI + TIN, such as a Health Net PPO directory listing. Only these rows go into deliverable 1.</dd>
+            <dt>PPO_CANDIDATE</dt><dd>Weak or inferred PPO evidence (TIN-only or name + ZIP match, sister NPI listed). Kept in the candidate file.</dd>
+            <dt>UNRESOLVED</dt><dd>No evidence either way. Kept in the candidate file.</dd>
+            <dt>CONFIRMED_NON_PPO</dt><dd>Evidence it is not PPO (capitation, non-PPO listing). Dropped from both files.</dd>
+          </dl>
+          <p class="muted">C4 decides the status per NPI + TIN pair, not per provider reference, because one reference can mix PPO and non-PPO doctors.</p>
+        </details>
+      </article>
+      <article class="neu-card"><h3>Plan classifications (C2)</h3><div id="planDistribution"></div></article>
+      <article class="neu-card"><h3>Confirmed provider cost tiers (C7)</h3><div id="costTiers"></div></article>
+      <article class="neu-card"><h3>File quality scores (C3)</h3><div id="overviewQuality"></div></article>
       <article class="neu-card"><h3>Stage reports</h3><div id="stageReports"></div></article>
     </div>
   </section>
 
   <section id="rates" class="workspace-panel" hidden>
-    <div class="view-intro"><div><h2>Provider rate explorer</h2><p>One row per C6 provider, TIN, practice site and billing code. Candidate rates retain their own network status and cost scores.</p></div></div>
+    <div class="view-intro"><div><h2>Rate explorer</h2><p>One row per C6 provider, TIN, practice site and billing code. Filter by NPI, TIN, provider, billing code, specialty, region, network status, cost tier or rate range. Tick providers to compare them side by side.</p></div></div>
     <form id="rateFilters" class="neu-card filter-card">
       <div class="filter-row">
-        <label class="filter-item search-grow">Search<input class="neu-select" name="q" placeholder="Name, NPI, TIN, city, address or code"></label>
+        <label class="filter-item">NPI<input class="neu-select" name="npi" inputmode="numeric" placeholder="10-digit NPI"></label>
+        <label class="filter-item">TIN<input class="neu-select" name="tin" placeholder="Tax ID"></label>
+        <label class="filter-item">Provider name<input class="neu-select" name="provider" placeholder="Name contains"></label>
         <label class="filter-item">Billing code<select class="neu-select" name="code" id="filterCode"><option value="">All codes</option></select></label>
         <label class="filter-item">Specialty<select class="neu-select" name="specialty" id="filterSpecialty"><option value="">All specialties</option></select></label>
-        <label class="filter-item">Network status<select class="neu-select" name="status" id="filterStatus"><option value="CONFIRMED_PPO">CONFIRMED_PPO</option></select></label>
+        <label class="filter-item">Region<select class="neu-select" name="region" id="filterRegion"><option value="">All regions</option></select></label>
+        <label class="filter-item">Network status<select class="neu-select" name="status" id="filterStatus"><option value="">All statuses</option></select></label>
         <label class="filter-item">Cost tier<select class="neu-select" name="tier" id="filterTier"><option value="">All tiers</option></select></label>
-        <button class="neu-btn neu-btn-primary" type="submit">Apply filters</button>
+        <label class="filter-item">Rate from<input class="neu-select" name="minRate" type="number" step="any" min="0" placeholder="$ min"></label>
+        <label class="filter-item">Rate to<input class="neu-select" name="maxRate" type="number" step="any" min="0" placeholder="$ max"></label>
+        <label class="filter-item">Sort by<select class="neu-select" name="sort"><option value="provider">Provider (NPI, TIN)</option><option value="rate_asc">Rate, lowest first</option><option value="rate_desc">Rate, highest first</option><option value="code">Billing code</option></select></label>
+        <label class="filter-item search-grow">Free text<input class="neu-select" name="q" placeholder="Any of name, NPI, TIN, city, address, specialty or code"></label>
       </div>
+      <div class="export-actions"><button class="neu-btn neu-btn-primary" type="submit">Apply filters</button><button class="neu-btn" type="reset" id="resetRates">Reset</button></div>
     </form>
     <div class="export-actions">
       <button class="neu-btn neu-btn-sm" data-export="confirmed-csv" disabled>Confirmed PPO CSV</button>
@@ -60,28 +85,64 @@
       <button class="neu-btn neu-btn-sm" data-export="scored-xlsx" disabled>Confirmed PPO + cost scores</button>
       <button class="neu-btn neu-btn-sm" data-export="candidates-csv" disabled>Candidate CSV (unconfirmed)</button>
     </div>
-    <article class="neu-card"><p id="rateCount" role="status"></p><div class="table-responsive"><table><thead><tr><th>Compare</th><th>Provider / NPI / TIN</th><th>Practice address</th><th>Code / variant</th><th>Specialty</th><th>Rate</th><th>C7 cost index / tier</th><th>Network status</th><th>Evidence</th></tr></thead><tbody id="ratesBody"></tbody></table></div>
-      <div class="table-pagination"><button class="neu-btn neu-btn-sm" id="ratesPrev">Previous</button><span id="ratesPage"></span><button class="neu-btn neu-btn-sm" id="ratesNext">Next</button></div>
+    <article class="neu-card"><p id="rateCount" role="status"></p><div class="table-responsive"><table><thead><tr><th>Compare</th><th>Provider / NPI / TIN</th><th>Practice address (site rank)</th><th>Code / variant</th><th>Specialty / region</th><th>Rate</th><th>C7 cost index / tier</th><th>Network status</th><th></th></tr></thead><tbody id="ratesBody"></tbody></table></div>
+      <div class="table-pagination"><button class="neu-btn neu-btn-sm" data-page="rates:-1">Previous</button><span id="ratesPage"></span><button class="neu-btn neu-btn-sm" data-page="rates:1">Next</button></div>
     </article>
-    <article class="neu-card section-gap"><div class="card-header-clean"><h3>Compare selected rates</h3><button class="neu-btn neu-btn-sm" id="clearCompare">Clear selection</button></div><div id="comparison"><p>Select up to four rows above.</p></div></article>
+  </section>
+
+  <section id="compare" class="workspace-panel" hidden>
+    <div class="view-intro"><div><h2>Compare providers side by side</h2><p>Up to six NPI + TIN providers, code by code. Each row compares the same billing code and price variant only, and shows the market median for that code across the rate file. The cheapest rate in each row is highlighted.</p></div></div>
+    <form id="compareForm" class="neu-card filter-card">
+      <div class="filter-row">
+        <label class="filter-item">Add NPI<input class="neu-select" name="npi" inputmode="numeric" placeholder="10-digit NPI" required></label>
+        <label class="filter-item">TIN (optional)<input class="neu-select" name="tin" placeholder="All TINs of this NPI"></label>
+        <label class="filter-item">Market median over<select class="neu-select" name="status" id="compareStatus"><option value="">Every provider in the rate file</option></select></label>
+        <button class="neu-btn neu-btn-primary" type="submit">Add provider</button>
+      </div>
+    </form>
+    <div id="compareResult"><p class="muted empty-state">Tick providers in the rate explorer or the price spread, or add an NPI above.</p></div>
+  </section>
+
+  <section id="spread" class="workspace-panel" hidden>
+    <div class="view-intro"><div><h2>Price spread by billing code</h2><p>Every provider's negotiated rate for one code and price variant: quartiles, distribution and a ranked list. Use it to see who is cheap or expensive for the same service, then add them to the comparison.</p></div></div>
+    <form id="spreadForm" class="neu-card filter-card">
+      <div class="filter-row">
+        <label class="filter-item">Billing code<select class="neu-select" name="code" id="spreadCode" required></select></label>
+        <label class="filter-item search-grow">Price variant<select class="neu-select" name="variant" id="spreadVariant"></select></label>
+        <label class="filter-item">Network status<select class="neu-select" name="status" id="spreadStatus"><option value="">All statuses</option></select></label>
+        <button class="neu-btn neu-btn-primary" type="submit">Show spread</button>
+      </div>
+    </form>
+    <div id="spreadResult"><p class="muted empty-state">Choose a billing code.</p></div>
+  </section>
+
+  <section id="entities" class="workspace-panel" hidden>
+    <div class="view-intro"><div><h2>TIN → NPI → practice address</h2><p>How C5 links each tax ID to the NPIs billing under it and each NPI to the sites where it practises. Site rank 1 is the most confident address for that NPI + TIN; ranks 2 and up are extra sites kept because their confidence is close to the best one, and each becomes its own row in the rate file.</p></div></div>
+    <div class="live-kpi-grid" id="c5Kpis"></div>
+    <div class="live-grid">
+      <article class="neu-card"><h3>NPIs per TIN</h3><div id="c5NpisPerTin"></div></article>
+      <article class="neu-card"><h3>Sites kept per NPI + TIN</h3><div id="c5SitesPerPair"></div></article>
+      <article class="neu-card"><h3>TINs per NPI</h3><div id="c5TinsPerNpi"></div></article>
+    </div>
+    <form id="entitySearch" class="neu-card filter-card section-gap">
+      <div class="filter-row"><label class="filter-item search-grow">Find a group<input class="neu-select" name="q" placeholder="TIN, NPI or provider name (empty = largest groups)"></label><button class="neu-btn neu-btn-primary" type="submit">Search</button></div>
+    </form>
+    <div class="entity-graph-layout">
+      <article class="neu-card span-5"><h3>Groups (TINs)</h3><div id="tinList"></div><div class="table-pagination"><button class="neu-btn neu-btn-sm" data-page="tins:-1">Previous</button><span id="tinsPage"></span><button class="neu-btn neu-btn-sm" data-page="tins:1">Next</button></div></article>
+      <article class="neu-card span-7"><div id="tinTree"><p class="muted empty-state">Pick a TIN to see its NPIs and their practice sites.</p></div><div class="table-pagination"><button class="neu-btn neu-btn-sm" data-page="tree:-1">Previous</button><span id="treePage"></span><button class="neu-btn neu-btn-sm" data-page="tree:1">Next</button></div></article>
+    </div>
+  </section>
+
+  <section id="benchmarks" class="workspace-panel" hidden>
+    <div class="view-intro"><div><h2>Cost benchmarks from C7</h2><p>Peer medians and quartiles come from C7's matching billing-code and price-variant cohorts. Confirmed and candidate cohorts stay separate. A low peer count means limited evidence.</p></div></div>
+    <form id="benchmarkFilters" class="filter-row"><label class="filter-item">Cohort<select name="set" class="neu-select"><option value="confirmed">Confirmed PPO</option><option value="candidates">Candidates (unconfirmed)</option></select></label><label class="filter-item">Billing code<input class="neu-select" name="code" placeholder="All codes"></label><label class="filter-item search-grow">Search<input class="neu-select" name="q" placeholder="NPI, TIN, specialty or region"></label><button class="neu-btn" type="submit">Search</button></form>
+    <article class="neu-card"><div id="benchmarksTable"></div><div class="table-pagination"><button class="neu-btn neu-btn-sm" data-page="benchmarks:-1">Previous</button><span id="benchmarksPage"></span><button class="neu-btn neu-btn-sm" data-page="benchmarks:1">Next</button></div></article>
   </section>
 
   <section id="plans" class="workspace-panel" hidden>
     <div class="view-intro"><div><h2>Network plan decisions</h2><p>C2 classifications, including the evidence and rule used for each decision.</p></div></div>
     <form id="planFilters" class="filter-row"><label class="filter-item search-grow">Search plans<input name="q" class="neu-select" placeholder="Plan name, plan ID or reason"></label><label class="filter-item">Network<select name="network" class="neu-select"><option value="">All networks</option><option>PPO</option><option>HMO</option><option>EOA</option><option>POS</option><option>EPO</option><option>HSP</option><option>UNKNOWN</option></select></label><button class="neu-btn" type="submit">Search</button></form>
     <article class="neu-card"><div id="plansTable"></div><div class="table-pagination"><button class="neu-btn neu-btn-sm" data-page="plans:-1">Previous</button><span id="plansPage"></span><button class="neu-btn neu-btn-sm" data-page="plans:1">Next</button></div></article>
-  </section>
-
-  <section id="entities" class="workspace-panel" hidden>
-    <div class="view-intro"><div><h2>TIN → NPI → practice address</h2><p>C5’s actual practice locations, verification flags, confidence and source evidence.</p></div></div>
-    <form id="entityFilters" class="filter-row"><label class="filter-item search-grow">TIN<input class="neu-select" id="entityTin" name="tin" list="tinOptions" placeholder="Choose or enter a TIN" required><datalist id="tinOptions"></datalist></label><button class="neu-btn" type="submit">Show practice sites</button></form>
-    <article class="neu-card"><div id="entitiesTable"></div><div class="table-pagination"><button class="neu-btn neu-btn-sm" data-page="entities:-1">Previous</button><span id="entitiesPage"></span><button class="neu-btn neu-btn-sm" data-page="entities:1">Next</button></div></article>
-  </section>
-
-  <section id="benchmarks" class="workspace-panel" hidden>
-    <div class="view-intro"><div><h2>Cost benchmarks from C7</h2><p>Peer medians and quartiles come from C7’s matching billing-code and price-variant cohorts. Confirmed and candidate cohorts stay separate. A low peer count means limited evidence.</p></div></div>
-    <form id="benchmarkFilters" class="filter-row"><label class="filter-item">Cohort<select name="set" class="neu-select"><option value="confirmed">Confirmed PPO</option><option value="candidates">Candidates (unconfirmed)</option></select></label><label class="filter-item">Billing code<input class="neu-select" name="code" placeholder="All codes"></label><label class="filter-item search-grow">Search<input class="neu-select" name="q" placeholder="NPI, TIN, specialty or region"></label><button class="neu-btn" type="submit">Search</button></form>
-    <article class="neu-card"><div id="benchmarksTable"></div><div class="table-pagination"><button class="neu-btn neu-btn-sm" data-page="benchmarks:-1">Previous</button><span id="benchmarksPage"></span><button class="neu-btn neu-btn-sm" data-page="benchmarks:1">Next</button></div></article>
   </section>
 
   <section id="quality" class="workspace-panel" hidden>
@@ -94,28 +155,27 @@
     <div class="view-intro"><div><h2>Run the real pipeline</h2><p>Run selected stages and follow their actual output. Results refresh after execution ends.</p></div></div>
     <article class="neu-card">
       <p class="muted" id="pipelinePath"></p>
-      <form id="runForm">
+      <h3>Inputs kept in the repo</h3>
+      <div id="repoInputs"></div>
+      <form id="runForm" class="section-gap">
         <div class="live-form-grid">
           <label class="filter-item">Start stage<select class="neu-select" name="from_stage" id="fromStage"></select></label>
           <label class="filter-item">End stage<select class="neu-select" name="to_stage" id="toStage"></select></label>
           <label class="filter-item">As-of date<input class="neu-select" type="date" name="as_of" id="asOf"></label>
           <label class="filter-item">C4 workers<input class="neu-select" type="number" name="workers" value="2" min="1" max="32"></label>
-          <label class="filter-item wide">HiLabs workbook<input class="neu-select" name="workbook" id="workbook" placeholder="Rate Benchmarking Individual Weights_Hackathon.xlsx"></label>
-          <label class="filter-item wide">Saved PPO directory check CSV<input class="neu-select" name="ppo_check_csv" id="ppoCheck" placeholder="Optional: reuse a saved directory check"></label>
         </div>
-        <details class="section-gap"><summary>Local input files and optional downloads</summary>
-          <p class="muted">Paths are on the computer running this server, relative to the pipeline folder or absolute. Choose a later start stage to reuse existing earlier outputs.</p>
+        <details class="section-gap"><summary>Optional local files and public downloads</summary>
+          <p class="muted">Paths are on the computer running this server, relative to the pipeline folder or absolute. Choose a later start stage to reuse earlier outputs.</p>
           <div class="live-form-grid">
             <label class="filter-item">NPPES file<input class="neu-select" name="nppes"></label>
             <label class="filter-item">NPPES practice locations<input class="neu-select" name="nppes_pl"></label>
-            <label class="filter-item">CMS Doctors & Clinicians file<input class="neu-select" name="dac"></label>
+            <label class="filter-item">CMS Doctors &amp; Clinicians file<input class="neu-select" name="dac"></label>
             <label class="filter-item">Payer directory file<input class="neu-select" name="directory"></label>
             <label class="filter-item">ZIP-to-county file<input class="neu-select" name="zip_county"></label>
             <label class="filter-item">Saved Centene page HTML<input class="neu-select" name="html_file"></label>
             <label class="filter-item wide">Local rate files (one per line; bypasses C1/C2)<textarea class="neu-select" name="rate_files" rows="3"></textarea></label>
           </div>
           <label class="check-option"><input type="checkbox" name="fetch_public"> Download public NPPES / CMS files (several GB)</label>
-          <label class="check-option"><input type="checkbox" name="check_directory"> Run live Health Net directory searches (can take many hours; requires Playwright Chromium)</label>
         </details>
         <div class="export-actions"><button class="neu-btn neu-btn-primary" type="submit" id="runButton">Run pipeline</button><span id="runStatus" role="status">Idle</span></div>
       </form>
