@@ -197,7 +197,17 @@ def run(args) -> int:
         if not check_path.exists():
             log(f"[input] --ppo-model: {check_path} not found; no PPO probabilities")
         else:
-            feats = ppo_model.Features(con, ppo_model.read_check(check_path), spec, sp, cfg.get("ppo_model", {}))
+            # the model scores every pair, also those with no extracted rate, so give those NPIs a type and
+            # specialty too (from C5's provider table; no codes to infer from)
+            model_spec = dict(spec)
+            for (n,) in con.execute("SELECT DISTINCT npi FROM c4_pairs"):
+                if n not in model_spec:
+                    p = providers.get(n, {})
+                    taxes = [t for t in str(p.get("taxonomies") or "").split("|") if t]
+                    res = assign(p.get("entity_type") or "", p.get("primary_taxonomy") or "", taxes,
+                                 p.get("dac_specialty") or "", set(), sp)
+                    model_spec[n] = {**res, "npi_type": str(p.get("entity_type") or "")}
+            feats = ppo_model.Features(con, ppo_model.read_check(check_path), model_spec, sp, cfg.get("ppo_model", {}))
             scored = [(int(n), t) for n, t in con.execute("SELECT npi, tin FROM c4_pairs")]
             ppo_prob, model_report = ppo_model.train_and_score(feats, scored, cfg.get("ppo_model", {}), log)
 

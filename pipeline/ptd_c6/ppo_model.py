@@ -258,7 +258,7 @@ def write_report(path: Path, report: dict, dist: dict) -> None:
           for b in report["reliability"]]
     L += ["", "## Coefficients (standardised features)", "", "| feature | coefficient |", "|---|---|"]
     L += [f"| {k} | {v} |" for k, v in sorted(report["coefficients"].items(), key=lambda kv: -abs(kv[1]))]
-    L += ["", "## PPO probability by network status (pairs with rates)", "", "| status | pairs | mean P | P >= 0.5 | P >= 0.8 |",
+    L += ["", "## PPO probability by network status (every NPI + TIN pair)", "", "| status | pairs | mean P | P >= 0.5 | P >= 0.8 |",
           "|---|---|---|---|---|"]
     L += [f"| {k} | {v['pairs']} | {v['mean']} | {v['ge_05']} | {v['ge_08']} |" for k, v in dist.items()]
     path.write_text("\n".join(L) + "\n")
