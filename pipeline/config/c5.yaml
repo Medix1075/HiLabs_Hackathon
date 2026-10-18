@@ -87,6 +87,21 @@ npi_api:
   cache_days: 30                 # re-ask after this many days
   user_agent: "hilabs-c5-pipeline/1.0"
 
+# US Census Bureau geocoder (https://geocoding.geo.census.gov, free, no key): sites whose addresses
+# match the same canonical street address (same house number) are merged, so one place spelled two
+# ways ("4300 LONG BEACH BLVD" / "4300 N LONG BEACH BOULEVARD") is one site.
+geocode:
+  mode: auto                     # auto: use it; off: local keys only (PTD_GEOCODE=off overrides)
+  batch_url: https://geocoding.geo.census.gov/geocoder/locations/addressbatch
+  benchmark: Public_AR_Current
+  batch_size: 1000               # the service accepts up to 10,000 per batch
+  timeout_seconds: 300
+  max_lookups: 100000
+  state: CA                      # only sites in this state are geocoded
+  cache_path: data/geocode_cache.jsonl
+  cache_days: 365
+  user_agent: "hilabs-c5-pipeline/1.0"
+
 # --------------------------------------------------------------- geography (used by C7's peer groups)
 # County comes from --zip-county (any CSV with zip and county columns, e.g. HUD's ZIP-COUNTY file).
 # Without it, the region is taken from the ZIP's first three digits, using the USPS sectional

@@ -62,3 +62,31 @@ def test_tie_break_prefers_the_contract_with_more_ppo_evidence_before_the_lowest
     # no difference in evidence: the old rule (lowest) still decides
     win, rule = _pick([hmo_like, (95.0, *hmo_like[1:])], order)
     assert win[0] == 80.0 and rule == "lowest"
+
+
+def test_geocoder_merges_one_place_spelled_two_ways(tmp_path):
+    from ptd_c5.address import standardize
+    from ptd_c5.geocode import _qkey, _query, parse_batch, site_aliases
+
+    a = standardize("4300 Long Beach Blvd", "", "Long Beach", "CA", "90807")
+    b = standardize("4300 N. Long Beach Boulevard", "Suite 200", "Long Beach", "CA", "90807-1234")
+    c = standardize("4310 Long Beach Blvd", "", "Long Beach", "CA", "90807")   # next door: another site
+    assert a.site_key != b.site_key
+    answers = {_qkey(_query(a)): "4300 N LONG BEACH BLVD, LONG BEACH, CA, 90807",
+               _qkey(_query(b)): "4300 N LONG BEACH BLVD, LONG BEACH, CA, 90807",
+               _qkey(_query(c)): "4310 N LONG BEACH BLVD, LONG BEACH, CA, 90807"}
+    cfg = {"geocode": {"mode": "auto", "state": "CA", "cache_path": str(tmp_path / "geo.jsonl")}}
+    fetch = lambda qs: {_qkey(q): {"matched": answers[_qkey(q)], "exact": True, "lon": 0.0, "lat": 0.0} for q in qs}
+    alias, rep = site_aliases({a.site_key: a, b.site_key: b, c.site_key: c}, cfg, lambda *_: None, fetch)
+    assert len(alias) == 1 and rep["merged_sites"] == 1
+    merged = {alias.get(k, k) for k in (a.site_key, b.site_key)}
+    assert len(merged) == 1 and c.site_key not in alias
+    # the second run reads the cache and asks nothing
+    alias2, rep2 = site_aliases({a.site_key: a, b.site_key: b, c.site_key: c}, cfg, lambda *_: None,
+                                lambda qs: (_ for _ in ()).throw(AssertionError("asked again")))
+    assert alias2 == alias and rep2["asked"] == 0
+    # the batch answer format
+    got = parse_batch('"0","4300 N Long Beach Blvd, Long Beach, CA, 90807","Match","Exact",'
+                      '"4300 N LONG BEACH BLVD, LONG BEACH, CA, 90807","-118.18,33.83","142850101","R"\n'
+                      '"1","1 Nowhere Rd, X, CA, 90000","No_Match"\n')
+    assert got["0"]["matched"].startswith("4300 N LONG BEACH") and got["1"]["matched"] == ""

@@ -45,7 +45,9 @@ def write_logic(path: Path, cfg: dict, stats: dict, kept: list[dict], cands: lis
         "Every address is standardised locally (USPS Publication 28 style): upper case, punctuation removed, "
         "street suffixes and directions abbreviated, suite/unit split into its own field, ZIP cut to 5 digits, "
         "and lines swapped when line 1 is a building name. Two addresses match when house number, street and "
-        "ZIP5 match (the *site*). Suites in one building are the same site.",
+        "ZIP5 match (the *site*). Suites in one building are the same site. Then the US Census Bureau geocoder "
+        "matches each California site to its canonical street address; sites with the same canonical address and "
+        "house number are one site, so one place spelled two ways is merged (`geocode` in config/c5.yaml).",
         "",
         "## 3. Scoring each candidate site for one (NPI, TIN) pair",
         "",
@@ -125,6 +127,8 @@ def write_logic(path: Path, cfg: dict, stats: dict, kept: list[dict], cands: lis
               "- NPPES is self-reported and often stale; it is the weakest source on purpose.",
               "- CMS Doctors & Clinicians covers only Medicare-enrolled individuals (Type 1).",
               "- The payer directory may not cover commercial PPO; when it does, it is the strongest single source.",
-              "- Without a geocoder, two spellings of one street that standardise differently stay separate sites.",
+              "- With the geocoder off or unreachable, two spellings of one street that standardise differently stay "
+              "separate sites. Addresses the Census geocoder can't match (new buildings, some campuses) keep their "
+              "local key.",
               ""]
     path.write_text("\n".join(lines))

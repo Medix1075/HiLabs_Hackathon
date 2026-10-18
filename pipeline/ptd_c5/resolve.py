@@ -37,8 +37,10 @@ def region_for(zip5: str, regions: dict) -> str:
 
 
 class Resolver:
-    def __init__(self, cfg: dict, as_of: date, providers: dict, dac_facts: dict, zip_county: dict | None = None):
+    def __init__(self, cfg: dict, as_of: date, providers: dict, dac_facts: dict, zip_county: dict | None = None,
+                 site_alias: dict | None = None):
         self.cfg, self.as_of, self.providers, self.dac = cfg, as_of, providers, dac_facts
+        self.alias = site_alias or {}  # site key -> the key of the same place spelled another way (geocode.py)
         self.zip_county = zip_county or {}
         sc = cfg["sources"]
         self.weights = sc["weights"]
@@ -66,11 +68,15 @@ class Resolver:
             w = self.weights.get(c["source"], 0.0)
             ev = {"source": c["source"], "family": self.family.get(c["source"], c["source"]),
                   "p": w * self._recency(c.get("date")), "detail": c.get("detail", "")}
-            self.sites[c["npi"]][a.site_key].append(ev)
-            if w >= self.addr_rank.get(a.site_key, -1):  # display the address as the most trusted source wrote it
-                self.addr[a.site_key], self.addr_rank[a.site_key] = a, w
+            key = self.site_key(a)
+            self.sites[c["npi"]][key].append(ev)
+            if w >= self.addr_rank.get(key, -1):  # display the address as the most trusted source wrote it
+                self.addr[key], self.addr_rank[key] = a, w
             n += 1
         return n
+
+    def site_key(self, a) -> str:
+        return self.alias.get(a.site_key, a.site_key)
 
     # -------------------------------------------------------------- the TIN view
     def _direct_strength(self, npi: int) -> dict[str, float]:

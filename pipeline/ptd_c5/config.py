@@ -18,6 +18,9 @@ def load_config(path: str | Path | None = None, as_of: str | None = None) -> dic
     # PTD_NPI_API=off|auto|always overrides the config (offline runs and tests set it to off)
     if os.environ.get("PTD_NPI_API"):
         cfg["npi_api"]["mode"] = os.environ["PTD_NPI_API"].lower()
+    # PTD_GEOCODE=off|auto overrides the Census geocoder setting (offline runs and tests set it to off)
+    if os.environ.get("PTD_GEOCODE"):
+        cfg.setdefault("geocode", {})["mode"] = os.environ["PTD_GEOCODE"].lower()
     as_of = as_of or cfg.get("as_of")
     cfg["_as_of"] = date.fromisoformat(str(as_of)) if as_of else datetime.now(timezone.utc).date()
     return cfg
