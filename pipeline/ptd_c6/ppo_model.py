@@ -213,7 +213,8 @@ def train_and_score(feats: Features, pairs: list[tuple], cfg: dict, log=print) -
     for p in pairs:
         i = idx[p]
         top = np.argsort(-np.abs(contrib[i]))[:3]
-        reasons = "; ".join(f"{feats.names[j]} {'+' if contrib[i, j] > 0 else '-'}{abs(contrib[i, j]):.2f}" for j in top)
+        reasons = "; ".join(f"{feats.names[j]}={X_raw[i, j]:.3g} {'+' if contrib[i, j] > 0 else '-'}{abs(contrib[i, j]):.2f}"
+                            for j in top)
         out[p] = {"g": float(g_all[i]), "model_p": float(min(1.0, g_all[i] / c)), "reasons": reasons}
     # held-out reliability of g against "listed": predicted vs observed per decile
     bins = []
