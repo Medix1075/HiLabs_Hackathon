@@ -462,6 +462,37 @@ flowchart TB
 
 ## 5. How to run it
 
+### Browser UI
+
+From the repository root, install the pipeline dependencies and start the UI:
+
+```bash
+python -m pip install -r pipeline/requirements.txt
+python run_ui.py
+```
+
+Open the localhost URL printed by the server (normally `http://127.0.0.1:8000`).
+The UI reads the real `pipeline/out/rates.sqlite` database, C2/C3/C5/C6/C7 reports
+and C7 benchmark CSVs. There is no sample-data fallback. Before the first pipeline
+run, the dashboard shows missing results and exports remain disabled.
+
+Use **Run pipeline** to choose the start/end stages, workbook, saved PPO check and
+optional public input files. Paths refer to files on the machine running the
+server and can be absolute or relative to `pipeline/`. The server executes
+`python -u -m ptd_run all` from `pipeline/`, streams its actual logs and reports
+its exit code. Only one run can execute at a time. Results refresh after it ends;
+full run logs are saved in `pipeline/out/ui_runs/`. Closing the UI server stops
+its active run. Closing only the browser tab leaves the server and run active.
+
+The confirmed-PPO CSV/Excel downloads are C6's actual deliverables; candidate
+rates have a separate, explicitly labelled download. Cost scores use the
+confirmed and candidate C7 tables independently. Per-code peer medians and
+quartiles come from C7's generated benchmark files.
+
+Optional launch flags: `python run_ui.py --port 8001 --no-browser` and
+`--pipeline-dir /path/to/pipeline` (a directory containing both the pipeline code
+and its `data/` and `out/` folders). No npm installation is needed.
+
 ### Once
 
 ```bash
@@ -518,7 +549,7 @@ python -m ptd_run summary                        # summary, logic file, metrics 
 python -m ptd_c6 check-network --sample out/c6/c6_network_check_sample.csv   # after filling it in by hand
 ```
 
-Offline switches: `PTD_NPI_API=off`, `PTD_GEOCODE=off`. Tests: `PTD_NPI_API=off pytest` (113 tests, about 25 seconds, all offline).
+Offline switches: `PTD_NPI_API=off`, `PTD_GEOCODE=off`. Tests: `PTD_NPI_API=off pytest` (including UI integration tests against the real C3–C7 runner, all offline).
 
 Known quirk: C1 writes into `pipeline/data/` even when `--data` points elsewhere, so run from inside `pipeline/` with the default folders.
 
