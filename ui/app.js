@@ -386,7 +386,8 @@ async function configureRun() {
   $('repoInputs').innerHTML = `<dl class="metric-list">
     <dt>Folder</dt><dd class="mono">${esc(i.inputs_dir)}</dd>
     <dt>HiLabs workbook</dt><dd>${i.workbook ? `✔ ${esc(i.workbook.split(/[\\/]/).pop())}` : 'Not found: every billing code is extracted and C7 weights codes equally.'}</dd>
-    <dt>Saved PPO directory check</dt><dd>${i.ppo_check_csv ? `✔ ${esc(i.ppo_check_csv.split(/[\\/]/).pop())} (used as is; the directory site is not searched)` : i.live_directory_check ? 'Not found: C4 searches the Health Net directory live (resumable; can take hours on the whole file).' : `Not found, and the live search is unavailable (${esc(i.live_directory_check_unavailable)}). C4 confirms PPO only from other evidence.`}</dd>
+    <dt>Saved PPO directory check</dt><dd>${i.ppo_check_csv ? `✔ ${esc(i.ppo_check_csv.split(/[\\/]/).pop())}: ${esc(number(i.ppo_check_npis))} NPIs searched on the site (used as is; the directory site is not searched)${i.ppo_check_layout === 'legacy' ? '. This is the early ppo_check_results.csv layout, whose listings carry no TIN; a c4_ppo_check.csv is better.' : ''}` : i.live_directory_check ? 'Not found: C4 searches the Health Net directory live (resumable; can take hours on the whole file).' : `Not found, and the live search is unavailable (${esc(i.live_directory_check_unavailable)}). C4 confirms PPO only from other evidence.`}</dd>
+    ${i.ignored_csv?.length ? `<dt>Ignored</dt><dd>${esc(i.ignored_csv.join(', '))}: not PPO check tables (they need the columns of c4_ppo_check.csv).</dd>` : ''}
   </dl><p class="muted">Put the files in this folder to change them. See inputs/README.md.</p>`;
 }
 async function startRun(event) {

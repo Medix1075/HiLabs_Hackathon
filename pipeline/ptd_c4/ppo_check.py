@@ -138,16 +138,61 @@ def write(path: Path, rows: list[dict]) -> None:
 SITE_FOUND = ("FOUND_PPO_BY_NPI", "FOUND_PPO_NPI_OTHER_TIN")
 
 
+# The early ptd_dir / hand-checked sample layout (ppo_check_results.csv): no site_checked column,
+# the network searched is implied (the PPO Large Group/Small Group network) and no listing TIN is kept.
+LEGACY_FIELDS = ("npi", "npi_search_result", "verdict")
+LEGACY_NETWORK = "PPO - Large Group/Small Group"
+LEGACY_FOUND = ("FOUND_PPO_BY_NPI",)
+
+
+def csv_layout(fields) -> str | None:
+    """'c4' for a c4_ppo_check.csv, 'legacy' for the early ppo_check_results.csv, None for anything else."""
+    fields = set(fields or [])
+    if {"npi", "site_checked", "verdict"} <= fields:
+        return "c4"
+    if set(LEGACY_FIELDS) <= fields:
+        return "legacy"
+    return None
+
+
+def _reader(fh):
+    head = fh.readline()
+    fh.seek(0)
+    return csv.DictReader(fh, delimiter="\t" if head.count("\t") > head.count(",") else ",")
+
+
+def count_checked(path) -> tuple[str | None, int]:
+    """(layout, NPIs searched on the site) of a saved check, without building directory rows."""
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        rd = _reader(fh)
+        layout = csv_layout(rd.fieldnames)
+        if layout is None:
+            return None, 0
+        key = (lambda r: r.get("site_checked") == "yes") if layout == "c4" else (lambda r: bool(r.get("npi_search_result")))
+        return layout, len({str(r.get("npi") or "").strip().split(".")[0] for r in rd if key(r)} - {""})
+
+
 def from_csv(path) -> tuple[list[dict], dict[str, dict]]:
     """Reuse an earlier c4_ppo_check.csv instead of searching the site again: the directory rows it
     implies (each listing it found, and the other NPIs listed under the same TIN) and, per NPI, what
-    was searched (the same fields as a `ptd_dir check` coverage line)."""
+    was searched (the same fields as a `ptd_dir check` coverage line).
+
+    The early ppo_check_results.csv layout is read too; any other CSV raises ValueError, so a wrong
+    file is never taken silently as "nothing found"."""
     rows, coverage = [], {}
     with open(path, newline="", encoding="utf-8-sig") as fh:  # also a copy saved from Excel (BOM, tabs)
-        head = fh.readline()
-        fh.seek(0)
-        for r in csv.DictReader(fh, delimiter="\t" if head.count("\t") > head.count(",") else ","):
+        rd = _reader(fh)
+        layout = csv_layout(rd.fieldnames)
+        if layout is None:
+            raise ValueError(f"{Path(path).name} is not a PPO check table: it needs the columns of c4_ppo_check.csv "
+                             f"(npi, site_checked, verdict, ...) or of ptd_dir's ppo_check_results.csv "
+                             f"(npi, npi_search_result, verdict); found {', '.join(rd.fieldnames or [])}")
+        for r in rd:
             npi = str(r.get("npi") or "").strip().split(".")[0]
+            if layout == "legacy":
+                if npi and r.get("npi_search_result"):
+                    _legacy_row(path, npi, r, rows, coverage)
+                continue
             if not npi or r.get("site_checked") != "yes":
                 continue
             net = r.get("network_searched", "")
@@ -170,3 +215,19 @@ def from_csv(path) -> tuple[list[dict], dict[str, dict]]:
                 rows.append({**base, "npi": other, "tin": _digits(r.get("tin")), "listing_networks": "",
                              "name": "", "address_line1": "", "city": "", "state": "", "zip": ""})
     return rows, coverage
+
+
+def _legacy_row(path, npi, r, rows, coverage):
+    """One ppo_check_results.csv line: searched in the PPO network; a PPO listing for the NPI itself is kept
+    without a TIN (the sample did not record the listing's TIN), the TIN fallback's NPIs as same-TIN listings."""
+    coverage.setdefault(npi, {"npi": npi, "tin": _digits(r.get("rate_file_tin")),
+                              "status": "found" if r.get("npi_search_result") == "found" else r.get("npi_search_result", ""),
+                              "location": r.get("search_location", ""), "network": LEGACY_NETWORK, "year": "",
+                              "fallback_term": r.get("tin_fallback_search_term", "")})
+    base = {"network_name": LEGACY_NETWORK, "listing_networks": r.get("directory_product", ""),
+            "npi_source": "listed", "source": f"ppo_check:{Path(path).name}", "address_line1": "", "city": "",
+            "state": "", "zip": ""}
+    if r.get("verdict") in LEGACY_FOUND and "PPO" in r.get("directory_product", ""):
+        rows.append({**base, "npi": npi, "tin": "", "name": r.get("directory_name", "")})
+    for other in [n for n in re.split(r"[ |,;]+", r.get("tin_fallback_directory_npis", "")) if n.isdigit()]:
+        rows.append({**base, "npi": other, "tin": _digits(r.get("rate_file_tin")), "listing_networks": "", "name": ""})

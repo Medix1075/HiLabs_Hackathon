@@ -191,12 +191,18 @@ def _use_repo_inputs(args, start: int, stop: int) -> None:
     elif not args.workbook:
         print(f"[input] no HiLabs workbook in {found['inputs_dir']} and no --workbook: every billing code is "
               "extracted and C7 weights codes equally", flush=True)
+    for name in found["ignored_csv"]:
+        print(f"[input] ignored {name} in {found['inputs_dir']}: not a PPO check table (needs the columns of "
+              "c4_ppo_check.csv)", flush=True)
     if not start <= STAGES.index("c4") <= stop or args.no_ppo_check_csv:
         return
     if not args.ppo_check_csv and found["ppo_check_csv"]:
         args.ppo_check_csv = found["ppo_check_csv"]
-        print(f"[input] saved PPO directory check from {found['inputs_dir']}: {Path(args.ppo_check_csv).name} "
-              "(used as is; the directory site is not searched)", flush=True)
+        print(f"[input] saved PPO directory check from {found['inputs_dir']}: {Path(args.ppo_check_csv).name}, "
+              f"{found['ppo_check_npis']:,} NPIs searched on the site"
+              + (" (early ppo_check_results.csv layout: listings carry no TIN; prefer a c4_ppo_check.csv)"
+                 if found["ppo_check_layout"] == "legacy" else "")
+              + " (used as is; the directory site is not searched)", flush=True)
     elif not args.ppo_check_csv and not args.check_directory and not args.no_check_directory:
         if found["live_directory_check"]:
             args.check_directory = True
