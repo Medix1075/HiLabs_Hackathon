@@ -82,7 +82,11 @@ network:
   #   UNRESOLVED         no PPO evidence, or conflicting evidence
   #   CONFIRMED_NON_PPO  direct non-PPO evidence: capitation, a non-PPO directory listing, its own
   #                      network_name, or paid out of network by a PPO plan
-  # Rates are extracted for these statuses. C6 then splits them: confirmed rows go to the provider
+  # Each NPI x TIN pair then gets its own status (network.py, decide_pair): it is CONFIRMED_PPO only
+  # when its reference is confirmed by contract-level evidence (network_name, file_label) or when this
+  # NPI itself is listed PPO under this TIN. A reference confirmed by its other members' listings
+  # makes the pair a PPO_CANDIDATE. An own PPO listing wins over capitation (flagged dual_contract).
+  # Rates are extracted for pairs with these statuses. C6 then splits them: confirmed rows go to the provider
   # rate file, the rest to a separate candidate file (config/c6.yaml).
   include_statuses: [CONFIRMED_PPO, PPO_CANDIDATE, UNRESOLVED]
 
@@ -96,11 +100,13 @@ extract:
   # After cleaning, one provider can still have several rates for the same code and the same
   # variant (negotiated_type, billing_class, setting, place of service, modifiers), e.g. when it is
   # listed in two contracts. The tie-break, in order:
-  #   1. network   - the rate from the reference with the best network status (then tag confidence)
-  #   2. expiry    - the latest expiration_date (evergreen 9999-12-31 counts as latest)
-  #   3. support   - the rate backed by the most price rows / references
-  #   4. lowest    - the lower rate (conservative, deterministic)
-  tie_break: [network, expiry, support, lowest]
+  #   1. network      - the rate from the reference with the best network status (then tag confidence)
+  #   2. ppo_evidence - the reference with the larger share of PPO evidence (more of its members
+  #                     listed PPO): of two contracts, the likelier PPO one
+  #   3. expiry       - the latest expiration_date (evergreen 9999-12-31 counts as latest)
+  #   4. support      - the rate backed by the most price rows / references
+  #   5. lowest       - the lower rate (conservative, deterministic)
+  tie_break: [network, ppo_evidence, expiry, support, lowest]
 
 # --------------------------------------------------------------- outputs
 outputs:

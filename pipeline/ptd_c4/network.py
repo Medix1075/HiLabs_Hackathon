@@ -528,4 +528,86 @@ def tag_references(con: sqlite3.Connection, file_id: int, file_meta: dict, cfg: 
     report["statuses"] = {s: statuses.get(s, 0) for s in STATUSES}
     log("[c4]   network tags: " + ", ".join(f"{k} {v:,}" for k, v in report["tags"].items()))
     log("[c4]   network status: " + ", ".join(f"{k} {v:,}" for k, v in report["statuses"].items()))
+    pair_counts = pair_statuses(con, file_id, directory)
+    report["pair_statuses"] = {s: pair_counts.get(s, 0) for s in STATUSES}
+    report["pair_flags"] = {"dual_contract": pair_counts.get("dual_contract", 0),
+                            "confirmed_by_own_listing": pair_counts.get("own_listing", 0),
+                            "downgraded_from_reference": pair_counts.get("downgraded", 0)}
+    log("[c4]   network status per NPI-TIN pair: " + ", ".join(f"{k} {v:,}" for k, v in report["pair_statuses"].items())
+        + f" ({report['pair_flags']['downgraded_from_reference']:,} pairs only in references confirmed by other "
+          f"members' listings stay candidates; {report['pair_flags']['dual_contract']:,} dual contracts)")
     return report
+
+
+# ------------------------------------------------------------------ status per NPI x TIN
+STATUS_RANK = {CONFIRMED_PPO: 4, PPO_CANDIDATE: 3, UNRESOLVED: 2, CONFIRMED_NON_PPO: 1}
+# Direct evidence about the contract itself, true for every member of the reference. A directory
+# listing is about one NPI, so it confirms only that NPI's own pair (decide_pair).
+CONTRACT_PPO = STRONG[PPO] - {"directory"}
+
+
+def _direct_sources(basis: str) -> set:
+    basis = basis or ""
+    return {x.strip() for x in basis.split(":", 1)[1].split(",")} if basis.startswith("direct:") else set()
+
+
+def decide_pair(npi, tin, refs: dict, directory=None) -> tuple[str, str, list]:
+    """(status, basis, flags) for one NPI x TIN, from its references {ref_id: (status, basis)} and its own listing.
+
+    A pair is confirmed only by evidence about itself or about its whole contract:
+      - a reference confirmed by its own network name or a PPO-only file (true for every member);
+      - this NPI listed in the PPO network under this TIN (or with no TIN shown).
+    A reference confirmed only because *other* members are listed makes the pair a candidate, so one
+    listed doctor no longer confirms a big shared reference. An own listing confirms the pair even when
+    its references are shared, and wins over a capitated reference (flagged dual_contract), as long as
+    the pair has a reference that is not confirmed non-PPO to take its rates from.
+    """
+    flags: list[str] = []
+    sides, kind = directory.match(npi, tin) if directory is not None and getattr(directory, "enabled", False) \
+        else (set(), "")
+    own_ppo = kind == "npi" and PPO in sides
+    own_non = kind == "npi" and NON in sides and not own_ppo
+    usable = {r: v for r, v in refs.items() if v[0] != CONFIRMED_NON_PPO}
+    contract = sorted(r for r, (st, b) in usable.items() if st == CONFIRMED_PPO and _direct_sources(b) & CONTRACT_PPO)
+    capitated = sorted(r for r, (_, b) in refs.items() if "capitation" in (b or ""))
+    if contract:
+        return CONFIRMED_PPO, refs[contract[0]][1], flags
+    if own_ppo:
+        if capitated:
+            flags.append("dual_contract")
+        if usable:
+            flags.append("own_listing")
+            basis = "direct: own directory listing (this NPI under this TIN)"
+            if capitated:
+                basis += f"; also capitated in reference(s) {', '.join(capitated)} (dual contract)"
+            return CONFIRMED_PPO, basis, flags
+        return PPO_CANDIDATE, ("conflict: own PPO directory listing; every reference is non-PPO ("
+                               + ", ".join(sorted(refs)) + ")"), flags
+    if own_non:
+        return CONFIRMED_NON_PPO, "direct: own directory listing in a non-PPO network only", flags
+    best = max(refs, key=lambda r: (STATUS_RANK.get(refs[r][0], 0), r))
+    st, basis = refs[best]
+    if st == CONFIRMED_PPO:  # the reference was confirmed by listings of its other members
+        flags.append("downgraded")
+        return PPO_CANDIDATE, f"inferred: other members of reference {best} listed PPO, this NPI not ({basis})", flags
+    return st, basis or "", flags
+
+
+def pair_statuses(con: sqlite3.Connection, file_id: int, directory=None) -> Counter:
+    """Write c4_pair_status: one network status per NPI x TIN (see decide_pair)."""
+    con.execute("DELETE FROM c4_pair_status WHERE file_id = ?", (file_id,))
+    refs = {r: (st, b) for r, st, b in con.execute("SELECT ref_id, status, status_basis FROM c4_refs WHERE file_id = ?",
+                                                    (file_id,))}
+    by_pair: dict[tuple, set] = defaultdict(set)
+    for ref, npi, tin in con.execute("SELECT ref_id, npi, tin FROM c4_ref_members WHERE file_id = ? AND npi IS NOT NULL",
+                                     (file_id,)):
+        by_pair[(npi, tin)].add(ref)
+    rows, counts = [], Counter()
+    for (npi, tin), rs in sorted(by_pair.items()):
+        status, basis, flags = decide_pair(npi, tin, {r: refs[r] for r in rs if r in refs}, directory)
+        counts[status] += 1
+        counts.update(flags)
+        rows.append((file_id, npi, tin, status, basis, "|".join(flags)))
+    con.executemany("INSERT INTO c4_pair_status VALUES (?,?,?,?,?,?)", rows)
+    con.commit()
+    return counts

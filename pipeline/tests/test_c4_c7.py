@@ -216,8 +216,18 @@ def test_rate_file_columns_rows_and_headline(world):
     org = world["truth"]["org_npi"]["950000002"]
     person = sorted(world["truth"]["tin_npis"]["950000002"])[0]
     assert by[(person, "99213")][0][h.index("Rate")] == 80.0     # Type 1: professional, no modifier, office
-    assert by[(org, "99213")][0][h.index("Rate")] == 300.0       # Type 2: institutional when it exists
     assert by[(person, "99213")][0][h.index("Price Variants for Code")] == 4
+    assert by[(person, "99213")][0][h.index("Network Basis")].startswith("direct: own directory listing")
+    # The group's organisation NPI is not listed itself: its reference's listed doctors don't confirm it,
+    # so it is a candidate (with the same contract's rates).
+    assert (org, "99213") not in by
+    cw = openpyxl.load_workbook(world["out"] / "c6/c6_provider_rate_file_candidates.xlsx", read_only=True)["Rates"]
+    cd = list(cw.iter_rows(values_only=True))
+    ch = cd[0]
+    org_rows = [r for r in cd[1:] if r[ch.index("NPI")] == org and r[ch.index("Billing Code")] == "99213"]
+    assert org_rows[0][ch.index("Rate")] == 300.0                 # Type 2: institutional when it exists
+    assert org_rows[0][ch.index("Network Status")] == "PPO_CANDIDATE"
+    assert org_rows[0][ch.index("Network Basis")].startswith("inferred: other members of reference")
 
 
 def test_specialty_sources_and_plausibility(world):
@@ -273,7 +283,9 @@ def test_runner_writes_summary_and_deliverables(world, tmp_path):
     text = (tmp_path / "out/summary.md").read_text()
     assert "% NPIs linked to a verified address (C5)" in text and "| Unique NPIs (C4) | 212 |" in text
     assert "| Network status of provider references (C4) | CONFIRMED_PPO: 35;" in text
-    assert "| Rows in the candidate file, not confirmed (C6) | 360 |" in text
+    # 35 listed PPO references, 3 of 4 members listed: the unlisted organisation NPIs are candidates
+    assert "| Network status of NPI-TIN pairs, decided per pair (C4) | CONFIRMED_PPO: 105; PPO_CANDIDATE: 40;" in text
+    assert "| Rows in the candidate file, not confirmed (C6) | 540 |" in text
     assert (tmp_path / "out/c7_candidates/c7_provider_scores.csv").exists()
     names = {p.name for p in (tmp_path / "out/deliverables").iterdir()}
     assert {"1_provider_rate_file.xlsx", "2_logic_file.md", "3_file_quality_metrics.md", "4_summary.md",

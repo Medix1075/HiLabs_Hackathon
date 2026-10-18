@@ -85,7 +85,9 @@ def _check_npis(args) -> list:
     if con is not None and not npis:
         q = "SELECT DISTINCT npi FROM c4_ref_members"
         if args.unconfirmed_only:
-            q = ("SELECT DISTINCT m.npi FROM c4_ref_members m JOIN c4_refs r ON r.file_id = m.file_id AND "
+            has_pairs = con.execute("SELECT 1 FROM sqlite_master WHERE name = 'c4_pair_status'").fetchone()
+            q = ("SELECT DISTINCT npi FROM c4_pair_status WHERE status != 'CONFIRMED_PPO'" if has_pairs else
+                 "SELECT DISTINCT m.npi FROM c4_ref_members m JOIN c4_refs r ON r.file_id = m.file_id AND "
                  "r.ref_id = m.ref_id WHERE r.status != 'CONFIRMED_PPO'")
         if args.rated_only:  # only NPIs with extracted rates for the codes in scope: the ones the deliverable needs
             q = (f"SELECT npi FROM ({q}) WHERE npi IN (SELECT p.npi FROM c4_pairs p JOIN c4_sig_rates s "

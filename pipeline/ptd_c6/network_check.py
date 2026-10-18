@@ -65,9 +65,12 @@ def make_sample(con, per_status: int, seed: int = 7) -> list[dict]:
         for npi, tin, a, city, z in con.execute("SELECT npi, tin, address, city, zip5 FROM c5_addresses WHERE rank = 1"):
             addr[(npi, tin)] = (a, city, z)
     basis = {}
-    for npi, tin, b in con.execute(
-            "SELECT p.npi, p.tin, MIN(r.status_basis) FROM c4_pairs p JOIN c4_sig_members m ON m.file_id = p.file_id "
-            "AND m.sig_id = p.sig_id JOIN c4_refs r ON r.file_id = m.file_id AND r.ref_id = m.ref_id GROUP BY 1, 2"):
+    if "status_basis" in {r[1] for r in con.execute("PRAGMA table_info(c4_pairs)")}:
+        q = "SELECT npi, tin, MIN(status_basis) FROM c4_pairs GROUP BY 1, 2"
+    else:  # older store: the basis of the pair's references
+        q = ("SELECT p.npi, p.tin, MIN(r.status_basis) FROM c4_pairs p JOIN c4_sig_members m ON m.file_id = p.file_id "
+             "AND m.sig_id = p.sig_id JOIN c4_refs r ON r.file_id = m.file_id AND r.ref_id = m.ref_id GROUP BY 1, 2")
+    for npi, tin, b in con.execute(q):
         basis[(npi, tin)] = b
     rnd = random.Random(seed)
     rows = []
