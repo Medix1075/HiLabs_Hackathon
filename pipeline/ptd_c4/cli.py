@@ -167,7 +167,11 @@ def run(args) -> int:
     prior_cov = {}
     csv_in = args.ppo_check_csv or (str(out / "c4_ppo_check.csv") if not args.no_ppo_check_csv else None)
     if csv_in and Path(csv_in).exists():
-        site_rows, prior_cov = ppo_check.from_csv(csv_in)
+        try:
+            site_rows, prior_cov = ppo_check.from_csv(csv_in)
+        except ValueError as exc:
+            log(f"[error] {exc}")
+            return 2
         base_rows += site_rows
         if base_rows:
             used = out / "c4_directory_used.csv"
