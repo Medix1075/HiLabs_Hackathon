@@ -12,7 +12,7 @@ This pipeline reads Centene's Transparency in Coverage files and finds the rate 
 | C5: TIN → NPI → practice address | `ptd_c5/` | `out/c5/` (addresses with confidence, **logic file**) |
 | C6: the provider rate file | `ptd_c6/` | `out/c6/c6_provider_rate_file.xlsx` (**deliverable 1**, confirmed PPO), the candidate file, the network accuracy report |
 | C7: cost effectiveness | `ptd_c7/` | `out/c7/` (scores, tiers, **metrics file**, scored rate file) |
-| PPO directory | `ptd_dir/` | `data/directory.csv` from Health Net's directory (run on your machine) |
+| PPO directory | `ptd_dir/`, `ptd_c4 --check-directory` | Health Net's Find a Provider results per NPI (`out/c4/c4_ppo_check.csv`), used as PPO evidence |
 | Runner + summary | `ptd_run/` | `out/summary.md` and `out/deliverables/` |
 
 C2 imports C1, and C3 imports C2. C4 to C7 share one SQLite rate store (`out/rates.sqlite`): C4 writes the rates, C5 adds addresses, C6 adds specialties and the headline rate, and C7 reads all of it. Each stage reads the previous stage's outputs by default.
@@ -26,8 +26,10 @@ pip install -r requirements.txt
 
 # Everything, C1 to C7, with the public provider files downloaded first:
 python -m ptd_run all --fetch-public --workbook "Rate Benchmarking Individual Weights_Hackathon.xlsx"
-pytest                                 # 96 offline tests
+pytest                                 # 105 offline tests
 ```
+
+**PPO evidence from Health Net's site.** Put an earlier `c4_ppo_check.csv` in `out/c4/` (or pass `--ppo-check-csv <file>`) and C4 reuses its site results instead of searching again; add `--npis <same file>` to run only on the NPIs it covers. To search the site from scratch, add `--check-directory` (about 30 s per NPI per browser, 3 browsers, saved every 50 NPIs, resumable). See [C4](#checking-every-npi-on-health-nets-site---check-directory).
 
 `ptd_run all` runs C1, C2, C3, C4, C5, C6 and C7 in order and then writes `out/summary.md` and copies the four deliverables into `out/deliverables/`:
 
@@ -122,7 +124,7 @@ C2 implements the seven steps of the C2 brief:
 
 ### What C2 finds on the real 2026-09-30 files
 
-From `python -m ptd_c2 run --no-probe` on C1's output. Rate files were not reachable from the build machine.
+From the full run on 2026-10-18 (C1 to C7 on the live Centene files).
 
 - **Scope:** 1,312 of 3,270 rows are kept. Excluded rows: 1,214 not group market, 363 not Health Net, and 381 Oregon. Health Net also publishes `healthnet-or_in-network.json`, which the file-name state rule catches. 255 of the excluded rows had "PPO" in the name.
 - **All 1,312 CA group plans point to one rate file**, `2026-09-30_centene-management-company-llc_healthnet-ca_in-network.json` (~700 MB), and one allowed-amounts file. The file vote is therefore `MIXED`, and the OON signal can't tell plans apart.
@@ -187,7 +189,7 @@ The hook for later: `--provider-tags` takes a CSV/XLSX with `npi` and/or `tin` a
 | `c3_code_coverage.csv` | Only with `--expected-codes`: plain and weighted coverage per specialty, with missing codes |
 | `c3_results.xlsx`, `c3_run_summary.json`, `c3_run_log.txt` | Workbook, counts, log |
 
-Rate files couldn't be reached from the build machine, so C3 has been run on synthetic files only. Run it locally on the real Health Net file.
+On the real Health Net CA file (701.6 MB, 1.5M price rows over 775 codes, 134 of the 583 workbook codes present) C3 scores 84.3, grade B.
 
 ---
 
@@ -433,26 +435,29 @@ If NPPES or CMS can't be downloaded, C5 still runs on whatever it has (even noth
 ## What has and hasn't been checked
 
 - **Public sources degrade gracefully.** NPPES, CMS Doctors & Clinicians and NUCC are discovered from their download pages, not hardcoded. If they are unreachable, the stage logs it and continues without them.
-- **Not yet run on the real Health Net file.** centene.com, CMS and NPPES were not reachable from the build machine. C4 to C7 have been verified only on synthetic data:
+- **Run on the real Health Net file (2026-10-18).** C1 to C7 ran end to end on the live Centene files: 11 index files, 3,270 plan × file rows, 1,312 CA group plans (453 PPO), all pointing to one 701.6 MB Health Net rate file (C3: 84.3, B) with 2,825 provider references. With Health Net's Find a Provider results for the first 853 NPIs, 223 references were confirmed PPO (up from 3 without the site), 630 were candidates and 18 confirmed non-PPO; deliverable 1 had 633 rows, all with an address, and C7 scored 121 providers. The remaining 1,954 references are unresolved mainly because their NPIs had not been searched yet.
+- **Synthetic checks.** C4 to C7 are also verified on data with known answers:
   - a California world built to contain the traps (`tests/ca_world.py`): PPO and HMO contracts sharing NPIs, capitation, stale and deactivated NPPES records, an NPI under two TINs, TIN-only groups, junk variants;
   - the 385 MB benchmark above.
 
   On the synthetic world, no reference gets the wrong network tag or a wrong confirmed status, every NPI + TIN's rank-1 address is its true site, and the C7 cost index rises with each provider's true price tier.
-- **Confirming PPO needs the directory.** Without directory data (or a filled-in `network_name`), the only direct evidence in the CA file is non-PPO evidence (capitation, PPO-only allowed-amount files). That removes HMO references but confirms no PPO one, so deliverable 1 is empty and every rate sits in the candidate file. Build the directory table with `python -m ptd_dir` on a machine that can open the directory site. `ptd_dir` was tested end to end against a mock directory app in a real headless browser, not against the live site, which was not reachable from the build machine.
+- **Confirming PPO needs the directory.** The CA file's `network_name` is blank, so its only direct evidence is non-PPO evidence (capitation). Health Net's own site (findaprovider.healthnetcalifornia.com, no login) is what confirms PPO: `ptd_c4 --check-directory` searches it per NPI, and a saved `c4_ppo_check.csv` lets later runs reuse the results. Not finding an NPI there is never treated as non-PPO (behavioural-health providers and groups billing under another NPI are often missing).
+- **Most PPO rates sit at the market median.** Health Net pays many providers the same fee schedule (on the 853-NPI run, 1,119 picked rates held only 637 distinct code + rate pairs), so most providers' cost index is exactly 1.0 and their tier is "At market".
 
 ## Tests
 
-`pytest` runs 96 offline tests in about 6 seconds.
+`pytest` runs 105 offline tests in about 20 seconds.
 
 - **C1 (9 tests):** scraper structure on a saved page, employee exclusion, date parsing, flattening, dedup, gzip.
 - **C2 (42 tests):** a miniature Centene world served over local HTTP. It covers gzip, `network_name` as string, list or blank, `in_network` before `provider_references`, `location` references, mixed and unreachable files, the scope traps, the EnhancedCare flag, and the real EOA/EC/CUSPPO name shapes.
 - **C3 (14 tests):** hand-built clean and dirty rate files with every problem counted in advance, NPI check digits, plain and weighted code coverage (a workbook in the HiLabs layout), provider tags (including references after `in_network`), `location` references, byte-cap sampling, unreachable files and the CLI.
 - **Integration (1 test):** `--run-c1` going from a saved page through C1 into C2.
-- **C4 to C7 and the directory (31 tests):** one synthetic California world (`tests/ca_world.py`) run through C4, C5, C6, C7 and the summary, with the truth known in advance:
+- **C4 to C7 and the directory (39 tests):** one synthetic California world (`tests/ca_world.py`) run through C4, C5, C6, C7 and the summary, with the truth known in advance:
   - C4: no reference gets the wrong network tag and no confirmed status is wrong; confirmed non-PPO references are not extracted; spreading and shared listings never confirm; a PPO-only allowed-amount file confirms non-PPO and a shared one only adds a note; the hypotheses are gated; variants are never mixed; the tie-break picks the right rate; code scope works; the result is the same with 1 or 3 workers and with `in_network` before or after `provider_references`.
   - C5: every NPI + TIN's rank-1 address is its true site, including the NPI under two TINs, stale NPPES records, deactivated NPIs and NPIs missing from NPPES. Also the standardiser, the logic file and a run with no sources.
   - C6 and C7: deliverable 1 holds confirmed rows only; the hand-check sample covers every status and scores precision with a Wilson interval; the required column order, headline variant and specialty source; the cost index rises with the true price tier; benchmark statistics; the metrics file and scored rate file.
   - `ptd_dir` end to end: a mock directory app in headless Chromium is captured, replayed for every ZIP and page, and built into a directory table; a listed NPI and a name + street match confirm PPO in C4, a name + ZIP match stays a candidate. The parser on nested shapes (group practitioners, child name objects) and the name normaliser.
+  - Health Net's site: the Find a Provider response parser keeps Par listings only; a full `--check-directory` run against a stand-in site searches every NPI once across several browsers, saves the table as it goes and resumes without searching again; an existing `c4_ppo_check.csv` (comma- or tab-separated) gives the same verdicts and statuses with no search; dashed rate-file TINs match the directory's digits.
   - The Plan-Net FHIR crawler, the NPI Registry API (as a fallback for missing NPIs, as the only source with its cache reused on a rerun) and the NPPES extractor, against local HTTP servers.
 
 ## Layout
@@ -481,6 +486,8 @@ pipeline/
 │   ├── network.py          # PPO / non-PPO evidence, hypotheses, label spreading
 │   ├── directory.py        # payer directory loader and Plan-Net FHIR crawler
 │   ├── oon.py              # allowed-amount (out-of-network) file reader
+│   ├── dircheck.py         # --check-directory: browsers side by side, save every N NPIs, resume
+│   ├── ppo_check.py        # c4_ppo_check.csv: write it, and reuse an earlier one as evidence
 │   ├── extract.py          # signatures, price variants, tie-break
 │   └── db.py  config.py  cli.py
 ├── ptd_c5/                 # C5: python -m ptd_c5 run | fetch | extract-nppes
@@ -491,10 +498,11 @@ pipeline/
 │   └── logic.py  config.py  cli.py   # logic.py writes the address logic (Part B of deliverable 2)
 ├── ptd_c6/                 # C6: python -m ptd_c6 run | check-network
 │   └── specialty.py  network_check.py  cli.py
-├── ptd_dir/                # PPO directory: python -m ptd_dir capture | replay | targets | build
+├── ptd_dir/                # PPO directory: python -m ptd_dir capture | replay | targets | build | check
 │   ├── capture.py          # record a directory app's JSON in a real browser (Playwright)
 │   ├── parse.py            # find providers in any JSON shape
 │   ├── replay.py           # re-send a captured search per ZIP / page
+│   ├── healthnet.py        # Health Net Find a Provider: per-NPI search (check) and its response parser
 │   └── match.py  cli.py    # NPIs for listings without one; search targets
 ├── ptd_c7/                 # C7: python -m ptd_c7 run
 │   ├── bench.py            # peer groups with back-off, vectorised statistics
