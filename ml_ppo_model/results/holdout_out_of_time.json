@@ -1,0 +1,66 @@
+{
+ "train_npis": 1703,
+ "train_pairs": 1668,
+ "cv_auc": 0.8448774859532632,
+ "test_pairs": 1112,
+ "test_listed": 388,
+ "test_listed_same_tin": 254,
+ "auc_model": 0.8761071082759013,
+ "auc_rule_status": 0.4882739078430256,
+ "auc_ref_share_only": 0.6895504642023125,
+ "auc_model_same_tin": 0.8458670594497366,
+ "auc_rule_same_tin": 0.5189439825266597,
+ "c": 0.5441,
+ "listed_share_top20_model": 0.78,
+ "listed_share_overall": 0.349,
+ "listed_share_by_rule_status": {
+  "CONFIRMED_PPO": [
+   21,
+   1.0
+  ],
+  "PPO_CANDIDATE": [
+   490,
+   0.296
+  ],
+  "UNRESOLVED": [
+   599,
+   0.369
+  ],
+  "CONFIRMED_NON_PPO": [
+   2,
+   0.5
+  ]
+ },
+ "calibration_on_new_npis": [
+  {
+   "P": "0.0-0.2",
+   "pairs": 446,
+   "mean_g": 0.039,
+   "listed_share": 0.034
+  },
+  {
+   "P": "0.2-0.4",
+   "pairs": 108,
+   "mean_g": 0.163,
+   "listed_share": 0.204
+  },
+  {
+   "P": "0.4-0.6",
+   "pairs": 106,
+   "mean_g": 0.265,
+   "listed_share": 0.425
+  },
+  {
+   "P": "0.6-0.8",
+   "pairs": 113,
+   "mean_g": 0.384,
+   "listed_share": 0.504
+  },
+  {
+   "P": "0.8-1.0",
+   "pairs": 339,
+   "mean_g": 0.652,
+   "listed_share": 0.735
+  }
+ ]
+}

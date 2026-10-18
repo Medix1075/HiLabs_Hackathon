@@ -1,0 +1,35 @@
+feature,coefficient_standardised
+npi_type_2,-1.3361
+family=behavioural,-1.3111
+ref_searched,-0.66
+ref_found_share,0.5559
+family=medical,-0.4667
+family=surgical,-0.4383
+n_refs,0.4117
+tin_found_share,0.3639
+family=facility,0.3392
+tin_searched,-0.2737
+code_fit,-0.239
+region=San Gabriel / San Fernando Valleys,0.238
+region=Los Angeles,0.2338
+tins_per_npi,-0.2208
+region=Orange County,0.215
+region=Fresno / Central Valley,0.2115
+region=San Jose / South Bay,0.2085
+family=primary_care,-0.1665
+region=East Bay,0.1578
+ref_size,-0.1463
+region=San Diego,0.1297
+region=Inland Empire,0.1257
+capitated,-0.1013
+family=hospital_based,-0.1012
+region=Bakersfield / Kern,0.0888
+region=San Francisco,0.0784
+region=Northern California,0.0761
+region=Stockton / Modesto,0.0734
+region=Ventura / Santa Barbara,0.0727
+region=Peninsula,0.0269
+region=Sacramento,0.0269
+region=North Bay,0.0243
+region=High Desert,0.0141
+family=therapy,0.0059

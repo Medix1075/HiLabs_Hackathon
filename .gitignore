@@ -7,3 +7,6 @@ __pycache__/
 pipeline/data/
 pipeline/out/
 temp_page.html
+# PPO model scripts: the site request saved by probe.py, and working files
+ml_ppo_model/scripts/reqs.json
+ml_ppo_model/scripts/work/

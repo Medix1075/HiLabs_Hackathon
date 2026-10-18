@@ -1,0 +1,733 @@
+{
+ "sample": {
+  "n": 914,
+  "overall": {
+   "ppo": 0.937,
+   "hmo": 0.813,
+   "both": 0.752,
+   "ppo_only": 0.185,
+   "hmo_only": 0.061,
+   "neither": 0.001
+  },
+  "npi_type": [
+   {
+    "level": "Organisation (Type 2)",
+    "n": 524,
+    "ppo_share": 0.943,
+    "ci_lo": 0.937,
+    "ci_hi": 0.972,
+    "hmo_share": 0.821
+   },
+   {
+    "level": "Individual (Type 1)",
+    "n": 390,
+    "ppo_share": 0.934,
+    "ci_lo": 0.91,
+    "ci_hi": 0.958,
+    "hmo_share": 0.808
+   }
+  ],
+  "family": [
+   {
+    "level": "behavioural",
+    "n": 268,
+    "ppo_share": 0.982,
+    "ci_lo": 0.968,
+    "ci_hi": 0.996,
+    "hmo_share": 0.921
+   },
+   {
+    "level": "other",
+    "n": 210,
+    "ppo_share": 0.927,
+    "ci_lo": 0.863,
+    "ci_hi": 0.941,
+    "hmo_share": 0.709
+   },
+   {
+    "level": "facility",
+    "n": 142,
+    "ppo_share": 0.948,
+    "ci_lo": 0.92,
+    "ci_hi": 0.985,
+    "hmo_share": 0.953
+   },
+   {
+    "level": "primary_care",
+    "n": 142,
+    "ppo_share": 0.916,
+    "ci_lo": 0.893,
+    "ci_hi": 0.971,
+    "hmo_share": 0.984
+   },
+   {
+    "level": "unknown",
+    "n": 43,
+    "ppo_share": 0.813,
+    "ci_lo": 0.648,
+    "ci_hi": 0.886,
+    "hmo_share": 0.437
+   },
+   {
+    "level": "hospital_based",
+    "n": 39,
+    "ppo_share": 1.0,
+    "ci_lo": 0.91,
+    "ci_hi": 1.0,
+    "hmo_share": 0.786
+   },
+   {
+    "level": "surgical",
+    "n": 33,
+    "ppo_share": 0.983,
+    "ci_lo": 0.847,
+    "ci_hi": 0.995,
+    "hmo_share": 0.979
+   },
+   {
+    "level": "therapy",
+    "n": 29,
+    "ppo_share": 0.958,
+    "ci_lo": 0.828,
+    "ci_hi": 0.994,
+    "hmo_share": 0.506
+   },
+   {
+    "level": "medical",
+    "n": 8,
+    "ppo_share": 1.0,
+    "ci_lo": 0.676,
+    "ci_hi": 1.0,
+    "hmo_share": 0.92
+   }
+  ],
+  "region": [
+   {
+    "level": "Los Angeles",
+    "n": 174,
+    "ppo_share": 0.945,
+    "ci_lo": 0.905,
+    "ci_hi": 0.973,
+    "hmo_share": 0.953
+   },
+   {
+    "level": "San Diego",
+    "n": 108,
+    "ppo_share": 0.978,
+    "ci_lo": 0.909,
+    "ci_hi": 0.986,
+    "hmo_share": 0.85
+   },
+   {
+    "level": "San Gabriel / San Fernando Valleys",
+    "n": 91,
+    "ppo_share": 0.935,
+    "ci_lo": 0.892,
+    "ci_hi": 0.983,
+    "hmo_share": 0.947
+   },
+   {
+    "level": "Inland Empire",
+    "n": 74,
+    "ppo_share": 1.0,
+    "ci_lo": 0.951,
+    "ci_hi": 1.0,
+    "hmo_share": 0.653
+   },
+   {
+    "level": "East Bay",
+    "n": 53,
+    "ppo_share": 0.732,
+    "ci_lo": 0.729,
+    "ci_hi": 0.921,
+    "hmo_share": 0.915
+   },
+   {
+    "level": "Sacramento",
+    "n": 47,
+    "ppo_share": 0.952,
+    "ci_lo": 0.889,
+    "ci_hi": 0.996,
+    "hmo_share": 0.909
+   },
+   {
+    "level": "Bakersfield / Kern",
+    "n": 46,
+    "ppo_share": 0.918,
+    "ci_lo": 0.855,
+    "ci_hi": 0.988,
+    "hmo_share": 0.636
+   },
+   {
+    "level": "Orange County",
+    "n": 45,
+    "ppo_share": 0.837,
+    "ci_lo": 0.765,
+    "ci_hi": 0.952,
+    "hmo_share": 0.857
+   },
+   {
+    "level": "San Jose / South Bay",
+    "n": 44,
+    "ppo_share": 0.972,
+    "ci_lo": 0.849,
+    "ci_hi": 0.987,
+    "hmo_share": 0.437
+   },
+   {
+    "level": "San Francisco",
+    "n": 35,
+    "ppo_share": 0.942,
+    "ci_lo": 0.814,
+    "ci_hi": 0.984,
+    "hmo_share": 0.7
+   },
+   {
+    "level": "Stockton / Modesto",
+    "n": 35,
+    "ppo_share": 0.896,
+    "ci_lo": 0.673,
+    "ci_hi": 0.919,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "Fresno / Central Valley",
+    "n": 33,
+    "ppo_share": 0.876,
+    "ci_lo": 0.847,
+    "ci_hi": 0.995,
+    "hmo_share": 0.976
+   },
+   {
+    "level": "Peninsula",
+    "n": 33,
+    "ppo_share": 1.0,
+    "ci_lo": 0.896,
+    "ci_hi": 1.0,
+    "hmo_share": 0.625
+   },
+   {
+    "level": "Northern California",
+    "n": 31,
+    "ppo_share": 1.0,
+    "ci_lo": 0.89,
+    "ci_hi": 1.0,
+    "hmo_share": 0.763
+   },
+   {
+    "level": "North Bay",
+    "n": 17,
+    "ppo_share": 0.866,
+    "ci_lo": 0.73,
+    "ci_hi": 0.99,
+    "hmo_share": 0.989
+   },
+   {
+    "level": "High Desert",
+    "n": 12,
+    "ppo_share": 1.0,
+    "ci_lo": 0.757,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "Monterey Bay",
+    "n": 11,
+    "ppo_share": 1.0,
+    "ci_lo": 0.741,
+    "ci_hi": 1.0,
+    "hmo_share": 0.986
+   },
+   {
+    "level": "Ventura / Santa Barbara",
+    "n": 10,
+    "ppo_share": 1.0,
+    "ci_lo": 0.722,
+    "ci_hi": 1.0,
+    "hmo_share": 0.281
+   },
+   {
+    "level": "Central Coast",
+    "n": 3,
+    "ppo_share": 0.928,
+    "ci_lo": 0.208,
+    "ci_hi": 0.939,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "ZIP3 850",
+    "n": 2,
+    "ppo_share": 1.0,
+    "ci_lo": 0.342,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "ZIP3 895",
+    "n": 2,
+    "ppo_share": 1.0,
+    "ci_lo": 0.342,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "ZIP3 087",
+    "n": 1,
+    "ppo_share": 1.0,
+    "ci_lo": 0.207,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "ZIP3 600",
+    "n": 1,
+    "ppo_share": 1.0,
+    "ci_lo": 0.207,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "ZIP3 840",
+    "n": 1,
+    "ppo_share": 1.0,
+    "ci_lo": 0.207,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "ZIP3 809",
+    "n": 1,
+    "ppo_share": 1.0,
+    "ci_lo": 0.207,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "ZIP3 860",
+    "n": 1,
+    "ppo_share": 1.0,
+    "ci_lo": 0.207,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "ZIP3 341",
+    "n": 1,
+    "ppo_share": 1.0,
+    "ci_lo": 0.207,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "ZIP3 799",
+    "n": 1,
+    "ppo_share": 1.0,
+    "ci_lo": 0.207,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   },
+   {
+    "level": "ZIP3 852",
+    "n": 1,
+    "ppo_share": 1.0,
+    "ci_lo": 0.207,
+    "ci_hi": 1.0,
+    "hmo_share": 1.0
+   }
+  ],
+  "capitated_ppg": [
+   {
+    "level": "Not",
+    "n": 877,
+    "ppo_share": 0.941,
+    "ci_lo": 0.937,
+    "ci_hi": 0.965,
+    "hmo_share": 0.813
+   },
+   {
+    "level": "In a capitated medical group",
+    "n": 37,
+    "ppo_share": 0.805,
+    "ci_lo": 0.72,
+    "ci_hi": 0.941,
+    "hmo_share": 0.823
+   }
+  ],
+  "n_tins": [
+   {
+    "level": "2+ TINs",
+    "n": 579,
+    "ppo_share": 0.932,
+    "ci_lo": 0.931,
+    "ci_hi": 0.966,
+    "hmo_share": 0.848
+   },
+   {
+    "level": "1 TIN",
+    "n": 335,
+    "ppo_share": 0.947,
+    "ci_lo": 0.917,
+    "ci_hi": 0.966,
+    "hmo_share": 0.753
+   }
+  ],
+  "coef": [
+   [
+    "family=behavioural",
+    0.965
+   ],
+   [
+    "family=hospital_based",
+    0.784
+   ],
+   [
+    "region=Inland Empire",
+    0.609
+   ],
+   [
+    "region=East Bay",
+    -0.571
+   ],
+   [
+    "region=Peninsula",
+    0.512
+   ],
+   [
+    "region=Northern California",
+    0.416
+   ],
+   [
+    "npi_type_2",
+    0.411
+   ],
+   [
+    "family=surgical",
+    0.402
+   ],
+   [
+    "region=Orange County",
+    -0.392
+   ],
+   [
+    "family=medical",
+    0.377
+   ],
+   [
+    "region=Fresno / Central Valley",
+    -0.294
+   ],
+   [
+    "two_plus_tins",
+    -0.29
+   ],
+   [
+    "region=San Gabriel / San Fernando Valleys",
+    -0.29
+   ],
+   [
+    "region=Stockton / Modesto",
+    -0.278
+   ],
+   [
+    "region=Los Angeles",
+    -0.277
+   ],
+   [
+    "capitated",
+    -0.267
+   ],
+   [
+    "family=primary_care",
+    0.265
+   ],
+   [
+    "family=therapy",
+    0.175
+   ],
+   [
+    "region=San Francisco",
+    -0.167
+   ],
+   [
+    "region=Bakersfield / Kern",
+    -0.132
+   ],
+   [
+    "region=San Diego",
+    0.117
+   ],
+   [
+    "region=Sacramento",
+    -0.109
+   ],
+   [
+    "family=facility",
+    0.107
+   ],
+   [
+    "region=San Jose / South Bay",
+    0.021
+   ]
+  ],
+  "cv_auc": 0.662
+ },
+ "ours": {
+  "n": 3732,
+  "labels": {
+   "PPO / HMO / listed somewhere": 3140,
+   "not PPO / no HMO / not in directory": 83,
+   "not PPO / no HMO / listed somewhere": 349,
+   "not PPO / HMO / listed somewhere": 80,
+   "PPO / no HMO / listed somewhere": 80
+  },
+  "browser_vs_backend": {
+   "FOUND_PPO_BY_NPI | PPO": 691,
+   "NOT_FOUND | PPO": 1617,
+   "NOT_FOUND | not PPO": 334,
+   "FOUND_PPO_NPI_OTHER_TIN | PPO": 400,
+   "NOT_FOUND_BY_NPI_SAME_TIN | PPO": 177,
+   "NOT_FOUND_BY_NPI_SAME_TIN | not PPO": 133
+  },
+  "display_given_ppo": {
+   "1": [
+    298,
+    457
+   ],
+   "2": [
+    551,
+    1771
+   ]
+  },
+  "npi_type": [
+   {
+    "level": "Organisation (Type 2)",
+    "n": 2120,
+    "ppo_share": 0.835,
+    "ci_lo": 0.819,
+    "ci_hi": 0.851
+   },
+   {
+    "level": "unknown",
+    "n": 1142,
+    "ppo_share": 0.869,
+    "ci_lo": 0.848,
+    "ci_hi": 0.887
+   },
+   {
+    "level": "Individual (Type 1)",
+    "n": 470,
+    "ppo_share": 0.972,
+    "ci_lo": 0.953,
+    "ci_hi": 0.984
+   }
+  ],
+  "family": [
+   {
+    "level": "unknown",
+    "n": 1139,
+    "ppo_share": 0.871,
+    "ci_lo": 0.85,
+    "ci_hi": 0.889
+   },
+   {
+    "level": "facility",
+    "n": 761,
+    "ppo_share": 0.808,
+    "ci_lo": 0.779,
+    "ci_hi": 0.835
+   },
+   {
+    "level": "behavioural",
+    "n": 547,
+    "ppo_share": 0.952,
+    "ci_lo": 0.931,
+    "ci_hi": 0.967
+   },
+   {
+    "level": "other",
+    "n": 374,
+    "ppo_share": 0.85,
+    "ci_lo": 0.811,
+    "ci_hi": 0.883
+   },
+   {
+    "level": "primary_care",
+    "n": 293,
+    "ppo_share": 0.911,
+    "ci_lo": 0.873,
+    "ci_hi": 0.939
+   },
+   {
+    "level": "medical",
+    "n": 261,
+    "ppo_share": 0.885,
+    "ci_lo": 0.841,
+    "ci_hi": 0.918
+   },
+   {
+    "level": "surgical",
+    "n": 211,
+    "ppo_share": 0.834,
+    "ci_lo": 0.778,
+    "ci_hi": 0.878
+   },
+   {
+    "level": "therapy",
+    "n": 85,
+    "ppo_share": 0.918,
+    "ci_lo": 0.84,
+    "ci_hi": 0.96
+   },
+   {
+    "level": "hospital_based",
+    "n": 61,
+    "ppo_share": 0.361,
+    "ci_lo": 0.252,
+    "ci_hi": 0.486
+   }
+  ],
+  "capitated": [
+   {
+    "level": "no capitation",
+    "n": 3662,
+    "ppo_share": 0.863,
+    "ci_lo": 0.852,
+    "ci_hi": 0.874
+   },
+   {
+    "level": "capitated contract",
+    "n": 70,
+    "ppo_share": 0.829,
+    "ci_lo": 0.724,
+    "ci_hi": 0.899
+   }
+  ],
+  "n_tins": [
+   {
+    "level": "1 TIN",
+    "n": 3700,
+    "ppo_share": 0.863,
+    "ci_lo": 0.851,
+    "ci_hi": 0.873
+   },
+   {
+    "level": "2+ TINs",
+    "n": 32,
+    "ppo_share": 0.875,
+    "ci_lo": 0.719,
+    "ci_hi": 0.95
+   }
+  ],
+  "contract_share": [
+   {
+    "level": "75-100% PPO",
+    "n": 1834,
+    "ppo_share": 0.882,
+    "ci_lo": 0.867,
+    "ci_hi": 0.896
+   },
+   {
+    "level": "no other NPIs",
+    "n": 1475,
+    "ppo_share": 0.942,
+    "ci_lo": 0.929,
+    "ci_hi": 0.953
+   },
+   {
+    "level": "0-25% PPO",
+    "n": 174,
+    "ppo_share": 0.322,
+    "ci_lo": 0.257,
+    "ci_hi": 0.394
+   },
+   {
+    "level": "50-75%",
+    "n": 132,
+    "ppo_share": 0.773,
+    "ci_lo": 0.694,
+    "ci_hi": 0.836
+   },
+   {
+    "level": "25-50%",
+    "n": 117,
+    "ppo_share": 0.462,
+    "ci_lo": 0.374,
+    "ci_hi": 0.552
+   }
+  ],
+  "tin_share": [
+   {
+    "level": "no other NPIs",
+    "n": 2619,
+    "ppo_share": 0.922,
+    "ci_lo": 0.911,
+    "ci_hi": 0.932
+   },
+   {
+    "level": "75-100% PPO",
+    "n": 707,
+    "ppo_share": 0.888,
+    "ci_lo": 0.863,
+    "ci_hi": 0.909
+   },
+   {
+    "level": "0-25% PPO",
+    "n": 221,
+    "ppo_share": 0.335,
+    "ci_lo": 0.276,
+    "ci_hi": 0.399
+   },
+   {
+    "level": "50-75%",
+    "n": 95,
+    "ppo_share": 0.674,
+    "ci_lo": 0.574,
+    "ci_hi": 0.76
+   },
+   {
+    "level": "25-50%",
+    "n": 90,
+    "ppo_share": 0.433,
+    "ci_lo": 0.336,
+    "ci_hi": 0.536
+   }
+  ],
+  "contract_size": [
+   {
+    "level": "1-5 NPIs",
+    "n": 2008,
+    "ppo_share": 0.922,
+    "ci_lo": 0.91,
+    "ci_hi": 0.933
+   },
+   {
+    "level": "6-50",
+    "n": 1306,
+    "ppo_share": 0.833,
+    "ci_lo": 0.812,
+    "ci_hi": 0.852
+   },
+   {
+    "level": "51+",
+    "n": 418,
+    "ppo_share": 0.67,
+    "ci_lo": 0.623,
+    "ci_hi": 0.713
+   }
+  ]
+ },
+ "transfer": {
+  "n_eval": 3649,
+  "auc_sample_model": 0.463,
+  "mean_pred": 0.953,
+  "actual": 0.882,
+  "auc_contract_share_alone": 0.722,
+  "auc_tin_share_alone": 0.733,
+  "auc_ratefile_features_trained_on_ours": 0.794,
+  "n_compare": 2786,
+  "auc_inhouse_model": 0.615,
+  "auc_rule_status": 0.625,
+  "auc_sample_model_same_npis": 0.46,
+  "auc_inhouse_vs_listed": null
+ }
+}

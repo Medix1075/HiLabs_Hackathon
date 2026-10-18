@@ -1,0 +1,915 @@
+npi,w,ppo,hmo,epo_hsp_eoa,listed_commercial,n_commercial_networks,npi_type_2,ptype,family,specialty,taxonomy,region,n_tins,capitated_ppg,in_ppg
+1982997995,0.2427,1,0,0,1,1,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,1,0,0
+1073695771,0.1456,1,0,0,1,1,0,,behavioural,Physical Therapist,,San Gabriel / San Fernando Valleys,2,0,0
+1841592532,1.5472,1,0,0,1,1,1,GROUP PRACTICE,other,Multi-Specialty,,Inland Empire,1,0,0
+1508873803,0.0967,1,0,0,1,1,1,|GROUP PRACTICE,therapy,Chiropractor; Multi-Specialty,193200000X,Inland Empire,5,0,0
+1023257078,0.0944,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Francisco,2,0,0
+1932285335,0.9721,1,1,1,1,17,1,ANCILLARY,facility,Home Health,251E00000X,East Bay,1,0,0
+1033631205,0.091,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,San Jose / South Bay,2,0,0
+1497809941,0.1181,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Diego,2,0,0
+1235675349,2.3183,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,San Gabriel / San Fernando Valleys,3,0,0
+1689680696,2.0022,1,1,1,1,18,0,,primary_care,Family Medicine; General Practice,,San Gabriel / San Fernando Valleys,11,0,0
+1790712644,1.2585,1,1,1,1,16,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Physical Therapist,193200000X,San Gabriel / San Fernando Valleys,4,0,0
+1932148343,0.5006,1,1,0,1,3,1,GROUP PRACTICE,other,Single Specialty,193400000X,Stockton / Modesto,1,0,0
+1497867501,1.5424,1,1,1,1,15,0,,primary_care,Internal Medicine; Internal Medicine: Rheumatology,,San Diego,3,0,0
+1962486084,0.2617,1,1,0,1,8,1,,therapy,Chiropractor,,San Jose / South Bay,5,0,0
+1154764488,4.1864,1,0,0,1,1,1,GROUP PRACTICE,other,Multi-Specialty,,San Jose / South Bay,1,0,0
+1881624583,1.3121,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Los Angeles,1,0,0
+1346484490,1.4995,1,1,1,1,18,0,,hospital_based,Internal Medicine: Medical Oncology; Radiology: Radiation Oncology,,Inland Empire,12,0,0
+1952312621,0.4714,1,1,1,1,18,1,|GROUP PRACTICE,primary_care,General Practice; Multi-Specialty,193200000X,San Diego,7,0,0
+1134258148,1.149,1,1,1,1,13,0,,primary_care,General Practice; Internal Medicine,,San Diego,5,0,0
+1336429000,0.1416,1,1,1,1,18,0,,behavioural,Psychologist,,Los Angeles,2,0,0
+1396853065,1.3131,1,1,1,1,13,0,,other,Physician Assistant,,San Diego,3,0,0
+1336225655,0.0944,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,San Diego,2,0,0
+1023024783,0.1377,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Orange County,3,0,0
+1568767309,0.7979,1,1,1,1,9,1,ANCILLARY|GROUP PRACTICE,behavioural,Clinic/Center: Occupational Medicine; Clinic/Center: Physical Therapy; Multi-Specialty; Physical Therapist,193200000X|193400000X|225100000X,San Diego,1,0,0
+1528575024,0.455,1,1,1,1,18,0,,behavioural,Behavior Technician; Behavioral Analyst,,San Gabriel / San Fernando Valleys,2,0,0
+1336647395,0.455,1,1,1,1,18,0,,behavioural,Behavior Technician,,Inland Empire,3,0,0
+1184065948,0.455,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Inland Empire,2,0,0
+1356819015,0.182,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Los Angeles,2,0,0
+1285301010,0.4429,1,1,1,1,15,1,GROUP PRACTICE,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,,Los Angeles,1,0,0
+1407227986,0.091,1,1,1,1,19,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Stockton / Modesto,1,0,0
+1811547052,0.1062,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,ZIP3 087,1,0,0
+1700901337,1.2204,1,1,1,1,18,0,,hospital_based,General Practice; Pediatrics; Pediatrics: Neonatal-Perinatal Medicine,,Orange County,15,0,0
+1245326982,1.2785,1,1,1,1,18,0,,primary_care,General Practice; Pediatrics,,Orange County,13,0,0
+1518731900,2.2373,0,1,0,1,2,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,Orange County,3,1,1
+1689743437,0.3451,1,1,1,1,9,1,|GROUP PRACTICE,surgical,Multi-Specialty; Orthopaedic Surgery,193200000X,High Desert,2,0,0
+1063043644,0.2262,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty; Single Specialty,193400000X,Inland Empire,1,1,1
+1437219425,0.3067,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,Los Angeles,4,0,0
+1912948019,1.7483,1,1,1,1,15,0,,primary_care,Family Medicine; General Practice,,Inland Empire,5,0,0
+1366427734,2.1842,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Diego,1,0,0
+1043531676,1.5099,1,1,1,1,18,0,,primary_care,Family Medicine; Internal Medicine: Sports Medicine,,Inland Empire,6,0,0
+1952394603,1.2397,1,1,1,1,16,1,ANCILLARY|GROUP PRACTICE,behavioural,Clinic/Center: Physical Therapy; Multi-Specialty; Physical Therapist; Single Specialty,193200000X|193400000X|225100000X,Inland Empire,1,0,0
+1003226044,0.455,1,1,1,1,15,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Urgent Care; Multi-Specialty,261QU0200X,Los Angeles,1,0,0
+1952366304,0.6706,1,1,1,1,15,0,,primary_care,Internal Medicine,,Los Angeles,7,0,0
+1356364558,1.8505,1,1,1,1,12,0,,primary_care,Family Medicine,,Sacramento,1,0,0
+1588812978,2.7758,1,1,1,1,8,0,,primary_care,Family Medicine,,Bakersfield / Kern,3,0,0
+1891950267,0.7597,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Inland Empire,1,0,0
+1255859294,0.9708,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Los Angeles,4,0,0
+1902902828,0.7281,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Inland Empire,1,0,0
+1720221708,0.405,1,1,1,1,16,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies; Durable Medical Equipment & Medical Supplies: Customized Equipment,332B00000X|332BC3200X,Fresno / Central Valley,1,0,0
+1417956921,0.1761,1,1,1,1,18,1,ANCILLARY,facility,Home Health,251E00000X,Fresno / Central Valley,2,0,0
+1922006162,0.3185,1,1,1,1,15,1,ANCILLARY,other,"Hospice Care, Community Based",251G00000X,Central Coast,1,0,0
+1295718849,0.3822,1,1,1,1,13,1,ANCILLARY,hospital_based,Clinic/Center: Emergency Care; Clinic/Center: Urgent Care,193200000X|261QE0002X,Central Coast,1,0,0
+1083603203,0.182,1,0,0,1,1,0,,primary_care,Family Medicine,,Northern California,2,0,0
+1386633816,0.182,1,0,0,1,1,0,,other,Nurse Practitioner,,Northern California,2,0,0
+1326434945,6.2114,1,1,1,1,8,0,,behavioural,Occupational Therapist,,Los Angeles,2,0,0
+1679265284,6.2114,1,1,1,1,8,0,,behavioural,Occupational Therapist,,Los Angeles,2,0,0
+1083431191,0.8191,1,1,1,1,16,0,,other,Nurse Practitioner,,Bakersfield / Kern,1,0,0
+1568825206,2.7606,1,1,1,1,18,0,,,,,ZIP3 850,3,0,0
+1346216652,0.6553,1,1,1,1,16,0,,behavioural,Pediatrics; Psychiatry & Neurology: Neurology with Special Qualifications in Child Neurology,,Fresno / Central Valley,5,0,0
+1255134706,13.1054,1,0,0,1,1,0,,other,Physician Assistant,,Bakersfield / Kern,1,0,0
+1649731993,0.4399,1,1,1,1,18,1,ANCILLARY,facility,Home Health,251E00000X,Sacramento,1,0,0
+1609327667,0.6371,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,1,0,0
+1255680229,0.4968,1,1,0,1,12,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Fresno / Central Valley,1,0,0
+1437256211,0.4968,1,1,1,1,9,0,,primary_care,Allergy & Immunology; Family Medicine; General Practice; Pediatrics; Pediatrics: Pediatric Allergy & Immunology,,Fresno / Central Valley,5,0,0
+1316134885,2.6458,0,1,0,1,1,0,,,,,East Bay,3,0,0
+1811479504,2.4694,1,1,1,1,15,1,GROUP PRACTICE,facility,Clinic/Center: Community Health; Multi-Specialty,,San Gabriel / San Fernando Valleys,1,0,0
+1255377495,3.3674,0,1,0,1,1,0,,,,,East Bay,3,0,0
+1861608002,0.091,1,0,0,1,1,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,East Bay,2,0,0
+1821411281,0.3485,1,1,1,1,18,1,GROUP PRACTICE,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty; Single Specialty,193400000X,Los Angeles,2,0,0
+1093844656,0.4465,1,1,1,1,18,1,GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,1,1,1
+1871647586,5.1193,1,0,0,1,1,1,,,,,San Jose / South Bay,2,0,0
+1215459961,1.1376,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Orange County,3,0,0
+1982988762,1.1376,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Orange County,2,0,0
+1629064811,0.098,1,0,0,1,1,1,,therapy,Chiropractor,,Los Angeles,3,0,0
+1063528065,0.1955,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,2,0,0
+1871670083,0.4399,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,San Gabriel / San Fernando Valleys,1,0,0
+1376823153,0.4799,1,1,1,1,14,1,|GROUP PRACTICE,other,Multi-Specialty; Physical Medicine & Rehabilitation,193200000X,Los Angeles,4,0,0
+1790298909,0.1517,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Substance Abuse Rehabilitation Facility,324500000X,Orange County,1,0,0
+1356377923,0.3185,1,1,1,1,9,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,1,0,0
+1134108525,0.2896,1,1,1,1,11,0,,hospital_based,Radiology: Diagnostic Radiology; Radiology: Radiation Oncology,,San Gabriel / San Fernando Valleys,3,0,0
+1346306164,0.245,1,1,1,1,10,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,1,0,0
+1871947770,0.091,1,0,0,1,1,1,|GROUP PRACTICE,therapy,Chiropractor; Multi-Specialty,193200000X,San Diego,3,0,0
+1356098412,0.182,1,0,0,1,1,1,GROUP PRACTICE,other,Multi-Specialty,,San Diego,1,0,0
+1730157009,0.5833,1,1,1,1,17,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X,Inland Empire,1,0,0
+1023127941,0.0595,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Single Specialty; Social Worker: Clinical,193200000X|193400000X,Northern California,3,0,0
+1568675254,2.3606,0,1,1,1,11,0,,,,,Los Angeles,4,0,0
+1336245802,1.6421,1,1,1,1,18,0,,surgical,Obstetrics & Gynecology,,Los Angeles,16,0,0
+1821639253,1.8556,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Diego,2,0,0
+1225559701,1.8556,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Jose / South Bay,3,0,0
+1417492927,0.9278,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Los Angeles,6,0,0
+1538188180,0.26,1,1,1,1,16,1,|GROUP PRACTICE,therapy,Chiropractor; Multi-Specialty,193200000X,High Desert,3,0,0
+1639104243,0.3212,1,1,0,1,11,1,|GROUP PRACTICE,therapy,Chiropractor; Multi-Specialty,193200000X|193400000X,High Desert,3,0,0
+1376722017,2.0022,1,1,1,1,7,0,,,,,Peninsula,8,0,0
+1982784740,0.6674,1,1,1,1,18,1,FQHC|GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty; Single Specialty,193400000X|261QF0400X,San Francisco,1,0,1
+1962651885,0.3227,1,1,1,1,10,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Inland Empire,1,0,0
+1790756070,0.1775,1,1,1,1,9,0,,primary_care,Internal Medicine,,Inland Empire,3,0,0
+1275637274,0.1604,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,"Psychiatric Residential Treatment Facility; Residential Treatment Facility, Emotionally Disturbed Children",322D00000X|323P00000X,San Francisco,1,0,0
+1134427289,0.091,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Bakersfield / Kern,1,0,0
+1124285796,0.0248,1,1,1,1,8,1,ANCILLARY|CLINIC|GROUP PRACTICE,behavioural,"Multi-Specialty; Rehabilitation Unit; Rehabilitation, Substance Use Disorder Unit; Substance Abuse Rehabilitation Facility",324500000X,San Francisco,2,0,0
+1669574968,0.5077,1,1,1,1,18,1,|GROUP PRACTICE,primary_care,Family Medicine; General Practice; Multi-Specialty,193200000X,Orange County,23,0,0
+1407328420,1.0719,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Los Angeles,1,0,0
+1235931775,3.1171,1,1,1,1,8,0,,behavioural,Physical Therapist,,North Bay,4,0,0
+1275964520,1.9182,1,1,1,1,10,0,,behavioural,Physical Therapist,,North Bay,3,0,0
+1932526860,3.5624,1,1,0,1,6,0,,primary_care,Family Medicine,,North Bay,2,0,0
+1720639990,1.1781,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,High Desert,1,0,0
+1811289150,1.1781,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193200000X|193400000X,Los Angeles,1,0,0
+1841295003,1.805,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,East Bay,1,0,0
+1013558212,1.1781,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Los Angeles,2,0,0
+1619187978,0.4082,1,1,1,1,18,1,GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,193200000X,Los Angeles,1,1,1
+1972625986,4.8134,1,1,1,1,9,1,GROUP PRACTICE,other,Multi-Specialty,,East Bay,1,0,0
+1437144797,0.1593,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies; Prosthetic/Orthotic Supplier,335E00000X,Northern California,1,0,0
+1407813777,0.1237,1,1,1,1,17,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center; Clinical Medical Laboratory; Multi-Specialty,193200000X|193400000X|261Q00000X,Stockton / Modesto,1,0,0
+1114475191,0.182,1,1,1,1,18,0,,behavioural,Social Worker: Clinical,,San Gabriel / San Fernando Valleys,2,0,0
+1598839227,0.2295,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Inland Empire,1,0,0
+1467526194,0.0743,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty; Single Specialty,193200000X|193400000X,Ventura / Santa Barbara,3,0,0
+1326045949,0.091,1,1,1,1,14,1,ANCILLARY,other,Ambulance; Ambulance: Land Transport,341600000X|3416L0300X,High Desert,1,0,0
+1013929157,1.532,1,0,0,1,1,0,,,,,Los Angeles,2,0,0
+1710428628,0.2553,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Substance Abuse Rehabilitation Facility,324500000X,San Gabriel / San Fernando Valleys,1,0,0
+1639393366,1.9681,0,1,1,1,13,0,,primary_care,Family Medicine; Pediatrics,,Los Angeles,4,0,0
+1346247392,2.2492,1,0,0,1,1,0,,,,,Los Angeles,2,0,0
+1285976316,1.2559,1,0,0,1,1,0,,other,Optometrist,,San Jose / South Bay,2,0,0
+1912045246,1.2559,1,0,0,1,1,0,,other,Optometrist,,San Jose / South Bay,2,0,0
+1952890097,1.2559,0,0,1,1,1,0,,,,,San Jose / South Bay,1,0,0
+1568894988,1.4313,1,1,1,1,18,1,,behavioural,Internal Medicine: Nephrology; Psychiatry & Neurology: Neurology,,Los Angeles,23,0,0
+1386182061,0.2306,1,1,1,1,15,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Bakersfield / Kern,1,0,0
+1255389318,0.1504,1,1,1,1,17,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Bakersfield / Kern,1,0,0
+1386821460,0.8646,1,1,1,1,18,1,|GROUP PRACTICE,primary_care,Internal Medicine: Cardiovascular Disease; Internal Medicine: Interventional Cardiology; Multi-Specialty,193200000X,San Diego,4,0,0
+1679588370,2.1842,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychiatry & Neurology: Psychiatry,193200000X,Los Angeles,6,0,0
+1033287222,0.091,1,0,0,1,1,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,Los Angeles,2,0,0
+1922413038,1.5402,1,1,1,1,11,0,,primary_care,Pediatrics,,East Bay,4,0,0
+1407048002,0.9534,1,1,1,1,18,0,,behavioural,Behavioral Neurology & Neuropsychiatry; Psychiatry & Neurology: Geriatric Psychiatry; Psychiatry & Neurology: Neurology; Psychiatry & Neurology: Psychiatry,,Los Angeles,3,0,0
+1083619951,1.1123,1,1,1,1,18,0,,behavioural,Psychiatry & Neurology: Psychiatry,,Fresno / Central Valley,2,0,0
+1063493161,0.0871,1,1,1,1,18,1,ANCILLARY,facility,Home Health; Home Infusion,251E00000X|251F00000X,Bakersfield / Kern,1,0,0
+1851907216,1.3651,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Sacramento,2,0,0
+1528526498,1.3651,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Monterey Bay,2,0,0
+1629447610,1.3651,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Sacramento,1,0,0
+1376621870,0.7856,1,1,0,1,3,0,,,,,San Jose / South Bay,6,0,0
+1407245947,0.7856,1,1,1,1,15,0,,primary_care,Family Medicine,,San Jose / South Bay,3,0,0
+1518151919,0.6371,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,San Gabriel / San Fernando Valleys,3,0,0
+1689723892,0.0303,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,Northern California,2,0,0
+1578896429,0.3185,1,1,1,1,18,0,,behavioural,Psychologist,,San Gabriel / San Fernando Valleys,3,0,0
+1982922340,1.8316,1,1,1,1,11,0,,primary_care,Pediatrics,,East Bay,7,0,0
+1407986466,1.6281,1,1,1,1,17,1,,behavioural,Psychiatry & Neurology: Psychiatry,,East Bay,2,0,0
+1811956469,1.8316,1,1,1,1,11,0,,primary_care,Family Medicine,,East Bay,9,0,0
+1043948904,2.4421,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,ZIP3 600,1,0,0
+1962659573,0.4793,1,1,1,1,18,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Primary Care; Multi-Specialty,193200000X|261QP2300X,Inland Empire,1,0,0
+1033105150,0.719,1,1,1,1,9,1,|GROUP PRACTICE,other,Multi-Specialty; Optometrist,193200000X,Inland Empire,2,0,0
+1811021017,0.091,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Social Worker: Clinical,1041C0700X|193200000X|193400000X,Sacramento,2,0,0
+1699934869,0.3034,1,0,0,1,1,1,|GROUP PRACTICE,other,Acupuncturist; Multi-Specialty,193200000X,Los Angeles,2,0,0
+1972336337,0.14,0,1,1,1,13,0,,other,Optometrist,,Los Angeles,1,0,0
+1093064420,0.0431,1,1,1,1,18,0,,behavioural,Psychologist,,San Gabriel / San Fernando Valleys,6,0,0
+1316249451,0.091,1,0,0,1,1,1,|GROUP PRACTICE,other,Acupuncturist; Multi-Specialty,193200000X,San Diego,2,0,0
+1487897344,0.6522,1,1,1,1,18,1,GROUP PRACTICE,facility,Clinic/Center: Community Health; Multi-Specialty,,Los Angeles,1,0,0
+1487640066,0.3489,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,San Diego,1,0,0
+1306001805,0.6522,1,1,1,1,18,1,GROUP PRACTICE,facility,Clinic/Center: Community Health; Multi-Specialty,,Los Angeles,1,0,0
+1912009929,0.3987,0,1,0,1,7,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,San Diego,3,0,0
+1528394962,0.8858,1,1,1,1,9,1,ANCILLARY|GROUP PRACTICE,other,Early Intervention Provider Agency; Multi-Specialty,252Y00000X,Orange County,1,0,0
+1073126819,1.6609,1,1,1,1,8,0,,hospital_based,Speech-Language Pathologist,,Orange County,2,0,0
+1558353060,0.3144,1,1,1,1,15,1,|GROUP PRACTICE,primary_care,Family Medicine; Multi-Specialty,193200000X,San Jose / South Bay,7,0,0
+1043239569,0.364,1,1,1,1,15,0,,primary_care,Family Medicine,,San Jose / South Bay,3,0,0
+1922575216,0.8051,1,1,1,1,8,1,ANCILLARY,facility,Clinic/Center: Urgent Care,261QU0200X,San Gabriel / San Fernando Valleys,1,0,0
+1750490363,0.2385,1,1,1,1,15,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center; Multi-Specialty,193200000X|261Q00000X,San Jose / South Bay,1,0,0
+1801896105,0.5233,1,1,1,1,18,1,ANCILLARY,facility,Home Health,251E00000X,San Gabriel / San Fernando Valleys,1,0,0
+1619963386,0.0546,0,1,1,1,9,0,,,,,Central Coast,2,0,0
+1003047689,1.1201,1,1,1,1,13,0,,behavioural,Physical Therapist,,Orange County,1,0,0
+1508132952,0.2697,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Behavioral Analyst; Multi-Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,3,0,0
+1316050107,0.0932,1,1,1,1,18,1,FQHC|GROUP PRACTICE,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,193200000X|193400000X|261QF0400X,Sacramento,1,0,0
+1801345772,0.2086,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,East Bay,2,0,0
+1952031411,0.3413,1,1,1,1,8,1,GROUP PRACTICE,other,Multi-Specialty,,San Francisco,1,0,0
+1306938055,0.182,1,1,1,1,14,0,,hospital_based,Anesthesiology; Pain Medicine: Pain Medicine,,San Francisco,7,0,0
+1447980016,0.3034,1,1,1,1,8,0,,surgical,"Dietitian, Registered; Transplant Surgery",,San Francisco,2,0,0
+1750645289,1.2969,1,1,1,1,16,0,,primary_care,Family Medicine,,Los Angeles,7,0,0
+1134254345,2.5938,1,1,1,1,8,0,,primary_care,Internal Medicine: Cardiovascular Disease,,Los Angeles,3,0,0
+1629774377,0.5825,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty; Single Specialty,193400000X,Peninsula,1,1,1
+1962790014,0.5825,1,1,1,1,18,1,ANCILLARY|GROUP PRACTICE|PPG,facility,Clinic/Center: Multi-Specialty; Multi-Specialty,193200000X|193400000X|261QM1300X|261QU0200X,Los Angeles,1,0,1
+1255883724,0.364,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Bakersfield / Kern,3,0,0
+1063999423,0.364,1,1,1,1,18,0,,behavioural,Social Worker: Clinical,,Bakersfield / Kern,2,0,0
+1851444376,0.1729,1,1,1,1,17,1,ANCILLARY|CLINIC,behavioural,"Clinic/Center: Rehabilitation, Substance Use Disorder; Substance Abuse Rehabilitation Facility",261QM2800X|261QR0405X,Stockton / Modesto,1,0,0
+1992861553,0.0961,1,1,1,1,18,1,ANCILLARY|GROUP PRACTICE,behavioural,Clinic/Center: Methadone Clinic; Single Specialty; Substance Abuse Rehabilitation Facility,193200000X|193400000X|261QM2800X,Ventura / Santa Barbara,1,0,0
+1992049720,1.8884,1,1,1,1,8,0,,therapy,Podiatrist,,Sacramento,5,0,0
+1538162730,2.0601,1,1,1,1,11,0,,primary_care,Pediatrics,,Sacramento,2,0,0
+1144682840,0.091,1,0,0,1,1,1,|GROUP PRACTICE,other,Acupuncturist; Multi-Specialty,193200000X,San Jose / South Bay,2,0,0
+1609331990,0.45,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,ZIP3 840,4,0,0
+1316331275,0.1898,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Single Specialty,193400000X,San Francisco,2,0,0
+1497380679,0.45,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Los Angeles,3,0,0
+1174189997,0.2314,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty; Single Specialty,193400000X,Los Angeles,1,1,1
+1316053127,0.052,1,1,0,1,7,1,,,,,Peninsula,3,0,0
+1265716542,0.4399,1,1,1,1,8,0,,other,Nurse Practitioner,,Los Angeles,4,0,0
+1023340379,0.3299,1,1,1,1,15,0,,other,Physician Assistant,,San Gabriel / San Fernando Valleys,2,0,0
+1225131675,0.2639,1,1,1,1,16,0,,primary_care,Internal Medicine,,Bakersfield / Kern,6,0,0
+1467497172,0.091,0,1,0,1,3,1,ANCILLARY,other,Ambulance: Land Transport,3416L0300X,Los Angeles,1,0,0
+1073641478,0.091,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Substance Abuse Rehabilitation Facility,324500000X,Los Angeles,1,0,0
+1750520821,0.0642,1,1,1,1,16,0,,surgical,Obstetrics & Gynecology; Obstetrics & Gynecology: Maternal & Fetal Medicine,,San Francisco,4,0,0
+1962688127,0.9602,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Inland Empire,1,0,0
+1902357734,1.0668,1,1,1,1,18,0,,primary_care,Family Medicine; Internal Medicine,,Inland Empire,5,0,0
+1831668292,1.2002,1,1,1,1,16,1,GROUP PRACTICE,other,Multi-Specialty,193400000X,Inland Empire,1,0,0
+1275654824,0.5139,1,1,1,1,17,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,East Bay,1,0,0
+1215117973,0.3236,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,East Bay,2,0,0
+1528128394,0.2191,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,East Bay,2,0,0
+1235283094,0.0122,1,1,1,1,18,1,FQHC|GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,193200000X|193400000X|261QF0400X,Los Angeles,3,1,1
+1831265388,0.0271,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker,193200000X|193400000X,Bakersfield / Kern,2,0,0
+1740471531,0.5663,1,1,1,1,18,0,,surgical,Obstetrics & Gynecology: Maternal & Fetal Medicine,,San Gabriel / San Fernando Valleys,9,0,0
+1689907461,0.4633,1,1,1,1,16,0,,primary_care,Internal Medicine: Nephrology,,Inland Empire,5,0,0
+1700044435,0.0165,1,1,1,1,8,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,1,0,0
+1871641282,0.7822,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Psychologist; Single Specialty,193400000X,East Bay,5,0,0
+1730314063,0.0303,1,0,0,1,1,0,,surgical,Obstetrics & Gynecology,,San Gabriel / San Fernando Valleys,2,0,0
+1710921705,0.9904,1,1,1,1,14,0,,primary_care,Internal Medicine,,San Jose / South Bay,3,0,0
+1497021109,0.9354,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,,East Bay,1,0,0
+1821488966,0.8861,1,1,1,1,16,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Peninsula,1,0,0
+1588842421,0.1289,1,0,1,1,6,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Physical Therapy; Multi-Specialty,193200000X|261QP2000X,East Bay,1,0,0
+1497827745,0.3868,1,0,0,1,1,0,,behavioural,Ophthalmology; Preventive Medicine: Preventive Medicine/Occupational Environmental Medicine; Preventive Medicine: Public Health & General Preventive Medicine,,San Jose / South Bay,2,0,0
+1013307610,1.5472,1,0,0,1,1,0,,behavioural,Physical Therapist,,East Bay,2,0,0
+1033426374,2.0983,1,1,1,1,18,0,,behavioural,Social Worker: Clinical,,San Diego,1,0,0
+1154154870,2.0983,1,1,1,1,18,0,,behavioural,Psychologist,,Los Angeles,2,0,0
+1336387018,0.9022,1,1,1,1,18,0,,primary_care,Pediatrics,,Los Angeles,15,0,0
+1063400380,0.9432,1,1,1,1,16,1,,primary_care,General Practice; Internal Medicine,,Los Angeles,10,0,0
+1154944437,1.3833,1,1,1,1,15,0,,surgical,Ophthalmology,,Inland Empire,14,0,0
+1407384811,1.4106,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Los Angeles,3,0,0
+1326171265,0.7255,0,1,1,1,14,1,ANCILLARY|GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Health Maintenance Organization; Multi-Specialty,193200000X|302R00000X,San Gabriel / San Fernando Valleys,1,1,1
+1770447997,1.6928,1,1,1,1,15,1,GROUP PRACTICE,other,Multi-Specialty,,Los Angeles,1,0,0
+1902885510,0.7534,1,1,1,1,9,1,|GROUP PRACTICE,primary_care,Internal Medicine; Multi-Specialty,193200000X,San Francisco,5,0,0
+1477533792,0.7137,1,1,1,1,11,1,|GROUP PRACTICE,therapy,Multi-Specialty; Podiatrist,193200000X,East Bay,6,0,0
+1376559914,0.565,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X,San Francisco,1,0,0
+1538212873,0.5624,1,1,1,1,13,1,ANCILLARY|GROUP PRACTICE,behavioural,Clinic/Center: Physical Therapy; Physical Therapist; Single Specialty,193200000X|193400000X|225100000X,Los Angeles,2,0,0
+1528242542,0.9139,1,1,1,1,19,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,High Desert,1,0,0
+1871853697,1.0967,1,1,1,1,6,1,ANCILLARY|GROUP PRACTICE,behavioural,Clinic/Center: Physical Therapy; Multi-Specialty; Physical Therapist,193200000X|225100000X,High Desert,1,0,0
+1407357551,0.6826,1,1,1,1,18,1,,behavioural,Behavioral Analyst,,Sacramento,2,0,0
+1912593435,1.3651,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Sacramento,1,0,0
+1831360809,0.0607,0,1,1,1,8,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Stockton / Modesto,1,0,0
+1386722296,0.0607,0,1,1,1,8,0,,primary_care,Internal Medicine,,Stockton / Modesto,4,0,0
+1851573554,0.1916,1,1,1,1,18,0,,behavioural,Psychiatry & Neurology: Child & Adolescent Psychiatry; Psychiatry & Neurology: Psychiatry,,Los Angeles,4,0,0
+1366676199,0.091,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Counselor: Professional; Multi-Specialty,193200000X|193400000X,Inland Empire,3,0,0
+1013614262,0.1972,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Sacramento,1,0,0
+1508949645,2.0363,1,1,1,1,13,1,CLINIC|FQHC|PPG,facility,Clinic/Center: Community Health; Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,193200000X|261QC1500X,San Diego,1,1,1
+1538932777,1.2084,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,San Diego,1,0,0
+1003166646,2.7151,1,1,1,1,18,0,,behavioural,Nurse Practitioner: Psych/Mental Health,,San Diego,3,0,0
+1083662407,0.3566,1,1,1,1,14,1,ANCILLARY|GROUP PRACTICE,behavioural,Clinic/Center: Occupational Medicine; Clinic/Center: Physical Therapy; Multi-Specialty; Physical Therapist; Single Specialty,193200000X|193400000X|225100000X,San Diego,2,0,0
+1134535792,0.117,1,1,1,1,10,0,,primary_care,Internal Medicine,,Inland Empire,3,0,0
+1982732624,0.1289,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Counselor: Professional; Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Bakersfield / Kern,4,0,0
+1346379328,0.273,1,1,1,1,17,1,GROUP PRACTICE,other,Single Specialty,193200000X|193400000X,Bakersfield / Kern,1,0,0
+1346326394,0.468,1,1,1,1,18,1,,primary_care,General Practice; Internal Medicine,,Los Angeles,17,0,0
+1104912336,0.6553,0,1,1,1,6,0,,,,,Los Angeles,2,0,0
+1871931436,0.8191,0,1,1,1,12,0,,other,Nurse Practitioner,,Los Angeles,2,0,0
+1285624940,0.6977,1,1,1,1,16,0,,primary_care,Internal Medicine,,Los Angeles,6,0,0
+1457452310,0.666,1,1,1,1,18,0,,primary_care,General Practice; Pediatrics,,Los Angeles,12,0,0
+1902944457,0.3893,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Sacramento,2,0,0
+1093231276,0.6371,1,1,1,1,18,1,ANCILLARY,facility,Home Health,251E00000X,Sacramento,1,0,0
+1770527327,0.0809,1,1,1,1,14,1,,behavioural,Pathology: Clinical Pathology; Psychiatry & Neurology: Neurology,,San Francisco,6,0,0
+1417052739,0.1654,1,1,1,1,14,1,ANCILLARY|GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Health Maintenance Organization; Multi-Specialty,193200000X|302R00000X,Peninsula,2,1,1
+1063625069,0.156,1,1,1,1,18,0,,primary_care,Family Medicine,,Orange County,15,0,0
+1649473513,0.568,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,2,0,0
+1467485888,0.8289,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,2,0,0
+1245870799,1.7039,1,1,1,1,18,1,GROUP PRACTICE,other,Single Specialty,193400000X,Los Angeles,1,0,0
+1558060376,0.273,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Los Angeles,2,0,0
+1396860938,0.273,1,1,1,1,18,0,,behavioural,Social Worker: Clinical,,Los Angeles,2,0,0
+1134795024,0.273,1,1,1,1,18,1,GROUP PRACTICE,other,Single Specialty,193400000X,Los Angeles,1,0,0
+1790044808,0.1399,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,ZIP3 850,3,0,0
+1689682544,0.5036,1,1,1,1,9,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Urgent Care; Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,1,0,0
+1104802594,0.7685,1,1,0,1,5,0,,,,,North Bay,2,0,0
+1992703706,0.6288,1,1,1,1,9,0,,primary_care,Internal Medicine,,North Bay,3,0,0
+1154471662,0.2849,1,1,1,1,18,1,,surgical,Obstetrics & Gynecology,,San Gabriel / San Fernando Valleys,7,0,0
+1164409165,1.0653,1,1,1,1,16,0,,primary_care,Family Medicine,,Stockton / Modesto,5,0,0
+1689694663,0.5954,1,0,0,1,1,1,,,,,Orange County,2,0,0
+1063540698,0.3969,1,1,1,1,18,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Orange County,1,0,0
+1336824572,0.1881,1,1,1,1,15,1,ANCILLARY,behavioural,Clinic/Center: Adult Mental Health,,Inland Empire,1,0,0
+1508379017,0.0346,1,1,1,1,18,1,FQHC|GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,193200000X|261QF0400X,Los Angeles,3,1,1
+1093969115,0.6078,1,1,1,1,15,1,CLINIC|GROUP PRACTICE|PPG,facility,"Clinic/Center: Community Health; Clinic/Center: Family Planning, Non-Surgical; Multi-Specialty",193200000X|261QC1500X,Los Angeles,1,1,1
+1912071556,0.1517,1,1,1,1,18,0,,primary_care,Family Medicine; Internal Medicine; Internal Medicine: Geriatric Medicine,,Los Angeles,14,0,0
+1548506504,3.5858,1,1,0,1,8,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Los Angeles,1,0,0
+1417027632,0.0303,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Sacramento,2,0,0
+1952317133,0.1279,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Stockton / Modesto,2,0,0
+1932603115,0.273,1,1,1,1,18,1,GROUP PRACTICE,other,Single Specialty,193200000X|193400000X,High Desert,1,0,0
+1881210722,0.273,1,1,1,1,18,1,GROUP PRACTICE,other,Single Specialty,193400000X,Los Angeles,1,0,0
+1972847770,4.1561,1,1,1,1,9,0,,other,Nurse Practitioner,,Sacramento,1,0,0
+1578507679,3.3249,1,1,1,1,11,0,,primary_care,Pediatrics,,East Bay,5,0,0
+1861970733,0.9404,1,1,1,1,8,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Multi-Specialty; Multi-Specialty,261QM1300X,San Jose / South Bay,1,0,0
+1205326261,5.5415,1,1,1,1,9,0,,other,Nurse Practitioner,,Sacramento,2,0,0
+1598999054,0.6717,1,1,1,1,15,0,,primary_care,Pediatrics,,Peninsula,6,0,0
+1619427119,2.255,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Los Angeles,3,0,0
+1720162167,1.9329,1,1,1,1,18,1,,hospital_based,General Practice; Pathology: Clinical Pathology,,Los Angeles,7,0,0
+1528051364,2.255,1,1,1,1,18,0,,primary_care,Internal Medicine,,Los Angeles,3,0,0
+1699770867,0.0475,1,1,1,1,19,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,East Bay,2,0,0
+1316978083,1.1632,1,1,1,1,18,1,|GROUP PRACTICE,surgical,Multi-Specialty; Ophthalmology,193200000X,San Gabriel / San Fernando Valleys,4,0,0
+1821175415,1.692,1,1,1,1,17,1,|GROUP PRACTICE,therapy,Chiropractor; Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,4,0,0
+1285777532,0.0944,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,Los Angeles,2,0,0
+1124255146,2.2388,1,1,1,1,18,0,,primary_care,Pediatrics,,Los Angeles,14,0,0
+1992752091,13.879,1,0,0,1,1,0,,,,,San Diego,1,0,0
+1518262757,0.4311,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Diego,5,0,0
+1003340647,0.234,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty; Single Specialty,193400000X,San Diego,1,1,1
+1215668926,0.455,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Diego,2,0,0
+1902292196,1.0062,1,1,1,1,18,0,,behavioural,Psychiatry & Neurology: Psychiatry,,Sacramento,3,0,0
+1578648598,0.5031,1,1,1,1,18,1,,behavioural,Social Worker: Clinical,,Sacramento,3,0,0
+1497763528,0.2778,1,1,1,1,17,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Bakersfield / Kern,2,0,0
+1558469064,0.7244,1,1,1,1,18,1,GROUP PRACTICE|PPG,facility,Multi-Specialty,261QF0400X,Sacramento,1,0,1
+1831888114,2.166,1,1,1,1,15,1,GROUP PRACTICE,facility,Clinic/Center: Community Health; Multi-Specialty,,Peninsula,1,0,0
+1629451703,1.805,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,East Bay,1,0,0
+1649646282,1.4126,1,1,1,1,19,1,GROUP PRACTICE,facility,Clinic/Center: Community Health; Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,1,0,0
+1073598603,0.1031,1,1,1,1,11,0,,therapy,Podiatrist,,San Francisco,7,0,0
+1215108527,0.0814,1,1,1,1,14,1,,surgical,Dentist; Oral & Maxillofacial Surgery,,Peninsula,8,0,0
+1538213558,1.1266,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker,193200000X|193400000X,San Gabriel / San Fernando Valleys,3,0,0
+1639711625,1.8123,1,1,1,1,18,0,,behavioural,Nurse Practitioner; Nurse Practitioner: Psych/Mental Health,,San Gabriel / San Fernando Valleys,7,0,0
+1538184601,1.0688,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,3,0,0
+1790841948,1.0352,1,1,1,1,14,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Peninsula,1,0,0
+1245365782,0.8718,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Peninsula,1,0,0
+1336470772,0.4601,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Substance Abuse Rehabilitation Facility,324500000X,Peninsula,1,0,0
+1043685548,0.2275,1,0,0,1,1,1,|GROUP PRACTICE,other,Acupuncturist; Single Specialty,193200000X|193400000X,San Francisco,2,0,0
+1366808420,5.0055,1,0,0,1,1,0,,behavioural,Behavioral Analyst,,Sacramento,1,0,0
+1467647909,3.0337,1,1,0,1,11,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Urgent Care; Multi-Specialty,261QU0200X,Orange County,1,0,0
+1528569142,0.2781,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Los Angeles,2,0,0
+1861962516,1.896,1,1,1,1,9,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193200000X|193400000X,Los Angeles,1,0,0
+1740532506,0.2225,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Single Specialty; Social Worker: Clinical,193400000X,San Gabriel / San Fernando Valleys,2,0,0
+1841290228,1.7502,1,1,1,1,13,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,Orange County,1,1,1
+1104908656,1.0896,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Social Worker: Clinical,1041C0700X|193200000X,Northern California,1,0,0
+1689179798,1.6344,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Northern California,1,0,0
+1417488107,0.7264,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Northern California,2,0,0
+1225025836,0.9594,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Los Angeles,1,0,0
+1295801421,0.091,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,193200000X|332B00000X|333600000X|3336C0003X,Los Angeles,1,0,0
+1548319544,0.45,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,San Francisco,1,0,0
+1366806291,2.0932,1,1,1,1,8,0,,therapy,Podiatrist,,Los Angeles,2,0,0
+1346394103,1.35,1,0,0,1,1,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,San Francisco,2,0,0
+1376096180,0.4765,1,1,1,1,17,0,,,,,San Francisco,1,0,0
+1659465417,0.7584,1,1,1,1,18,1,,behavioural,Nurse Practitioner: Psych/Mental Health,,Northern California,1,0,0
+1053503334,0.5056,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Northern California,2,0,0
+1790051761,0.277,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Sacramento,1,0,0
+1023030582,0.3965,1,1,1,1,10,0,,medical,Dermatology,,Peninsula,4,0,0
+1902171523,0.273,1,0,0,1,1,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193400000X,Fresno / Central Valley,1,0,0
+1144274325,0.273,1,0,0,1,1,1,,therapy,Chiropractor,,Fresno / Central Valley,2,0,0
+1336240506,0.273,1,0,0,1,1,0,,therapy,Chiropractor,,Los Angeles,1,0,0
+1215032123,0.3917,1,1,1,1,18,1,ANCILLARY,facility,Home Health,251E00000X,San Jose / South Bay,1,0,0
+1356628101,0.3917,1,1,1,1,18,1,ANCILLARY,facility,Home Health; In Home Supportive Care,253Z00000X,San Jose / South Bay,1,0,0
+1871529867,0.7395,0,1,0,1,8,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Los Angeles,1,0,0
+1326478066,0.2465,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Los Angeles,1,0,0
+1538470778,0.6573,1,1,1,1,9,0,,surgical,Surgery,,Los Angeles,2,0,0
+1356370159,0.5025,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Inland Empire,1,0,0
+1518405893,0.6421,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Los Angeles,4,0,0
+1932166485,0.0728,1,1,1,1,16,1,|GROUP PRACTICE,primary_care,Internal Medicine: Rheumatology; Multi-Specialty; Neurological Surgery,193200000X,Inland Empire,19,0,0
+1811255060,0.091,1,1,1,1,16,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,1,0,0
+1477656817,1.0011,1,0,0,1,1,0,,medical,Allergy & Immunology,,Sacramento,4,0,0
+1831230549,0.1205,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,Los Angeles,3,0,0
+1891374963,1.2601,1,1,1,1,10,0,,other,Physician Assistant,,Peninsula,2,0,0
+1952924631,0.8191,1,1,1,1,17,0,,other,Physician Assistant,,Peninsula,4,0,0
+1114182920,0.8191,1,1,1,1,17,0,,hospital_based,Dermatology; Pathology: Dermatopathology,,Peninsula,10,0,0
+1841359585,1.0358,1,1,1,1,13,0,,primary_care,Internal Medicine; Internal Medicine: Nephrology,,Los Angeles,4,0,0
+1285686220,0.6397,1,1,1,1,15,1,|GROUP PRACTICE,primary_care,Internal Medicine: Nephrology; Multi-Specialty,193200000X,Los Angeles,5,0,0
+1285791806,0.5677,1,1,1,1,11,1,|GROUP PRACTICE,primary_care,Pediatrics,193200000X|208000000X,Fresno / Central Valley,4,0,0
+1629049333,0.091,1,1,1,1,19,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Monterey Bay,1,0,0
+1053613711,0.7451,1,1,1,1,12,0,,primary_care,Allergy & Immunology; Internal Medicine,,Bakersfield / Kern,5,0,0
+1790876720,0.091,1,1,1,1,11,0,,primary_care,Family Medicine,,North Bay,5,0,0
+1750392098,0.0271,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,North Bay,3,0,0
+1245242593,0.3337,1,0,0,1,1,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,North Bay,2,0,0
+1669590097,0.1433,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Sacramento,2,0,0
+1588729180,0.8321,1,1,1,1,11,1,FQHC|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,193200000X|261QF0400X,Sacramento,1,1,1
+1710211214,0.5637,1,1,1,1,12,1,ANCILLARY|FQHC|PPG,facility,Clinic/Center; Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,193200000X|261Q00000X,Stockton / Modesto,1,1,1
+1578691978,0.3615,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Substance Abuse Rehabilitation Facility,324500000X,Los Angeles,1,0,0
+1609079490,1.8657,1,1,1,1,15,0,,hospital_based,Anesthesiology,,Inland Empire,6,0,0
+1982882296,1.7769,1,1,1,1,17,0,,surgical,Obstetrics & Gynecology,,San Gabriel / San Fernando Valleys,5,0,0
+1831519719,12.438,1,0,0,1,1,0,,hospital_based,Anesthesiology,,Inland Empire,2,0,0
+1073633020,0.4748,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Los Angeles,1,0,0
+1942285440,0.455,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Los Angeles,1,0,0
+1457602294,0.2664,1,1,1,1,17,1,ANCILLARY,facility,Clinic/Center: Infusion Therapy; Pharmacy,332B00000X|333600000X|3336H0001X,Los Angeles,2,0,0
+1790173508,0.7237,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Los Angeles,1,0,0
+1568494649,0.7999,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Los Angeles,1,0,0
+1972523462,0.091,1,1,1,1,18,1,,behavioural,Marriage & Family Therapist,,Ventura / Santa Barbara,1,0,0
+1194357327,0.091,1,0,0,1,1,1,|GROUP PRACTICE,other,Acupuncturist; Multi-Specialty,193200000X,San Diego,3,0,0
+1275714495,0.364,1,1,1,1,11,0,,primary_care,Internal Medicine: Geriatric Medicine,,San Diego,7,0,0
+1285633081,0.4941,1,1,0,1,9,0,,primary_care,Internal Medicine,,North Bay,6,0,0
+1417027475,0.165,1,1,1,1,16,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Infusion Therapy; Multi-Specialty,261QI0500X,Orange County,1,0,0
+1669873055,0.091,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Psychologist; Single Specialty,193400000X,Monterey Bay,2,0,0
+1407058787,0.0776,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,Orange County,2,1,1
+1326111279,1.7915,0,1,1,1,6,0,,,,,Orange County,3,0,0
+1285697144,2.8365,0,1,1,1,12,0,,other,Pain Medicine: Pain Medicine,,Orange County,2,0,0
+1972698496,0.0961,1,1,1,1,18,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Francisco,1,0,0
+1568633170,0.091,1,0,0,1,1,0,,behavioural,Psychiatry & Neurology: Psychiatry,,San Jose / South Bay,1,0,0
+1629134846,2.5596,0,1,1,1,6,1,GROUP PRACTICE,other,Single Specialty,193400000X,East Bay,1,0,0
+1689708042,0.2767,0,1,1,1,13,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,East Bay,1,1,1
+1811612021,0.182,1,1,1,1,17,0,,,,,Inland Empire,1,0,0
+1245967025,0.182,1,1,1,1,17,1,GROUP PRACTICE,other,Single Specialty,193400000X,Inland Empire,1,0,0
+1619423233,2.1346,1,1,1,1,15,0,,other,Physician Assistant,,Los Angeles,5,0,0
+1861697427,2.1346,1,1,1,1,16,0,,surgical,Obstetrics & Gynecology,,Inland Empire,8,0,0
+1689650145,2.4716,1,1,1,1,16,0,,surgical,Obstetrics & Gynecology,,Orange County,3,0,0
+1023440823,0.091,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Psychologist; Single Specialty,193400000X,Inland Empire,2,0,0
+1407882863,0.6484,1,1,1,1,15,1,|GROUP PRACTICE,primary_care,Internal Medicine; Multi-Specialty,193200000X|193400000X,San Jose / South Bay,4,0,0
+1366467102,0.4716,1,1,1,1,15,1,|GROUP PRACTICE,primary_care,Family Medicine; General Practice; Multi-Specialty,193200000X,San Jose / South Bay,5,0,0
+1487755682,0.8191,1,1,1,1,15,0,,primary_care,Family Medicine,,San Jose / South Bay,9,0,0
+1790024958,0.2199,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Sacramento,2,0,0
+1689287948,1.6533,1,1,1,1,18,1,GROUP PRACTICE,other,Single Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,1,0,0
+1801881479,1.24,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,San Gabriel / San Fernando Valleys,1,0,0
+1720602014,1.6533,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193400000X,San Gabriel / San Fernando Valleys,1,0,0
+1801938816,0.5119,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Stockton / Modesto,1,0,0
+1831544063,0.6826,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Los Angeles,4,0,0
+1144217878,0.5825,1,1,1,1,10,1,|GROUP PRACTICE,other,Multi-Specialty; Optometrist,193200000X,Los Angeles,2,0,0
+1316059306,0.1092,1,1,1,1,6,0,,,,,Stockton / Modesto,4,0,0
+1184945180,0.1638,1,1,1,1,8,1,GROUP PRACTICE,other,Single Specialty,193400000X,Stockton / Modesto,1,0,0
+1316966302,0.3971,1,1,1,1,8,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Urgent Care; Multi-Specialty,193200000X|261QU0200X,Northern California,1,0,0
+1245235779,4.3685,1,0,0,1,1,0,,therapy,Chiropractor,,Northern California,1,0,0
+1265693485,0.455,1,1,1,1,18,0,,behavioural,Psychiatry & Neurology: Psychiatry,,East Bay,2,0,0
+1629482898,4.2775,1,0,0,1,1,1,,therapy,Chiropractor,,San Jose / South Bay,2,0,0
+1790270155,0.2275,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Substance Abuse Rehabilitation Facility,276400000X|324500000X,East Bay,1,0,0
+1841225893,4.2775,1,0,0,1,1,1,,therapy,Chiropractor,,San Jose / South Bay,3,0,0
+1447975875,0.3392,1,1,1,1,11,0,,other,Nurse Practitioner,,Bakersfield / Kern,1,0,0
+1184316515,0.3392,1,1,1,1,11,0,,other,Nurse Practitioner,,Bakersfield / Kern,1,0,0
+1073976791,0.3392,1,1,0,1,2,0,,,,,Bakersfield / Kern,1,0,0
+1962736926,0.8646,1,1,0,1,10,0,,,,,San Jose / South Bay,2,0,0
+1841288842,0.6766,1,1,0,1,8,1,|GROUP PRACTICE,therapy,Chiropractor; Multi-Specialty,193200000X,San Jose / South Bay,3,0,0
+1154668184,0.6484,1,1,1,1,19,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,San Jose / South Bay,1,0,0
+1225191034,0.182,1,0,0,1,1,0,,behavioural,Psychologist,,San Diego,1,0,0
+1245249770,2.0477,1,0,0,1,1,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Northern California,1,0,0
+1104900711,0.0569,1,1,1,1,10,1,|GROUP PRACTICE,therapy,Podiatrist; Single Specialty,193200000X|193400000X,Sacramento,4,0,0
+1992971956,0.9101,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Northern California,4,0,0
+1952754673,4.9145,1,1,1,1,9,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193200000X|193400000X,Northern California,1,0,0
+1700086337,0.7827,1,1,1,1,17,0,,primary_care,Family Medicine,,Los Angeles,8,0,0
+1891758538,0.091,1,1,1,1,19,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,San Gabriel / San Fernando Valleys,1,0,0
+1487041562,0.6806,1,1,1,1,18,0,,hospital_based,Speech-Language Pathologist,,Los Angeles,2,0,0
+1952663114,0.6484,0,1,1,1,12,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,1,0,0
+1043269145,0.5366,1,1,1,1,18,1,|GROUP PRACTICE,primary_care,Family Medicine; Internal Medicine; Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,8,0,0
+1245480763,0.0607,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,Inland Empire,2,0,0
+1154541019,0.0046,1,1,1,1,17,0,,primary_care,Family Medicine,,Bakersfield / Kern,4,0,0
+1962268656,2.2525,1,1,1,1,8,0,,other,Physician Assistant,,Bakersfield / Kern,2,0,0
+1730281254,1.2013,1,1,1,1,11,0,,surgical,Orthopaedic Surgery,,Bakersfield / Kern,3,0,0
+1871568097,1.2013,1,1,0,1,7,0,,,,,San Diego,5,0,0
+1205885357,0.5698,1,1,1,1,9,1,ANCILLARY|GROUP PRACTICE|PPG,other,Multi-Specialty; Single Specialty,193200000X|193400000X,Orange County,1,0,1
+1780879239,0.455,1,1,1,1,15,0,,primary_care,Pediatrics,,Los Angeles,6,0,0
+1992965545,0.4334,0,1,1,1,12,0,,primary_care,Pediatrics,,Los Angeles,4,0,0
+1326225632,0.6371,1,1,1,1,18,1,FQHC|PPG,facility,"Clinic/Center: Family Planning, Non-Surgical; Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty",193200000X|261Q00000X|261QF0400X,San Diego,1,1,1
+1952364747,0.3008,1,1,1,1,19,1,FQHC|GROUP PRACTICE|PPG,facility,"Clinic/Center: Family Planning, Non-Surgical; Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty",193200000X|261QF0400X,San Diego,1,1,1
+1275948218,1.2033,1,1,0,1,2,0,,,,,San Diego,2,0,0
+1174510747,0.6409,1,1,1,1,11,1,|GROUP PRACTICE,primary_care,Internal Medicine; Internal Medicine: Nephrology; Single Specialty,193200000X|193400000X,Stockton / Modesto,5,0,0
+1407844889,1.0254,1,1,1,1,12,0,,primary_care,Internal Medicine; Internal Medicine: Nephrology,,Stockton / Modesto,5,0,0
+1790844769,0.6409,1,1,0,1,7,1,|GROUP PRACTICE,other,Single Specialty,193400000X,Stockton / Modesto,3,0,0
+1538150420,0.7331,1,1,1,1,18,0,,behavioural,Social Worker: Clinical,,San Diego,3,0,0
+1811104680,0.3881,1,1,1,1,17,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Diego,1,0,0
+1659443141,0.4095,1,1,0,1,2,0,,therapy,Chiropractor,,Stockton / Modesto,3,0,0
+1316023914,0.4095,1,1,0,1,6,0,,therapy,Chiropractor,,Stockton / Modesto,3,0,0
+1710974522,0.6846,1,1,1,1,18,0,,therapy,Podiatrist,,Los Angeles,11,0,0
+1174045447,0.7497,1,1,1,1,17,1,,therapy,Podiatrist,,Los Angeles,9,0,0
+1215294087,0.5279,0,1,1,1,13,0,,surgical,Orthopaedic Surgery,,San Francisco,3,0,0
+1194799635,0.091,0,1,0,1,1,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X|332BC3200X,Stockton / Modesto,1,0,0
+1467471342,0.2958,1,1,1,1,17,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X,Los Angeles,1,0,0
+1114056314,0.1315,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,Los Angeles,3,0,0
+1346463163,0.1365,1,1,1,1,18,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Stockton / Modesto,4,0,0
+1750755948,0.6952,1,1,1,1,18,0,,behavioural,Assistant Behavior Analyst; Behavior Technician; Behavioral Analyst,,Los Angeles,2,0,0
+1710382981,0.6952,1,1,1,1,18,0,,behavioural,Assistant Behavior Analyst; Behavior Technician; Behavioral Analyst,,Los Angeles,2,0,0
+1578070132,1.3904,1,1,1,1,18,0,,behavioural,Behavior Technician,,ZIP3 809,1,0,0
+1952475626,0.1158,1,1,1,1,16,1,|GROUP PRACTICE,primary_care,Family Medicine; General Practice; Internal Medicine; Multi-Specialty,193200000X,Inland Empire,7,0,0
+1659452399,0.5391,1,1,1,1,8,1,|GROUP PRACTICE,therapy,Multi-Specialty; Podiatrist,193200000X,Northern California,2,0,0
+1386861409,0.7008,1,1,1,1,9,0,,medical,Dermatology,,Northern California,2,0,0
+1437569514,0.091,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Stockton / Modesto,1,0,0
+1093885907,0.273,1,0,0,1,1,1,|GROUP PRACTICE,therapy,Chiropractor; Multi-Specialty,193200000X,San Diego,2,0,0
+1538420104,0.6788,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Los Angeles,1,0,0
+1235497850,0.5818,1,1,1,1,12,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,Stockton / Modesto,1,0,1
+1326048893,0.0475,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies; Prosthetic/Orthotic Supplier,332B00000X|335E00000X,ZIP3 895,1,0,0
+1417496563,0.8305,1,1,1,1,10,0,,hospital_based,Speech-Language Pathologist,,Inland Empire,3,0,0
+1154387744,0.3691,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,Inland Empire,4,0,0
+1861693863,0.134,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,ZIP3 860,2,0,0
+1649667379,0.2297,1,1,1,1,17,0,,primary_care,Pediatrics,,San Diego,2,0,0
+1184914004,0.6046,1,1,1,1,9,0,,behavioural,Physical Therapist,,San Gabriel / San Fernando Valleys,2,0,0
+1033117775,0.3558,1,1,1,1,10,1,|GROUP PRACTICE,primary_care,General Practice; Multi-Specialty,193200000X,Bakersfield / Kern,2,0,0
+1740875129,0.6674,0,1,0,1,1,0,,behavioural,Counselor: Professional,,San Diego,1,0,0
+1871830901,0.182,1,1,1,1,17,0,,behavioural,Marriage & Family Therapist,,Los Angeles,3,0,0
+1760543359,0.2654,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: Infusion Therapy; Pharmacy: Home Infusion Therapy Pharmacy,332B00000X|3336H0001X,Stockton / Modesto,2,0,0
+1801929757,0.0361,1,1,1,1,18,1,ANCILLARY|FQHC|PPG,facility,Clinic/Center: Community Health; Clinic/Center: Federally Qualified Health Center (FQHC); Health Maintenance Organization; Multi-Specialty,193200000X|261QF0400X|302R00000X,San Gabriel / San Fernando Valleys,1,1,1
+1316023013,0.2222,1,1,1,1,15,1,ANCILLARY|GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Clinic/Center: Multi-Specialty; Multi-Specialty,193200000X|261QM1300X,Fresno / Central Valley,1,1,1
+1821163221,0.2222,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X,Stockton / Modesto,2,0,0
+1336448208,0.1772,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Diego,1,0,0
+1598882599,0.1772,1,1,1,1,18,0,,behavioural,Internal Medicine: Sleep Medicine; Psychiatry & Neurology: Psychiatry,,San Diego,8,0,0
+1225537350,0.7407,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Diego,2,0,0
+1851662977,1.4814,1,1,1,1,18,0,,,,,San Diego,2,0,0
+1235715046,1.5686,1,1,1,1,17,0,,behavioural,Social Worker: Clinical,,San Diego,1,0,0
+1396249223,2.5938,1,1,1,1,18,0,,behavioural,Behavior Technician,,San Diego,2,0,0
+1306243456,1.2969,1,1,1,1,18,1,,behavioural,Behavioral Analyst,,San Diego,2,0,0
+1841241585,1.5342,1,1,1,1,15,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,San Diego,1,0,1
+1659374775,0.8707,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty; Psychologist,193200000X|193400000X,San Diego,3,0,0
+1225059058,0.5966,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,San Diego,2,0,0
+1962963140,0.0428,1,1,1,1,14,0,,other,Nurse Practitioner,,Los Angeles,6,0,0
+1073663183,0.0944,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,Ventura / Santa Barbara,2,0,0
+1306072277,1.5881,1,1,1,1,15,0,,primary_care,Pediatrics,,Los Angeles,8,0,0
+1124189576,1.3234,1,1,1,1,18,0,,surgical,Obstetrics & Gynecology,,Los Angeles,12,0,0
+1144538711,1.4106,1,0,0,1,1,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,Peninsula,2,0,0
+1093846628,0.1881,1,1,1,1,13,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193400000X,San Jose / South Bay,1,0,0
+1114600673,0.6017,1,1,1,1,18,1,GROUP PRACTICE,other,Single Specialty,193400000X,Fresno / Central Valley,1,0,0
+1891738472,0.2015,1,1,1,1,8,1,|ANCILLARY,hospital_based,Anesthesiology; Legal Medicine (Other Service Providers); Pain Medicine: Pain Medicine,173000000X,Los Angeles,3,0,0
+1336420264,0.6017,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Fresno / Central Valley,2,0,0
+1023626694,0.3008,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Substance Abuse Rehabilitation Facility,324500000X,Fresno / Central Valley,1,0,0
+1730286600,1.2871,1,1,0,1,5,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Inland Empire,1,0,0
+1073516738,0.3107,1,1,1,1,9,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,Inland Empire,3,0,0
+1629370903,0.2465,1,1,1,1,11,0,,primary_care,Pediatrics,,Fresno / Central Valley,4,0,0
+1114227733,0.2465,1,1,1,1,11,0,,primary_care,Family Medicine,,Fresno / Central Valley,4,0,0
+1063504249,0.1315,1,1,1,1,17,1,|GROUP PRACTICE,primary_care,Family Medicine; General Practice; Internal Medicine; Single Specialty,193200000X|193400000X,Fresno / Central Valley,7,0,0
+1942657937,1.1376,1,1,1,1,7,0,,,,,San Diego,3,0,0
+1790054393,0.9308,1,1,1,1,18,0,,surgical,Ophthalmology,,San Diego,8,0,0
+1821472994,0.5916,1,0,0,1,1,1,|GROUP PRACTICE,other,Acupuncturist; Multi-Specialty,193200000X,Los Angeles,2,0,0
+1407052459,0.8903,1,1,1,1,19,0,,other,Pain Medicine: Pain Medicine; Physical Medicine & Rehabilitation,,Los Angeles,16,0,0
+1962455337,0.0986,1,1,1,1,8,0,,hospital_based,Pathology: Clinical Pathology,,Los Angeles,1,0,0
+1417017781,2.8668,1,0,0,1,1,1,,other,Acupuncturist,,Peninsula,1,0,0
+1144320672,0.0575,1,1,1,1,8,1,,primary_care,Internal Medicine,,Los Angeles,2,0,0
+1336152057,0.2389,1,1,1,1,10,1,|GROUP PRACTICE,surgical,Multi-Specialty; Orthopaedic Surgery,193200000X,Peninsula,5,0,0
+1053929273,0.091,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Psychiatric Residential Treatment Facility,323P00000X,San Gabriel / San Fernando Valleys,1,0,0
+1467570184,0.1871,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Single Specialty,193200000X|193400000X,Northern California,2,0,0
+1215346309,0.1871,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Single Specialty,193400000X,Northern California,2,0,0
+1881765048,0.2699,1,1,1,1,18,1,|GROUP PRACTICE,hospital_based,Family Medicine; General Practice; Multi-Specialty; Pathology: Clinical Pathology; Single Specialty,193200000X|193400000X,Los Angeles,8,0,0
+1881885101,0.2609,1,1,1,1,16,1,|GROUP PRACTICE,hospital_based,Emergency Medicine; General Practice; Multi-Specialty,193200000X,Los Angeles,6,0,0
+1285800359,0.8703,1,1,1,1,13,0,,primary_care,Internal Medicine; Internal Medicine: Pulmonary Disease,,Los Angeles,7,0,0
+1295864536,0.7736,1,1,1,1,18,0,,behavioural,Psychiatry & Neurology: Psychiatry,,Los Angeles,2,0,0
+1548216674,0.7083,1,1,1,1,18,0,,primary_care,Family Medicine; General Practice,,Los Angeles,11,0,0
+1972895928,0.7757,0,1,1,1,14,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychiatry & Neurology: Psychiatry,193200000X|193400000X,Los Angeles,6,0,0
+1609840479,0.4299,1,1,1,1,12,1,|GROUP PRACTICE,primary_care,"Internal Medicine; Internal Medicine: Endocrinology, Diabetes & Metabolism; Single Specialty",193200000X|193400000X,Stockton / Modesto,6,0,0
+1912115569,0.3896,0,1,1,1,8,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,Stockton / Modesto,2,1,1
+1982785739,1.532,1,1,1,1,11,0,,other,Physician Assistant,,San Diego,1,0,0
+1568465466,0.273,1,1,1,1,9,1,ANCILLARY,facility,Clinic/Center: Urgent Care,193200000X|261QU0200X,Monterey Bay,1,0,0
+1427169531,1.2741,1,1,1,1,10,0,,medical,Dermatology,,Los Angeles,6,0,0
+1508839457,1.3491,1,1,1,1,13,0,,medical,Allergy & Immunology,,Stockton / Modesto,7,0,0
+1235405952,1.6382,1,1,1,1,11,0,,medical,Allergy & Immunology,,Stockton / Modesto,3,0,0
+1942784038,0.6977,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Peninsula,1,0,0
+1518168525,3.1398,1,0,0,1,1,1,,other,Acupuncturist,,San Jose / South Bay,1,0,0
+1902093610,1.8657,1,1,0,1,5,1,GROUP PRACTICE,other,Single Specialty,193200000X|193400000X,Sacramento,1,0,0
+1780731638,0.5597,1,1,1,1,9,1,|GROUP PRACTICE,other,Multi-Specialty; Optometrist,193200000X,Sacramento,2,0,0
+1245791490,0.273,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193200000X|193400000X,Los Angeles,1,0,0
+1295889871,0.7079,1,1,1,1,8,0,,other,Physician Assistant,,Northern California,2,0,0
+1467428516,0.6371,1,1,1,1,9,0,,primary_care,Family Medicine,,Northern California,2,0,0
+1972546695,0.3539,0,1,0,1,4,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,Stockton / Modesto,3,0,0
+1417154360,0.6843,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Ventura / Santa Barbara,2,0,0
+1336651124,1.0264,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,Ventura / Santa Barbara,2,0,0
+1841501640,0.6843,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Ventura / Santa Barbara,3,0,0
+1891791877,1.5088,1,1,1,1,13,1,|GROUP PRACTICE,primary_care,Family Medicine; Multi-Specialty,193200000X,San Francisco,5,0,0
+1669600086,1.5927,1,1,1,1,14,0,,primary_care,"Internal Medicine; Internal Medicine: Endocrinology, Diabetes & Metabolism",,Peninsula,7,0,0
+1992930242,2.0477,1,1,1,1,8,0,,,,,San Francisco,3,0,0
+1265551048,0.3034,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Los Angeles,2,0,0
+1891948162,0.1213,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,San Francisco,2,0,0
+1568527182,0.0728,1,1,0,1,3,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,Orange County,2,0,0
+1356818850,1.0921,1,0,0,1,1,1,GROUP PRACTICE,other,Single Specialty,193400000X,Los Angeles,1,0,0
+1790963270,2.791,0,1,1,1,9,0,,,,,Fresno / Central Valley,3,0,0
+1568622355,1.7444,1,1,1,1,11,0,,surgical,Surgery; Surgery: Plastic and Reconstructive Surgery,,Fresno / Central Valley,5,0,0
+1598795429,2.791,1,1,1,1,11,0,,primary_care,Internal Medicine; Internal Medicine: Cardiovascular Disease,,Fresno / Central Valley,4,0,0
+1679713192,1.1882,1,1,1,1,16,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,San Diego,1,0,0
+1366545733,1.0184,1,1,1,1,17,0,,primary_care,Internal Medicine; Internal Medicine: Cardiovascular Disease; Thoracic Surgery (Cardiothoracic Vascular Surgery),,San Diego,12,0,0
+1225643448,0.9465,1,1,1,1,15,1,GROUP PRACTICE,other,Multi-Specialty,,Los Angeles,1,0,0
+1750097515,0.7887,1,1,1,1,18,1,GROUP PRACTICE,other,Single Specialty,193400000X,Los Angeles,1,0,0
+1730697798,0.8671,1,1,1,1,18,0,,behavioural,Behavior Technician; Behavioral Analyst,,Los Angeles,2,0,0
+1528569605,1.7342,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,ZIP3 341,3,0,0
+1518448786,1.7342,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Stockton / Modesto,2,0,0
+1407990773,0.3413,1,1,1,1,18,1,,behavioural,Psychiatry & Neurology: Psychiatry,,Los Angeles,8,0,0
+1629044185,0.3103,1,1,1,1,18,0,,primary_care,Ophthalmology; Pediatrics,,Los Angeles,30,0,0
+1508177221,0.4015,1,1,1,1,14,0,,,,,San Gabriel / San Fernando Valleys,6,0,0
+1295782092,0.1968,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Diego,2,0,0
+1811094709,0.455,1,1,1,1,12,0,,other,Optometrist,,San Diego,3,0,0
+1063800209,0.6619,1,1,1,1,11,1,,other,Optometrist,,San Diego,2,0,0
+1992235972,0.091,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,San Diego,1,0,0
+1033353982,4.0044,0,1,0,1,5,0,,primary_care,Family Medicine,,North Bay,3,0,0
+1558451872,0.4449,1,1,1,1,15,1,|ANCILLARY|GROUP PRACTICE,behavioural,Clinic/Center: Physical Therapy; Multi-Specialty; Physical Therapist,193200000X|193400000X|225100000X,North Bay,3,0,0
+1114903192,2.2247,1,1,1,1,9,0,,behavioural,Physical Therapist,,North Bay,2,0,0
+1538116215,2.1794,1,1,1,1,14,1,,surgical,Urology,,San Diego,9,0,0
+1124305396,0.2275,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Los Angeles,4,0,0
+1093355109,1.1892,1,1,1,1,15,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Inland Empire,1,0,0
+1164728788,0.991,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Los Angeles,1,0,0
+1174614515,2.6443,1,1,1,1,18,0,,behavioural,Psychologist,,San Diego,2,0,0
+1598757270,2.6443,1,1,0,1,2,0,,other,Nurse Practitioner,,San Diego,2,0,0
+1073742268,2.6443,1,1,1,1,18,0,,behavioural,Psychologist,,San Diego,2,0,0
+1811295728,0.3584,1,1,1,1,9,0,,hospital_based,Speech-Language Pathologist,,Inland Empire,3,0,0
+1932244241,0.0455,1,0,0,1,1,1,|GROUP PRACTICE,therapy,Chiropractor; Multi-Specialty,193200000X,Los Angeles,2,0,0
+1811467509,1.8505,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Fresno / Central Valley,2,0,0
+1407239536,1.7531,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Fresno / Central Valley,4,0,0
+1548739337,1.8505,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Fresno / Central Valley,2,0,0
+1669622965,1.0107,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Gabriel / San Fernando Valleys,2,0,0
+1386083228,0.5334,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Single Specialty,193400000X,San Jose / South Bay,2,0,0
+1699273904,1.0107,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Gabriel / San Fernando Valleys,3,0,0
+1275788622,0.1365,1,1,1,1,18,1,,behavioural,Marriage & Family Therapist,,Los Angeles,3,0,0
+1477025567,0.273,1,1,1,1,18,1,GROUP PRACTICE,other,Single Specialty,193400000X,Los Angeles,1,0,0
+1245530252,0.4197,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Stockton / Modesto,1,0,0
+1548399736,0.1842,1,1,1,1,19,1,ANCILLARY|HOSPITAL,behavioural,Psychiatric Residential Treatment Facility; Psychiatric Unit,273R00000X,Stockton / Modesto,1,0,0
+1194783548,0.6105,1,0,0,1,1,1,|GROUP PRACTICE,surgical,Single Specialty; Surgery: Plastic and Reconstructive Surgery,193200000X|208200000X,Northern California,2,0,0
+1760185219,0.2002,1,1,1,1,15,1,ANCILLARY,other,Doula,,Los Angeles,1,0,0
+1437447521,2.2542,1,1,1,1,11,1,GROUP PRACTICE,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty; Single Specialty,193200000X|193400000X,Stockton / Modesto,1,0,0
+1285183269,0.4941,1,1,1,1,16,0,,primary_care,Family Medicine; General Practice,,San Gabriel / San Fernando Valleys,11,0,0
+1619091386,0.2882,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Single Specialty; Social Worker: Clinical,193400000X,San Gabriel / San Fernando Valleys,2,0,0
+1053706234,0.5188,1,1,1,1,16,0,,primary_care,Family Medicine,,San Gabriel / San Fernando Valleys,8,0,0
+1316163629,0.091,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Monterey Bay,2,0,0
+1568501674,0.1006,1,1,0,1,6,0,,,,,San Diego,5,0,0
+1023480159,1.5147,1,1,1,1,11,0,,other,Physician Assistant,,Sacramento,3,0,0
+1861475865,1.7671,1,1,1,1,9,0,,primary_care,Internal Medicine: Hematology & Oncology; Pediatrics,,North Bay,4,0,0
+1114938214,0.359,1,1,1,1,16,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,San Diego,1,0,0
+1851378236,0.2937,1,1,1,1,15,0,,primary_care,Internal Medicine,,San Diego,6,0,0
+1366930794,3.3901,1,1,1,1,8,0,,other,Nurse Practitioner,,Sacramento,1,0,0
+1942688452,3.3901,1,1,1,1,8,0,,medical,Dermatology,,Sacramento,1,0,0
+1215248208,1.356,1,1,1,1,16,0,,primary_care,Pediatrics,,Sacramento,1,0,0
+1669727517,0.182,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,"Community Based Residential Treatment Facility, Mental Illness; Substance Abuse Rehabilitation Facility",320800000X|324500000X,Monterey Bay,1,0,0
+1831165323,0.2322,1,1,1,1,11,1,ANCILLARY|GROUP PRACTICE,behavioural,Clinic/Center: Physical Therapy; Physical Therapist; Single Specialty,193400000X|225100000X,San Diego,1,0,0
+1821567025,0.0051,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Bakersfield / Kern,5,0,0
+1326196544,0.6506,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,Northern California,2,0,0
+1316321920,2.1956,1,1,1,1,13,0,,hospital_based,Radiology: Diagnostic Radiology,,San Francisco,7,0,0
+1770684987,0.6506,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist,106H00000X|193200000X|193400000X,Northern California,2,0,0
+1922026764,0.091,1,1,1,1,17,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Northern California,1,0,0
+1548091150,1.3131,1,1,1,1,14,1,ANCILLARY,other,Doula,,Bakersfield / Kern,1,0,0
+1619373404,0.1638,1,1,1,1,8,0,,primary_care,Nurse Practitioner: Family,,Fresno / Central Valley,1,0,0
+1003816141,0.0739,1,1,1,1,11,1,|GROUP PRACTICE,primary_care,General Practice; Multi-Specialty; Ophthalmology,193200000X,Fresno / Central Valley,8,0,0
+1750080099,5.8132,1,1,1,1,8,0,,other,Physician Assistant,,Ventura / Santa Barbara,1,0,0
+1700928363,23.253,1,0,0,1,1,0,,,,,Ventura / Santa Barbara,2,0,0
+1730612474,0.1377,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,Bakersfield / Kern,1,1,1
+1285018002,0.2682,1,1,1,1,18,1,,behavioural,Behavioral Analyst,,Sacramento,4,0,0
+1295913366,0.7902,1,1,1,1,19,1,FQHC|GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Clinic/Center: Multi-Specialty; Multi-Specialty; Single Specialty,193200000X|193400000X|261QF0400X,East Bay,1,1,1
+1073909370,1.8611,1,1,1,1,16,0,,behavioural,Internal Medicine; Internal Medicine: Nephrology; Psychiatry & Neurology: Neurology,,San Gabriel / San Fernando Valleys,7,0,0
+1700878410,1.6184,1,1,1,1,16,0,,primary_care,Internal Medicine; Internal Medicine: Nephrology,,San Gabriel / San Fernando Valleys,11,0,0
+1710236005,0.5157,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Ventura / Santa Barbara,2,0,0
+1437420072,1.7725,1,1,1,1,16,0,,primary_care,Internal Medicine; Internal Medicine: Nephrology,,San Gabriel / San Fernando Valleys,7,0,0
+1912976408,0.4528,1,1,1,1,17,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center; Multi-Specialty,193200000X|261Q00000X,Orange County,1,0,0
+1457677569,0.7736,0,1,1,1,16,0,,primary_care,Family Medicine,,Orange County,9,0,0
+1487716619,0.1734,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,"Clinic/Center: Adult Mental Health; Rehabilitation Unit; Rehabilitation, Substance Use Disorder Unit; Substance Abuse Rehabilitation Facility",324500000X,Inland Empire,1,0,0
+1689851917,0.0958,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Substance Abuse Rehabilitation Facility,324500000X,Inland Empire,1,0,0
+1295713345,0.5292,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Peninsula,2,0,0
+1366629958,2.0412,1,1,0,1,3,0,,primary_care,Internal Medicine: Cardiovascular Disease,,Peninsula,5,0,0
+1417024654,1.1907,1,1,1,1,15,0,,primary_care,Internal Medicine: Hematology; Internal Medicine: Hematology & Oncology; Internal Medicine: Medical Oncology,,San Jose / South Bay,12,0,0
+1700116399,0.2179,1,1,1,1,18,1,|GROUP PRACTICE|PPG,behavioural,Behavioral Analyst; Multi-Specialty; Single Specialty,193400000X,San Gabriel / San Fernando Valleys,2,1,1
+1972946747,0.948,1,1,1,1,9,0,,other,Physical Medicine & Rehabilitation,,Bakersfield / Kern,3,0,0
+1255938015,0.632,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Stockton / Modesto,1,0,0
+1235224973,0.6619,1,1,1,1,9,1,|GROUP PRACTICE,surgical,Multi-Specialty; Ophthalmology,193200000X,Los Angeles,7,0,0
+1902916711,0.6067,1,1,1,1,18,1,,surgical,Ophthalmology,,Bakersfield / Kern,26,0,0
+1356442412,1.2104,0,1,1,1,10,0,,therapy,Audiologist,,East Bay,2,0,0
+1376844993,0.6619,1,1,1,1,18,0,,other,Optometrist,,Los Angeles,13,0,0
+1730528803,0.9311,1,1,1,1,12,0,,primary_care,Family Medicine,,Sacramento,2,0,0
+1407578255,1.714,1,1,1,1,18,1,GROUP PRACTICE,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,,San Diego,1,0,0
+1700087145,0.4842,1,1,1,1,11,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychiatry & Neurology: Neurology,193200000X,Sacramento,7,0,0
+1255506036,1.2855,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,San Diego,1,0,0
+1861949828,0.4058,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Diego,1,0,0
+1295903607,1.714,1,1,1,1,18,1,GROUP PRACTICE,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,193200000X,San Diego,1,0,0
+1811261407,0.182,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Orange County,3,0,0
+1316136740,0.4869,1,1,1,1,17,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Diego,1,0,0
+1598276404,1.5313,1,1,1,1,18,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Ambulatory Surgical; Multi-Specialty,261QA1903X,San Diego,1,0,0
+1689784308,1.6009,1,1,1,1,18,0,,behavioural,Internal Medicine; Internal Medicine: Nephrology; Psychiatry & Neurology: Neurology,,San Diego,13,0,0
+1912072554,0.3207,1,1,1,1,17,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,East Bay,1,0,0
+1104018423,0.3367,1,1,1,1,18,1,GROUP PRACTICE,facility,Clinic/Center: Community Health; Multi-Specialty,193200000X,Los Angeles,1,0,0
+1558612952,0.0728,1,0,0,1,1,1,|GROUP PRACTICE,other,Acupuncturist; Multi-Specialty,193200000X,East Bay,2,0,0
+1881845386,0.091,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,Northern California,3,0,0
+1538587712,1.317,1,1,1,1,14,0,,primary_care,Internal Medicine: Infectious Disease,,San Francisco,5,0,0
+1396700019,1.3993,1,1,1,1,15,0,,primary_care,Internal Medicine; Internal Medicine: Infectious Disease,,San Francisco,4,0,0
+1699952796,0.1492,1,1,1,1,18,1,,behavioural,Marriage & Family Therapist,,High Desert,2,0,0
+1386986263,1.7222,0,1,1,1,13,0,,primary_care,Internal Medicine: Infectious Disease,,San Francisco,2,0,0
+1366600942,0.2983,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,High Desert,1,0,0
+1124306386,0.2867,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,"Rehabilitation Unit; Rehabilitation, Substance Use Disorder Unit; Substance Abuse Rehabilitation Facility",324500000X,Los Angeles,1,0,0
+1376031195,0.3185,1,1,1,1,18,0,,surgical,Orthopaedic Surgery,,Los Angeles,7,0,0
+1396826426,0.182,1,0,0,1,1,1,|GROUP PRACTICE,therapy,Chiropractor; Multi-Specialty,193200000X,Los Angeles,2,0,0
+1750462891,0.182,1,0,0,1,1,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,Los Angeles,2,0,0
+1487717740,0.7777,1,1,1,1,17,1,ANCILLARY|CLINIC|GROUP PRACTICE,behavioural,"Clinic/Center: Rehabilitation, Substance Use Disorder; Multi-Specialty; Substance Abuse Rehabilitation Facility",261QR0405X|324500000X,Bakersfield / Kern,2,0,0
+1760624092,0.7129,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,San Gabriel / San Fernando Valleys,1,0,0
+1629264247,0.2275,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Los Angeles,3,0,0
+1588602106,0.9303,1,1,1,1,6,0,,primary_care,Internal Medicine,,Los Angeles,2,0,0
+1235258922,0.0961,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,San Francisco,2,0,0
+1992699839,2.2702,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Orange County,1,0,0
+1215401823,1.7292,1,0,0,1,1,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,East Bay,2,0,0
+1144247990,1.8574,1,1,1,1,19,0,,primary_care,Pediatrics,,Los Angeles,13,0,0
+1205466570,0.894,1,1,1,1,17,0,,behavioural,Social Worker: Clinical,,Los Angeles,1,0,0
+1679766091,0.8444,1,1,1,1,18,0,,behavioural,Psychologist,,Los Angeles,3,0,0
+1053393017,0.1092,1,0,0,1,1,0,,hospital_based,Radiology: Diagnostic Radiology,,Los Angeles,2,0,0
+1982667911,0.182,1,0,0,1,1,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,1,0,0
+1215078647,1.8566,1,1,1,1,11,0,,hospital_based,Anesthesiology; Pain Medicine: Pain Medicine,,North Bay,9,0,0
+1396760575,3.9784,1,1,0,1,5,0,,primary_care,Internal Medicine: Pulmonary Disease; Internal Medicine: Sleep Medicine,,North Bay,3,0,0
+1871767020,4.6415,1,1,0,1,5,0,,hospital_based,Internal Medicine: Critical Care Medicine; Internal Medicine: Pulmonary Disease,,North Bay,2,0,0
+1750343323,0.2539,1,1,1,1,15,0,,primary_care,Internal Medicine,,San Jose / South Bay,5,0,0
+1902930381,0.1237,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,Peninsula,1,1,1
+1366405748,0.2617,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,East Bay,1,0,0
+1770653727,1.8809,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193200000X|193400000X,Orange County,1,0,0
+1790181311,1.5389,1,1,1,1,18,0,,hospital_based,Internal Medicine; Internal Medicine: Critical Care Medicine; Internal Medicine: Pulmonary Disease,,Orange County,7,0,0
+1376805234,0.8241,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,East Bay,1,0,0
+1306044615,0.2747,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,East Bay,2,0,0
+1922015056,0.2548,0,1,1,1,7,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,San Diego,2,0,0
+1972385623,0.3445,1,1,1,1,14,0,,other,Acupuncturist,,Orange County,1,0,0
+1699289629,0.7938,1,1,1,1,18,0,,behavioural,Nurse Practitioner: Psych/Mental Health,,Inland Empire,1,0,0
+1003104167,0.752,1,1,1,1,18,0,,behavioural,Nurse Practitioner: Psych/Mental Health,,Inland Empire,2,0,0
+1437388238,0.1345,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Fresno / Central Valley,1,0,0
+1225081789,0.1345,1,1,1,1,10,1,|GROUP PRACTICE,surgical,Surgery,193200000X|208600000X,Fresno / Central Valley,5,0,0
+1922169838,0.1687,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X,Northern California,1,0,0
+1023222171,0.1356,1,1,1,1,19,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,302F00000X|332B00000X,North Bay,2,0,0
+1467487017,0.4652,1,1,1,1,18,1,,behavioural,Psychologist,,San Francisco,2,0,0
+1518269372,0.1994,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty,103TC0700X|193200000X|193400000X|2084P0800X|2084P0804X,San Francisco,1,0,1
+1043792674,0.2503,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,ZIP3 799,2,0,0
+1598754491,0.1213,1,0,0,1,1,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Monterey Bay,1,0,0
+1710201710,0.5709,1,1,1,1,18,1,ANCILLARY|GROUP PRACTICE,therapy,Audiologist-Hearing Aid Fitter; Hearing Aid Equipment; Multi-Specialty; Single Specialty,193200000X|193400000X|237600000X,Sacramento,1,0,0
+1922391226,0.091,1,1,0,1,13,1,ANCILLARY,other,Ambulance: Land Transport,3416L0300X,San Jose / South Bay,1,0,0
+1922442078,0.4468,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty; Single Specialty,193200000X|193400000X,Inland Empire,1,0,1
+1164920518,0.5461,1,1,1,1,18,0,,behavioural,Assistant Behavior Analyst; Behavior Technician,,Inland Empire,2,0,0
+1437498912,0.273,1,1,1,1,18,1,,behavioural,Behavioral Analyst,,Inland Empire,2,0,0
+1548406804,0.2174,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,East Bay,2,0,0
+1740408806,0.3173,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist,106H00000X|193200000X|193400000X,East Bay,2,0,0
+1306328265,0.4664,1,1,1,1,8,1,GROUP PRACTICE,other,Multi-Specialty,,Los Angeles,1,0,0
+1730235235,5.41,1,1,1,1,9,1,GROUP PRACTICE,behavioural,Multi-Specialty; Psychiatric Unit,273R00000X,San Francisco,1,0,0
+1053751081,1.3525,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,Sacramento,2,0,0
+1316947864,1.1876,1,1,1,1,18,1,ANCILLARY,facility,Home Health,251E00000X,Sacramento,2,0,0
+1952829228,1.4562,1,0,0,1,1,0,,primary_care,Nurse Practitioner: Family,,Inland Empire,2,0,0
+1851532220,1.9415,1,0,0,1,1,0,,,,,Inland Empire,1,0,0
+1184100265,1.4562,1,0,0,1,1,0,,,,,Inland Empire,2,0,0
+1699153734,0.4186,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X|193400000X,San Francisco,1,1,1
+1851962963,0.2314,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty; Single Specialty,193400000X,San Diego,1,1,1
+1679306914,0.3185,1,1,1,1,8,1,GROUP PRACTICE,other,Multi-Specialty,,Bakersfield / Kern,1,0,0
+1629447107,0.225,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Gabriel / San Fernando Valleys,4,0,0
+1306139035,0.1593,1,1,1,1,12,0,,primary_care,Internal Medicine,,Inland Empire,6,0,0
+1295827806,0.0993,1,1,1,1,18,1,ANCILLARY,facility,Home Health,251E00000X,East Bay,2,0,0
+1700216835,0.3155,1,1,0,1,7,0,,behavioural,Occupational Therapist,,Inland Empire,4,0,0
+1841465259,0.1315,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,Inland Empire,2,0,0
+1053764456,0.091,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Psychiatric Residential Treatment Facility,323P00000X,Inland Empire,1,0,0
+1154327922,1.8748,1,1,1,1,13,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Orange County,1,0,0
+1376841254,0.109,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,Orange County,1,1,1
+1316927338,0.6113,1,1,1,1,18,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Urgent Care; Multi-Specialty,193200000X|261QU0200X,Los Angeles,1,0,0
+1215052428,0.2347,1,1,1,1,18,0,,behavioural,Psychiatry & Neurology: Psychiatry,,Monterey Bay,3,0,0
+1225145543,0.4459,1,1,1,1,9,0,,primary_care,Family Medicine,,Monterey Bay,3,0,0
+1700556859,2.2835,1,1,1,1,11,0,,behavioural,Physical Therapist,,East Bay,3,0,0
+1336106921,0.0738,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychiatry & Neurology: Geriatric Psychiatry; Psychiatry & Neurology: Psychiatry,193200000X|193400000X,Los Angeles,10,0,0
+1104995919,0.1517,1,1,1,1,14,0,,,,,San Gabriel / San Fernando Valleys,7,0,0
+1447499710,0.3754,1,1,1,1,14,0,,primary_care,Internal Medicine: Hematology; Internal Medicine: Hematology & Oncology; Internal Medicine: Medical Oncology,,East Bay,7,0,0
+1285754234,1.1262,0,1,1,1,8,1,GROUP PRACTICE,other,Multi-Specialty,,East Bay,1,0,0
+1568583789,1.1262,0,1,1,1,8,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,East Bay,1,0,0
+1609862820,2.4724,1,1,1,1,14,0,,hospital_based,Dermatology; Pathology: Dermatopathology,,San Francisco,14,0,0
+1124476296,2.7815,1,1,1,1,16,0,,medical,Dermatology,,Peninsula,11,0,0
+1003269242,2.4724,1,1,1,1,18,0,,behavioural,Pain Medicine: Pain Medicine; Psychiatry & Neurology: Psychiatry,,Peninsula,2,0,0
+1629366190,0.5119,1,1,0,1,4,0,,primary_care,Family Medicine,,Stockton / Modesto,5,0,0
+1558914465,1.0239,0,1,1,1,8,0,,primary_care,Internal Medicine,,Stockton / Modesto,2,0,0
+1043795891,0.6371,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Gabriel / San Fernando Valleys,3,0,0
+1912380072,0.6371,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Gabriel / San Fernando Valleys,4,0,0
+1568218436,1.2741,1,1,1,1,9,1,GROUP PRACTICE,other,Multi-Specialty,,Los Angeles,1,0,0
+1043291537,0.1001,1,1,0,1,5,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,San Jose / South Bay,2,0,0
+1639264419,1.2324,1,1,1,1,16,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,San Diego,2,0,0
+1104816057,0.9243,1,1,1,1,8,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Physical Therapy; Multi-Specialty,193200000X|261QP2000X,San Diego,1,0,0
+1073637203,0.455,1,1,1,1,18,1,,behavioural,Psychiatry & Neurology: Addiction Psychiatry; Psychiatry & Neurology: Child & Adolescent Psychiatry,,ZIP3 895,4,0,0
+1083938161,2.4674,1,1,1,1,9,0,,primary_care,Nurse Practitioner; Pediatrics,,San Diego,2,0,0
+1366488801,1.4804,1,1,1,1,10,0,,primary_care,Pediatrics,,Peninsula,5,0,0
+1619916293,1.9668,1,1,1,1,12,1,|GROUP PRACTICE,surgical,Multi-Specialty; Orthopaedic Surgery,193200000X,Peninsula,7,0,0
+1588020127,0.9834,1,1,1,1,18,1,,behavioural,Behavioral Analyst,,Los Angeles,3,0,0
+1639737141,8.8507,1,0,0,1,1,0,,behavioural,Physical Therapist,,Peninsula,2,0,0
+1164575106,0.2393,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Social Worker: Clinical,193200000X|193400000X,Peninsula,2,0,0
+1629291810,0.1663,1,1,1,1,16,1,ANCILLARY|GROUP PRACTICE,other,Health Maintenance Organization; Multi-Specialty,193200000X|302R00000X,Los Angeles,1,0,0
+1598864357,0.0503,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,"Psychiatric Hospital; Psychiatric Residential Treatment Facility; Rehabilitation Unit; Rehabilitation, Substance Use Disorder Unit; Substance Abuse Rehabilitation Facility",324500000X,Inland Empire,1,0,0
+1881668093,0.091,1,1,1,1,19,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Orange County,1,0,0
+1477639912,0.091,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X|332BX2000X,High Desert,1,0,0
+1164839528,1.1326,1,1,1,1,18,0,,behavioural,Psychiatry & Neurology: Child & Adolescent Psychiatry; Psychiatry & Neurology: Psychiatry,,Los Angeles,3,0,0
+1174534069,1.073,1,1,1,1,15,0,,primary_care,Pediatrics,,Bakersfield / Kern,7,0,0
+1821621160,0.9581,1,1,1,1,18,1,,behavioural,Behavioral Analyst,,Sacramento,2,0,0
+1568893162,1.2691,1,1,1,1,18,0,,behavioural,Psychologist,,Los Angeles,1,0,0
+1720011620,1.1422,1,1,1,1,18,1,,behavioural,Psychiatry & Neurology: Psychiatry,,Los Angeles,1,0,0
+1396189254,1.2691,1,1,1,1,18,0,,behavioural,Psychiatry & Neurology: Psychiatry,,Los Angeles,1,0,0
+1720735392,0.0546,1,1,1,1,11,0,,other,Physician Assistant,,Los Angeles,3,0,0
+1538517438,0.8605,1,1,1,1,11,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,Bakersfield / Kern,1,0,0
+1295729465,0.5258,1,1,1,1,12,0,,surgical,Ophthalmology,,San Diego,6,0,0
+1952370165,0.6761,1,1,1,1,11,0,,other,Optometrist,,Bakersfield / Kern,3,0,0
+1033134465,0.0763,1,1,1,1,15,1,|GROUP PRACTICE,primary_care,Multi-Specialty; Pediatrics,193200000X|193400000X,San Jose / South Bay,5,0,0
+1629047147,0.8126,1,1,1,1,10,0,,hospital_based,Pathology: Clinical Pathology,,San Diego,3,0,0
+1386832640,0.8751,1,1,1,1,10,0,,hospital_based,Pathology: Clinical Pathology,,San Diego,1,0,0
+1780038687,2.844,1,0,0,1,1,0,,other,Acupuncturist,,San Diego,1,0,0
+1609047117,0.5764,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Los Angeles,1,0,0
+1619021292,0.273,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies; Durable Medical Equipment & Medical Supplies: Oxygen Equipment & Supplies,332BX2000X,Fresno / Central Valley,1,0,0
+1184647091,0.449,1,1,1,1,11,0,,hospital_based,Emergency Medicine; General Practice; Internal Medicine: Geriatric Medicine,,Fresno / Central Valley,4,0,0
+1811944010,0.449,1,1,1,1,12,0,,hospital_based,Emergency Medicine,,Fresno / Central Valley,4,0,0
+1942294327,0.3061,1,1,1,1,12,1,ANCILLARY|GROUP PRACTICE,facility,Clinic/Center: Urgent Care; Multi-Specialty,193200000X|193400000X,Fresno / Central Valley,1,0,0
+1932127602,2.2796,1,1,1,1,11,0,,hospital_based,Radiology: Diagnostic Radiology,,High Desert,8,0,0
+1609839083,5.9839,1,1,0,1,6,0,,hospital_based,Radiology: Diagnostic Radiology,,Northern California,3,0,0
+1114190972,4.7871,1,1,1,1,9,0,,primary_care,Internal Medicine; Internal Medicine: Hematology & Oncology,,Northern California,3,0,0
+1902106198,0.2694,1,1,1,1,19,1,FQHC|GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty; Single Specialty,193200000X|193400000X|261QF0400X,East Bay,1,1,1
+1134480817,0.0852,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Fresno / Central Valley,2,0,0
+1013208628,1.1225,1,0,0,1,1,0,,,,,East Bay,2,0,0
+1831496116,0.3337,1,1,1,1,9,0,,primary_care,Nurse Practitioner: Family,,Bakersfield / Kern,2,0,0
+1609897222,0.666,1,1,1,1,17,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Inland Empire,1,0,0
+1467406355,0.2292,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,East Bay,2,0,0
+1497153878,0.3053,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Inland Empire,2,0,0
+1063428084,0.6514,1,1,1,1,11,1,|GROUP PRACTICE,primary_care,Multi-Specialty; Pediatrics,193200000X,East Bay,6,0,0
+1093729436,0.2427,1,1,1,1,18,1,|GROUP PRACTICE,primary_care,Internal Medicine; Multi-Specialty,193200000X,Inland Empire,13,0,0
+1568564193,0.416,1,1,1,1,18,1,,primary_care,Internal Medicine,,Los Angeles,14,0,0
+1316413404,2.3375,1,1,1,1,14,0,,behavioural,Physical Therapist,,San Gabriel / San Fernando Valleys,3,0,0
+1790944783,1.931,1,1,1,1,18,1,,primary_care,Internal Medicine: Transplant Hepatology; Surgery,,Los Angeles,13,0,0
+1215182910,1.931,1,1,1,1,18,0,,primary_care,Internal Medicine: Transplant Hepatology; Surgery,,Los Angeles,9,0,0
+1598460156,1.3287,1,1,1,1,15,1,GROUP PRACTICE,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,,Peninsula,1,0,0
+1093752404,0.2648,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X|332BX2000X,Bakersfield / Kern,1,0,0
+1790758340,0.2427,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X|332BC3200X,Bakersfield / Kern,1,0,0
+1235163445,1.1649,1,0,0,1,1,0,,behavioural,Physical Therapist,,Bakersfield / Kern,2,0,0
+1942463534,1.15,1,1,1,1,15,0,,primary_care,Pediatrics,,Los Angeles,6,0,0
+1932551082,1.9502,1,1,1,1,18,0,,therapy,Podiatrist,,San Diego,7,0,0
+1750559589,2.1555,1,1,0,1,2,0,,surgical,Obstetrics & Gynecology,,San Diego,2,0,0
+1457734675,2.0477,1,1,1,1,17,0,,primary_care,Family Medicine,,San Diego,6,0,0
+1770628265,0.9388,1,0,0,1,1,0,,,,,Bakersfield / Kern,3,0,0
+1326400052,0.8919,1,1,1,1,16,0,,primary_care,Family Medicine; General Practice,,Bakersfield / Kern,2,0,0
+1093209744,0.991,1,1,1,1,11,0,,other,Nurse Practitioner,,Bakersfield / Kern,3,0,0
+1467867440,0.1737,1,1,1,1,16,0,,hospital_based,Anesthesiology; Pain Medicine: Pain Medicine,,Los Angeles,12,0,0
+1821541475,0.4247,1,1,1,1,9,0,,hospital_based,Anesthesiology,,Los Angeles,2,0,0
+1235236977,0.0579,1,1,1,1,18,0,,primary_care,Family Medicine,,San Diego,10,0,0
+1225516917,0.2301,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Psychiatric Residential Treatment Facility,323P00000X,East Bay,1,0,0
+1023400090,0.28,1,1,1,1,9,0,,behavioural,Physical Therapist,,Orange County,2,0,0
+1063434421,0.28,1,1,1,1,9,1,,behavioural,Physical Therapist,,Orange County,2,0,0
+1891139440,3.6404,1,0,0,1,1,1,,other,Acupuncturist,,San Gabriel / San Fernando Valleys,1,0,0
+1003902610,1.4609,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Orange County,1,0,0
+1154822781,1.2617,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Orange County,1,0,0
+1487087136,0.0573,1,1,1,1,14,1,GROUP PRACTICE|PPG,other,Multi-Specialty; Single Specialty,193200000X|193400000X,Inland Empire,1,0,1
+1801288550,0.091,1,1,1,1,14,1,,other,"Nurse Anesthetist, Certified Registered",,San Gabriel / San Fernando Valleys,6,0,0
+1366461220,0.8737,1,0,0,1,1,0,,primary_care,Family Medicine,,Northern California,3,0,0
+1063856805,2.0152,1,1,1,1,18,0,,behavioural,Clinical Nurse Specialist: Psych/Mental Health,,San Diego,3,0,0
+1043650450,2.2273,1,1,1,1,18,0,,behavioural,Nurse Practitioner: Psych/Mental Health; Psychiatry & Neurology: Psychiatry,,San Diego,4,0,0
+1639833460,2.3511,1,1,1,1,18,0,,behavioural,Nurse Practitioner: Psych/Mental Health,,San Diego,2,0,0
+1851672554,0.0468,1,1,1,1,18,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,Los Angeles,1,1,1
+1497111967,0.6257,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Bakersfield / Kern,1,0,0
+1669844650,0.6257,1,1,1,1,19,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X,Bakersfield / Kern,1,0,0
+1649866583,2.5234,0,1,1,1,10,0,,behavioural,Physical Therapist,,East Bay,3,0,0
+1295289783,2.5234,1,1,0,1,3,1,,,,,East Bay,2,0,0
+1073535431,0.091,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,2,0,0
+1841376670,0.0398,1,1,0,1,2,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,Sacramento,3,0,0
+1063669307,0.1753,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,Sacramento,2,0,0
+1831270362,0.0819,1,1,1,1,16,0,,primary_care,Family Medicine,,Inland Empire,12,0,0
+1518983543,0.9721,1,1,1,1,16,0,,primary_care,Internal Medicine,,San Diego,8,0,0
+1922127422,0.5484,1,1,1,1,14,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,San Diego,1,1,1
+1386615458,0.2958,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Peninsula,2,0,0
+1437697539,0.6775,1,1,1,1,18,0,,behavioural,Counselor: Professional,,Los Angeles,2,0,0
+1992943161,0.5081,1,1,1,1,18,1,ANCILLARY,facility,Home Health,251E00000X,Orange County,1,0,0
+1831657964,0.1881,1,1,1,1,13,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Inland Empire,1,0,0
+1588748073,0.1721,1,1,1,1,17,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,4,1,1
+1740507342,0.1567,1,1,1,1,14,0,,hospital_based,Radiology: Diagnostic Radiology,,Inland Empire,8,0,0
+1932429289,0.4677,1,1,1,1,18,1,,behavioural,Psychiatry & Neurology: Psychiatry,,San Diego,2,0,0
+1124039052,0.4009,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychiatry & Neurology: Psychiatry,193200000X|193400000X,San Diego,3,0,0
+1538332853,1.3734,1,1,1,1,18,0,,primary_care,Internal Medicine; Internal Medicine: Gastroenterology; Internal Medicine: Infectious Disease,,Orange County,17,0,0
+1184217192,0.6168,1,1,1,1,18,1,GROUP PRACTICE,other,Single Specialty,193400000X,Los Angeles,1,0,0
+1811421670,0.8887,0,1,1,1,17,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,1,1,1
+1205244225,0.364,1,1,1,1,18,0,,behavioural,Psychologist,,San Diego,2,0,0
+1417185406,0.1213,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist; Social Worker: Clinical,193200000X|193400000X,San Diego,4,0,0
+1871087874,1.4865,1,1,1,1,15,0,,primary_care,Internal Medicine,,Inland Empire,2,0,0
+1376056630,1.4865,1,1,1,1,15,0,,other,Nurse Practitioner,,Los Angeles,5,0,0
+1003140948,1.0135,1,1,1,1,18,0,,surgical,Obstetrics & Gynecology,,San Gabriel / San Fernando Valleys,12,0,0
+1588610836,6.2797,1,0,0,1,1,1,ANCILLARY|GROUP PRACTICE,other,Multi-Specialty; Public Health or Welfare,251K00000X,Orange County,1,0,0
+1902852411,0.0997,0,1,1,1,16,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,San Jose / South Bay,1,0,0
+1649754029,5.5402,1,1,1,1,8,0,,primary_care,Family Medicine; Physician Assistant,,Sacramento,1,0,0
+1881654846,0.0662,1,1,1,1,9,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X,Orange County,3,0,0
+1154824597,2.705,1,1,1,1,18,0,,,,,ZIP3 852,2,0,0
+1538529755,2.117,1,1,1,1,19,1,ANCILLARY,other,"Hospice Care, Community Based",251G00000X,Sacramento,1,0,0
+1326176777,0.2579,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Bakersfield / Kern,3,0,0
+1871689315,0.8538,1,1,1,1,18,1,FQHC|GROUP PRACTICE,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,193200000X|261QF0400X,San Gabriel / San Fernando Valleys,1,0,0
+1063748242,2.1093,1,1,1,1,15,1,GROUP PRACTICE|PPG,other,Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,2,1,1
+1265627707,0.996,1,1,1,1,16,1,|GROUP PRACTICE,hospital_based,Anesthesiology: Hospice and Palliative Medicine; Hospice and Palliative Medicine; Internal Medicine,193200000X|207RH0002X,San Gabriel / San Fernando Valleys,7,0,0
+1316042070,0.6641,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,San Diego,2,0,0
+1609879113,0.455,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Multi-Specialty; Psychologist,193200000X|193400000X,San Diego,2,0,0
+1902254147,1.3651,1,1,1,1,16,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Diego,1,0,0
+1821377037,0.1047,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies; Durable Medical Equipment & Medical Supplies: Oxygen Equipment & Supplies,332BX2000X,San Diego,1,0,0
+1356702526,1.8954,1,1,1,1,19,1,GROUP PRACTICE,facility,Clinic/Center: Community Health; Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,1,0,0
+1821714601,2.4219,1,1,1,1,18,0,,behavioural,Counselor: Professional,,San Jose / South Bay,1,0,0
+1477027050,1.8954,1,1,1,1,19,1,GROUP PRACTICE,facility,Clinic/Center: Community Health; Multi-Specialty,193200000X,San Gabriel / San Fernando Valleys,1,0,0
+1487783791,0.2292,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,East Bay,2,0,0
+1487451951,0.091,1,1,1,1,15,1,ANCILLARY,other,Doula,,Fresno / Central Valley,1,0,0
+1568204881,1.2559,0,1,0,1,1,1,GROUP PRACTICE,other,Multi-Specialty,,San Diego,1,0,0
+1538400239,0.5309,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,San Jose / South Bay,1,0,0
+1093974065,3.1307,0,1,1,1,10,1,GROUP PRACTICE,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty; Single Specialty,193200000X|193400000X|261QF0400X,Sacramento,1,0,0
+1992879639,0.3185,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X|332BC3200X,San Jose / South Bay,1,0,0
+1487425872,1.7393,1,1,1,1,18,0,,behavioural,Nurse Practitioner: Psych/Mental Health,,Los Angeles,2,0,0
+1952505729,3.3674,1,1,1,1,8,0,,primary_care,Internal Medicine,,Monterey Bay,2,0,0
+1336160613,2.6939,1,1,1,1,8,0,,primary_care,"Internal Medicine; Internal Medicine: Endocrinology, Diabetes & Metabolism",,Monterey Bay,2,0,0
+1932280344,10.0338,1,0,0,1,1,1,,other,Acupuncturist,,San Francisco,1,0,0
+1699017707,1.8243,1,1,1,1,17,0,,primary_care,Internal Medicine: Gastroenterology,,San Francisco,5,0,0
+1174659064,0.0708,1,1,1,1,16,1,GROUP PRACTICE,other,Multi-Specialty,193200000X|193400000X,San Gabriel / San Fernando Valleys,1,0,0
+1467584532,0.1062,1,1,1,1,9,0,,other,Physician Assistant,,San Gabriel / San Fernando Valleys,2,0,0
+1275588733,0.1127,1,1,1,1,16,0,,surgical,Orthopaedic Surgery,,Inland Empire,8,0,0
+1366467904,0.1577,1,1,1,1,14,1,GROUP PRACTICE,other,Multi-Specialty,193200000X,Inland Empire,1,0,0
+1700943776,1.8202,1,0,0,1,1,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,San Jose / South Bay,2,0,0
+1679737134,0.1011,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Jose / South Bay,2,0,0
+1538330766,0.4652,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Inland Empire,3,0,0
+1326487992,1.9166,1,1,1,1,17,0,,behavioural,Marriage & Family Therapist,,Los Angeles,2,0,0
+1649287152,1.7148,1,1,0,1,9,1,,,,,San Jose / South Bay,5,0,0
+1033995444,1.9166,1,1,1,1,17,0,,behavioural,Marriage & Family Therapist,,San Jose / South Bay,1,0,0
+1184011934,0.3261,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Counselor: Professional; Single Specialty,193400000X,San Gabriel / San Fernando Valleys,2,0,0
+1063586782,0.3392,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Orange County,1,0,0
+1023483328,0.3109,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,Orange County,1,0,0
+1609315746,1.39,1,1,1,1,18,0,,behavioural,Nurse Practitioner: Psych/Mental Health,,San Diego,4,0,0
+1467953596,1.2933,1,1,1,1,18,1,,behavioural,Assistant Behavior Analyst; Behavior Technician; Behavioral Analyst,,Sacramento,3,0,0
+1487702205,1.6094,1,1,1,1,15,0,,primary_care,Family Medicine; General Practice,,San Gabriel / San Fernando Valleys,3,0,0
+1164031886,1.6988,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,Inland Empire,2,0,0
+1487128294,0.3843,1,1,1,1,18,1,GROUP PRACTICE,other,Single Specialty,193400000X,Inland Empire,1,0,0
+1720037187,0.6143,1,1,0,1,3,0,,hospital_based,Emergency Medicine,,San Diego,3,0,0
+1225044100,0.8935,1,1,1,1,10,0,,hospital_based,Emergency Medicine,,San Diego,3,0,0
+1295740884,0.5461,1,1,1,1,13,0,,hospital_based,Emergency Medicine,,San Diego,4,0,0
+1710081781,0.3686,1,1,1,1,16,0,,primary_care,Family Medicine; Internal Medicine,,Bakersfield / Kern,6,0,0
+1427190487,0.4336,1,1,1,1,17,1,,,,,Bakersfield / Kern,6,0,0
+1518191014,0.5825,1,1,1,1,17,0,,primary_care,Family Medicine; Nurse Practitioner,,San Diego,4,0,0
+1245303122,0.448,1,1,1,1,18,1,|GROUP PRACTICE,primary_care,Internal Medicine; Multi-Specialty,193200000X,San Diego,9,0,0
+1962506238,0.5295,1,1,1,1,18,0,,primary_care,Internal Medicine,,San Diego,5,0,0
+1790851921,0.6352,0,1,0,1,7,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,Bakersfield / Kern,2,0,0
+1992852883,2.0325,1,1,1,1,11,0,,hospital_based,Anesthesiology,,Los Angeles,5,0,0
+1417250150,2.7717,0,1,1,1,6,1,,,,,Bakersfield / Kern,2,0,0
+1528221421,0.0607,1,1,1,1,15,0,,primary_care,Internal Medicine; Internal Medicine: Nephrology,,San Diego,7,0,0
+1376890640,0.091,1,1,1,1,18,1,|GROUP PRACTICE,behavioural,Marriage & Family Therapist; Multi-Specialty,193200000X|193400000X,San Diego,2,0,0
+1871617688,0.091,1,1,1,1,14,1,ANCILLARY|CLINIC,behavioural,"Clinic/Center: Rehabilitation; Community/Behavioral Health; Rehabilitation Unit; Rehabilitation, Substance Use Disorder Unit; Substance Abuse Rehabilitation Facility",251S00000X,Sacramento,1,0,0
+1700294972,0.4374,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,310400000X|314000000X,East Bay,1,0,0
+1386958965,0.6846,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,East Bay,1,0,0
+1558784645,1.1724,1,1,1,1,10,1,,other,Physician Assistant,,Inland Empire,3,0,0
+1972650695,1.6609,1,1,1,1,9,0,,other,Physician Assistant,,Inland Empire,2,0,0
+1487970927,0.6977,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,Los Angeles,1,0,0
+1427605567,1.8657,1,0,0,1,1,0,,other,Physician Assistant,,Inland Empire,2,0,0
+1326220336,0.2073,1,1,1,1,18,1,|GROUP PRACTICE,other,Multi-Specialty,193200000X,Inland Empire,1,0,0
+1568174837,4.1136,1,0,0,1,1,1,FQHC|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC),193200000X|261QF0400X,Peninsula,1,1,1
+1760746275,0.857,1,1,1,1,18,1,FQHC|GROUP PRACTICE|PPG,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,261QF0400X,San Francisco,1,0,1
+1730176538,1.7519,1,1,1,1,18,1,ANCILLARY,facility,Skilled Nursing Facility,314000000X,San Diego,1,0,0
+1740654896,3.5039,1,1,1,1,9,0,,hospital_based,Speech-Language Pathologist,,San Gabriel / San Fernando Valleys,2,0,0
+1659483451,1.7519,1,1,1,1,18,1,ANCILLARY,facility,Clinic/Center: End-Stage Renal Disease (ESRD) Treatment,261QE0700X,San Diego,1,0,0
+1740569235,0.1011,1,1,1,1,18,1,ANCILLARY|CLINIC,behavioural,Substance Abuse Rehabilitation Facility,324500000X,Inland Empire,2,0,0
+1508380361,0.7989,1,1,1,1,18,0,,behavioural,Marriage & Family Therapist,,San Gabriel / San Fernando Valleys,2,0,0
+1760604979,0.8459,1,1,1,1,16,0,,primary_care,Internal Medicine,,San Gabriel / San Fernando Valleys,7,0,0
+1982333084,0.7989,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty; Single Specialty,193400000X,Orange County,1,0,0
+1184724643,0.3072,1,1,1,1,15,1,|GROUP PRACTICE,surgical,Multi-Specialty; Orthopaedic Surgery,193200000X,Los Angeles,6,0,0
+1801394879,1.0972,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Gabriel / San Fernando Valleys,3,0,0
+1457705865,1.0394,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Gabriel / San Fernando Valleys,3,0,0
+1245747260,1.1617,1,1,1,1,17,0,,,,,San Gabriel / San Fernando Valleys,1,0,0
+1104016054,0.8191,1,1,1,1,12,0,,surgical,Obstetrics & Gynecology,,San Gabriel / San Fernando Valleys,6,0,0
+1023024932,0.7281,1,1,1,1,11,0,,primary_care,Family Medicine,,Fresno / Central Valley,5,0,0
+1548969751,0.3994,1,1,1,1,18,1,GROUP PRACTICE,other,Multi-Specialty,,Los Angeles,1,0,0
+1942743745,0.2996,1,1,1,1,18,1,ANCILLARY,facility,Home Health,251E00000X,East Bay,1,0,0
+1053523258,0.6007,1,1,1,1,11,1,|GROUP PRACTICE,other,Acupuncturist; Multi-Specialty,193200000X,East Bay,4,0,0
+1215323266,0.091,1,1,1,1,18,1,ANCILLARY,facility,Durable Medical Equipment & Medical Supplies,332B00000X|332BC3200X,Northern California,1,0,0
+1083796601,0.6674,1,1,1,1,15,1,,hospital_based,Speech-Language Pathologist,,Peninsula,5,0,0
+1144660697,2.1899,1,1,1,1,15,0,,other,Nurse Practitioner,,San Gabriel / San Fernando Valleys,3,0,0
+1083275986,2.9199,0,1,1,1,12,0,,primary_care,Pediatrics,,San Gabriel / San Fernando Valleys,1,0,0
+1811050768,0.1896,0,1,1,1,12,0,,other,Optometrist,,Orange County,2,0,0
+1396198982,3.5494,1,1,1,1,11,1,FQHC,facility,Clinic/Center: Federally Qualified Health Center (FQHC); Multi-Specialty,261QF0400X,Sacramento,1,0,0
+1417219767,0.364,1,1,1,1,18,0,,behavioural,Behavioral Analyst,,San Gabriel / San Fernando Valleys,4,0,0
+1720069644,0.468,1,1,1,1,14,1,,other,Optometrist,,Los Angeles,4,0,0
+1477623635,0.1353,1,1,1,1,18,1,|GROUP PRACTICE,primary_care,Internal Medicine; Internal Medicine: Nephrology; Multi-Specialty,193200000X,Los Angeles,13,0,0
+1407968985,0.2933,1,1,1,1,10,0,,,,,Los Angeles,8,0,0
+1063999175,0.2477,1,1,1,1,18,0,GROUP PRACTICE,other,Single Specialty,193400000X,Los Angeles,1,0,0
