@@ -139,9 +139,11 @@ def from_csv(path) -> tuple[list[dict], dict[str, dict]]:
     implies (each listing it found, and the other NPIs listed under the same TIN) and, per NPI, what
     was searched (the same fields as a `ptd_dir check` coverage line)."""
     rows, coverage = [], {}
-    with open(path, newline="", encoding="utf-8") as fh:
-        for r in csv.DictReader(fh):
-            npi = str(r.get("npi") or "").strip()
+    with open(path, newline="", encoding="utf-8-sig") as fh:  # also a copy saved from Excel (BOM, tabs)
+        head = fh.readline()
+        fh.seek(0)
+        for r in csv.DictReader(fh, delimiter="\t" if head.count("\t") > head.count(",") else ","):
+            npi = str(r.get("npi") or "").strip().split(".")[0]
             if not npi or r.get("site_checked") != "yes":
                 continue
             net = r.get("network_searched", "")
