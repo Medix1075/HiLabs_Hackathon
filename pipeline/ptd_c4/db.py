@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS c4_refs (
     status TEXT, status_basis TEXT,
     PRIMARY KEY (file_id, ref_id));
 CREATE TABLE IF NOT EXISTS c4_ref_members (
-    file_id INTEGER, ref_id TEXT, npi INTEGER, tin TEXT, tin_type TEXT);
+    file_id INTEGER, ref_id TEXT, npi INTEGER, tin TEXT, tin_type TEXT, tin_name TEXT);
 CREATE TABLE IF NOT EXISTS c4_refset_members (
     file_id INTEGER, refset_id INTEGER, ref_id TEXT, PRIMARY KEY (file_id, refset_id, ref_id));
 CREATE TABLE IF NOT EXISTS c4_refset_stats (

@@ -22,9 +22,9 @@ import requests
 from .sources import NPPES_COLS, PL_COLS, open_table, resolve_columns
 
 PAGES = {
-    "nppes": ("https://download.cms.gov/nppes/NPI_Files.html", r'href="([^"]*NPPES_Data_Dissemination_[A-Za-z]+_\d{4}[^"]*\.zip)"'),
+    "nppes": ("https://download.cms.gov/nppes/NPI_Files.html", r"""href=['"]([^'"]*NPPES_Data_Dissemination_[A-Za-z]+_\d{4}[^'"]*\.zip)['"]"""),  # CMS uses '' quotes
     "nucc": ("https://www.nucc.org/index.php/code-sets-mainmenu-41/provider-taxonomy-mainmenu-40/csv-mainmenu-57",
-             r'href="([^"]*nucc_taxonomy_\d+\.csv)"'),
+             r"""href=['"]([^'"]*nucc_taxonomy_\d+\.csv)['"]"""),
 }
 DAC_METASTORE = "https://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items/mj5m-pzi6"
 UA = {"User-Agent": "hilabs-c5-pipeline/1.0"}

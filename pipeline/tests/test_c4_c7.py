@@ -582,3 +582,239 @@ def test_allowed_amount_file_of_ppo_plans_is_non_ppo_evidence(world, tmp_path):
     assert c4(args) == 0                                           # a shared file is only a note
     st, ev = sqlite3.connect(db).execute("SELECT status, evidence FROM c4_refs WHERE ref_id = '46'").fetchone()
     assert st != "CONFIRMED_NON_PPO" and "shared allowed-amount file" in ev
+
+
+def _pces_entity(npi, tin, name, street, city, zip5, cycles):
+    """A search result shaped like Health Net Find a Provider's (external-api.../pces/query)."""
+    return {"carrierEntity": {
+        "providerName": name, "providerType": "HOSPITAL", "taxIdNumber": f"{tin[:2]}-{tin[2:]}",
+        "nationalProviderIdentifiers": [{"number": str(npi), "type": "Type 2"}],
+        "locations": [{"address": {"addressLine1": street, "city": city, "stateCode": "CA", "zipCode": zip5},
+                       "specialties": [{"descriptionDisplay": "General Acute Care Hospital"}]}],
+        "network": {"product": {"code": "PPO", "name": "HealthNet Commercial PPO", "networkId": "8201"},
+                    "carrier": {"code": "PP", "name": "CA PPO Large and Small", "networkId": "8242"},
+                    "networkCycles": [{"status": s, "startDate": a + "T00:00:00Z", "endDate": b + "T00:00:00Z"}
+                                      for s, a, b in cycles]}},
+        "matchedLists": []}
+
+
+def test_healthnet_find_a_provider_parser_keeps_par_listings_only():
+    from ptd_dir.healthnet import is_pces, parse_pces
+    body = {"totalHits": 3, "results": [
+        _pces_entity(1417554528, "851644866", "USC Norris", "1441 Eastlake Ave", "Los Angeles", "90089",
+                     [("Par", "2021-01-01", "4000-01-01")]),
+        _pces_entity(1093892275, "941623075", "Siskiyou", "444 Bruce St", "Yreka", "96097",
+                     [("Nonpar", "2018-01-01", "2022-12-31"), ("Par", "2023-01-01", "4000-01-01")]),
+        _pces_entity(1861409823, "951915820", "Old", "1 Main St", "El Centro", "92243",
+                     [("Par", "2015-01-01", "2024-12-31"), ("Nonpar", "2025-01-01", "4000-01-01")])]}
+    assert is_pces(body) and not is_pces({"results": [{"type": "name", "results": []}]})
+    rows = {r["npi"]: r for r in parse_pces(body, 2026)}
+    assert set(rows) == {"1417554528", "1093892275"}                  # Nonpar in 2026 is not in network
+    r = rows["1417554528"]
+    assert (r["tin"], r["zip"], r["specialty"]) == ("851644866", "90089", "General Acute Care Hospital")
+    assert r["listing_networks"] == "HealthNet Commercial PPO | CA PPO Large and Small"
+    assert "1861409823" in {r["npi"] for r in parse_pces(body, 2024)}
+
+
+def test_healthnet_check_captures_build_directory_that_confirms_ppo(world, tmp_path):
+    """Captures in `ptd_dir check` format -> build -> C4: an NPI listed Par under the Group PPO network
+    confirms its reference; a Nonpar listing does not; a facility listed under another NPI with the same
+    TIN is only a candidate."""
+    from ptd_dir.cli import main as ptd_dir
+    truth = world["truth"]
+    net = "PPO - Large Group/Small Group (Platinum, Gold, Silver, Bronze, GF Plans, HSA Compatible, HDHP)"
+    ents = []
+    for g, cycles, other_npi in ((37, [("Par", "2021-01-01", "4000-01-01")], False),
+                                 (38, [("Nonpar", "2021-01-01", "4000-01-01")], False),
+                                 (39, [("Par", "2021-01-01", "4000-01-01")], True)):
+        tin = str(950000000 + g)
+        site = truth["tin_site"][tin]
+        npi = ca_world.npi(100000990) if other_npi else sorted(truth["tin_npis"][tin])[0]
+        ents.append(_pces_entity(npi, tin, f"Group {g}", site[0], site[2], site[3], cycles))
+    cap = tmp_path / "hn_check.jsonl"
+    cap.write_text("\n".join(json.dumps({"url": "https://external-api.search.my.centene.com/pces/query", "status": 200,
+                                         "network_name": net, "network_year": "2026", "body": {"results": [e]}})
+                             for e in ents) + "\n")
+    cap.with_suffix(".coverage.jsonl").write_text(json.dumps({"npi": "1", "status": "found"}) + "\n")
+    out = tmp_path / "directory.csv"
+    assert ptd_dir(["build", "--capture", str(tmp_path / "hn_check*.jsonl"), "--out", str(out)]) == 0  # glob skips the coverage log
+    built = list(csv.DictReader(open(out)))
+    assert len(built) == 2 and all(r["network_name"] == net for r in built)
+    db = str(tmp_path / "r.sqlite")
+    assert c4(["run", "--files", str(world["rate_file"]), "--workbook", str(world["workbook"]), "--directory", str(out),
+               "--db", db, "--out", str(tmp_path / "c4"), "--workers", "1", "--as-of", AS_OF]) == 0
+    st = dict(sqlite3.connect(db).execute("SELECT ref_id, status FROM c4_refs WHERE ref_id IN ('37', '38', '39')"))
+    assert st["37"] == "CONFIRMED_PPO"
+    assert (st["38"], st["39"]) == ("UNRESOLVED", "PPO_CANDIDATE")
+
+
+def test_directory_matches_dashed_rate_file_tins():
+    from ptd_c2.config import load_config
+    from ptd_c4.directory import Directory
+    d = Directory([{"npi": 1417554528, "tin": "851644866", "network_name": "PPO - Large Group/Small Group"}],
+                  load_config(), ["PPO_FULL"])
+    assert d.match(1417554528, "85-1644866") == ({"PPO"}, "npi")             # same TIN, written with a dash
+    assert d.match(1417554528, "95-0000000") == ({"PPO"}, "npi_tin_mismatch")
+    assert d.match(1999999999, "85-1644866") == ({"PPO"}, "tin")
+
+
+def test_c4_npi_limit_writes_ppo_check_table(world, tmp_path):
+    """C4 --npis keeps only those NPIs' pairs (network tagging still sees the whole file) and writes
+    c4_ppo_check.csv: rate-file side + what the Health Net site said, with the name/TIN fallback."""
+    from ptd_c4.cli import read_npi_list
+    truth = world["truth"]
+    t37, t39 = sorted(truth["tin_npis"]["950000037"])[0], sorted(truth["tin_npis"]["950000039"])[0]
+    other = ca_world.npi(100000991)
+    lim = tmp_path / "ppo_check_results.csv"
+    lim.write_text(f"npi,verdict\n{t37},x\n{t39},x\n")
+    assert read_npi_list([str(lim), "1234567893, 1417554528"]) == [str(t37), str(t39), "1234567893", "1417554528"]
+    net = "PPO - Large Group/Small Group (Platinum, Gold, Silver, Bronze, GF Plans, HSA Compatible, HDHP)"
+    s37, s39 = truth["tin_site"]["950000037"], truth["tin_site"]["950000039"]
+    recs = [{"status": 200, "network_name": net, "network_year": "2026", "query_kind": "npi",
+             "body": {"results": [_pces_entity(t37, "950000037", "Group 37", s37[0], s37[2], s37[3],
+                                               [("Par", "2021-01-01", "4000-01-01")])]}},
+            {"status": 200, "network_name": net, "network_year": "2026", "query_kind": "name", "query_tin": "950000039",
+             "body": {"results": [_pces_entity(other, "950000039", "Group 39 Main", s39[0], s39[2], s39[3],
+                                               [("Par", "2021-01-01", "4000-01-01")]),
+                                  _pces_entity(ca_world.npi(100000992), "880000001", "Namesake", "1 Elm St", "Fresno",
+                                               "93701", [("Par", "2021-01-01", "4000-01-01")])]}}]
+    cap = tmp_path / "hn.jsonl"
+    cap.write_text("\n".join(json.dumps(r) for r in recs) + "\n")
+    cap.with_suffix(".coverage.jsonl").write_text(
+        json.dumps({"npi": str(t37), "status": "found", "location": "Los Angeles, CA", "network": net, "year": "2026"}) + "\n"
+        + json.dumps({"npi": str(t39), "status": "not_found", "location": "Irvine, CA", "network": net, "year": "2026",
+                      "fallback_term": "Group 39", "fallback_same_tin": 1}) + "\n")
+    from ptd_dir.cli import main as ptd_dir
+    d = tmp_path / "directory.csv"
+    assert ptd_dir(["build", "--capture", str(cap), "--out", str(d)]) == 0
+    assert {r["tin"] for r in csv.DictReader(open(d))} == {"950000037", "950000039"}   # the namesake is dropped
+    db, out = str(tmp_path / "r.sqlite"), tmp_path / "c4"
+    assert c4(["run", "--files", str(world["rate_file"]), "--workbook", str(world["workbook"]), "--directory", str(d),
+               "--directory-checks", str(cap.with_suffix(".coverage.jsonl")), "--npis", str(lim), "--db", db,
+               "--out", str(out), "--workers", "1", "--as-of", AS_OF]) == 0
+    con = sqlite3.connect(db)
+    assert {n for (n,) in con.execute("SELECT DISTINCT npi FROM c4_pairs")} == {t37, t39}
+    assert con.execute("SELECT COUNT(DISTINCT ref_id) FROM c4_refs").fetchone()[0] > 2      # all references tagged
+    rows = {int(r["npi"]): r for r in csv.DictReader(open(out / "c4_ppo_check.csv"))}
+    assert set(rows) == {t37, t39}
+    a, b = rows[t37], rows[t39]
+    assert (a["verdict"], a["pair_status"], a["search_location"]) == ("FOUND_PPO_BY_NPI", "CONFIRMED_PPO", "Los Angeles, CA")
+    assert a["directory_listing"] == "HealthNet Commercial PPO | CA PPO Large and Small" and int(a["rates_extracted"]) > 0
+    assert (b["verdict"], b["npi_search_result"], b["tin_fallback_term"]) == ("NOT_FOUND_BY_NPI_SAME_TIN", "not_found", "Group 39")
+    assert b["tin_fallback_npis"] == str(other)
+
+
+def test_reference_members_keep_the_tin_business_name():
+    from ptd_c4.ingest import _group_rows
+    rows = _group_rows(1, "7", [{"npi": [1417554528], "tin": {"type": "ein", "value": "85-1644866",
+                                                             "business_name": "Keck Medical Center of USC"}}])
+    assert rows == [(1, "7", 1417554528, "85-1644866", "ein", "Keck Medical Center of USC")]
+
+
+def test_c5_directory_address_of_the_same_tin_is_boosted_whatever_the_dashes():
+    from ptd_c5.config import load_config as c5cfg
+    from ptd_c5.resolve import Resolver
+    cfg = c5cfg(as_of=AS_OF)
+    r = Resolver(cfg, cfg["_as_of"], {}, {})
+    ev = {"source": "directory", "p": 0.75, "detail": json.dumps({"tin": "941623075"})}
+    assert r._adjust(ev, "94-1623075") > 0.75 > r._adjust(ev, "95-0000000")
+
+
+def test_c5_same_tin_directory_site_only_corroborates():
+    """St Jude bills under 1194926279; the directory lists the hospital under 1891904942 (same TIN).
+    That listing supports the NPPES address in the same ZIP, but another campus of the TIN is not added."""
+    from ptd_c2.config import load_config
+    from ptd_c4.directory import Directory
+    from ptd_c5.sources import directory_tin_candidates
+    net = "PPO - Large Group/Small Group"
+    d = Directory([{"npi": 1891904942, "tin": "951643325", "network_name": net, "address_line1": "101 E Valencia Mesa Dr",
+                    "city": "Fullerton", "state": "CA", "zip": "92835"},
+                   {"npi": 1891904943, "tin": "951643325", "network_name": net, "address_line1": "1 Other Campus Rd",
+                    "city": "Orange", "state": "CA", "zip": "92868"}], load_config(), ["PPO_FULL"])
+    nppes = [{"npi": 1194926279, "source": "nppes_practice", "line1": "101 E VALENCIA MESA DR", "zip": "92835"},
+             {"npi": 1194926279, "source": "nppes_mailing", "line1": "9 Billing Way", "zip": "92868"}]
+    from datetime import date
+    got = directory_tin_candidates(d, [(1194926279, "95-1643325")], nppes, date(2026, 10, 17))
+    assert [(c["source"], c["zip"]) for c in got] == [("directory_tin", "92835")]
+
+
+def _fake_site(shard, out, kw):
+    """Stands in for the browser: lists every NPI whose last digit is even under the PPO network."""
+    import time as _t
+    net = "PPO - Large Group/Small Group (Platinum, Gold, Silver, Bronze, GF Plans, HSA Compatible, HDHP)"
+    out = Path(out)
+    for t in shard:
+        found = int(t["npi"]) % 2 == 0
+        ent = [_pces_entity(int(t["npi"]), t.get("tin") or "", "Listed", "1 Main St", "Fresno", "93701",
+                            [("Par", "2021-01-01", "4000-01-01")])] if found else []
+        with open(out, "a") as fh:
+            fh.write(json.dumps({"status": 200, "network_name": net, "network_year": "2026", "query_kind": "npi",
+                                 "query_npi": t["npi"], "body": {"results": ent}}) + "\n")
+        with open(out.with_suffix(".coverage.jsonl"), "a") as fh:
+            fh.write(json.dumps({"npi": t["npi"], "tin": t.get("tin"), "status": "found" if found else "not_found",
+                                 "location": "Fresno, CA", "network": net, "year": "2026"}) + "\n")
+        _t.sleep(0.02)
+
+
+def test_c4_checks_every_npi_on_the_site_and_saves_the_table_as_it_goes(world, tmp_path, monkeypatch):
+    """C4 --check-directory searches every NPI of the file (resumable), rewrites c4_ppo_check.csv every
+    --save-every NPIs, and tags the references with what the site lists."""
+    from ptd_c4 import dircheck, ppo_check
+    monkeypatch.setattr(dircheck, "_worker", _fake_site)
+    monkeypatch.setattr(dircheck, "MP_CONTEXT", "fork")
+    monkeypatch.setattr(dircheck, "POLL_SECONDS", 0.05)
+    saved = []
+    real_write = ppo_check.write
+    monkeypatch.setattr(ppo_check, "write", lambda path, rows: (saved.append(len(rows)), real_write(path, rows)))
+    db, out, base = str(tmp_path / "r.sqlite"), tmp_path / "c4", tmp_path / "dir" / "hn_all"
+    args = ["run", "--files", str(world["rate_file"]), "--workbook", str(world["workbook"]), "--db", db,
+            "--out", str(out), "--workers", "1", "--as-of", AS_OF, "--check-directory", "--check-out", str(base),
+            "--check-workers", "2", "--save-every", "5"]
+    assert c4(args) == 0
+    con = sqlite3.connect(db)
+    all_npis = {str(n) for (n,) in con.execute("SELECT DISTINCT npi FROM c4_ref_members WHERE npi IS NOT NULL")}
+    assert dircheck.checked_npis(dircheck.coverage_paths(base)) == all_npis     # every NPI searched once
+    assert len(saved) >= 3 and saved == sorted(saved)                            # the table grew as it went
+    rows = list(csv.DictReader(open(out / "c4_ppo_check.csv")))
+    assert {r["npi"] for r in rows} == all_npis and {r["site_checked"] for r in rows} == {"yes"}
+    found = [r for r in rows if int(r["npi"]) % 2 == 0]
+    assert found and {r["verdict"] for r in found} <= {"FOUND_PPO_BY_NPI", "FOUND_PPO_NPI_OTHER_TIN"}
+    single = [r for r in found if r["ref_count"] == "1" and r["verdict"] == "FOUND_PPO_BY_NPI"]
+    assert "CONFIRMED_PPO" in {r["pair_status"] for r in single}                 # tagged with what the site listed
+    assert (base.parent / "hn_all_directory.csv").exists()
+    lines = sum(len(open(p).read().splitlines()) for p in dircheck.coverage_paths(base))
+    saved.clear()
+    assert c4(args) == 0                                                        # a rerun searches nothing again
+    assert sum(len(open(p).read().splitlines()) for p in dircheck.coverage_paths(base)) == lines
+
+
+def test_c4_reuses_an_existing_ppo_check_table_instead_of_searching_again(world, tmp_path, monkeypatch):
+    """With a c4_ppo_check.csv from an earlier run, C4 takes the site's results from it: the same verdicts
+    and network statuses, and no NPI in it is searched again."""
+    from ptd_c4 import dircheck
+    monkeypatch.setattr(dircheck, "_worker", _fake_site)
+    monkeypatch.setattr(dircheck, "MP_CONTEXT", "fork")
+    monkeypatch.setattr(dircheck, "POLL_SECONDS", 0.05)
+    common = ["run", "--files", str(world["rate_file"]), "--workbook", str(world["workbook"]), "--workers", "1",
+              "--as-of", AS_OF]
+    first = tmp_path / "first"
+    assert c4(common + ["--db", str(tmp_path / "a.sqlite"), "--out", str(first), "--check-directory",
+                        "--check-out", str(tmp_path / "d1" / "hn"), "--save-every", "50"]) == 0
+    before = {(r["npi"], r["tin"]): r for r in csv.DictReader(open(first / "c4_ppo_check.csv"))}
+
+    def no_search(shard, out, kw):
+        raise AssertionError(f"searched {len(shard)} NPIs again")
+    monkeypatch.setattr(dircheck, "_worker", no_search)
+    second = tmp_path / "second"
+    assert c4(common + ["--db", str(tmp_path / "b.sqlite"), "--out", str(second), "--check-directory",
+                        "--check-out", str(tmp_path / "d2" / "hn"), "--ppo-check-csv", str(first / "c4_ppo_check.csv")]) == 0
+    assert dircheck.coverage_paths(tmp_path / "d2" / "hn") == []                 # nothing searched
+    after = {(r["npi"], r["tin"]): r for r in csv.DictReader(open(second / "c4_ppo_check.csv"))}
+    assert set(after) == set(before)
+    for k in ("verdict", "pair_status", "npi_search_result", "search_location", "directory_listing"):
+        assert {p: r[k] for p, r in after.items()} == {p: r[k] for p, r in before.items()}, k
+    assert (second / "c4_directory_used.csv").exists()
+    # the default: this output folder's own table, even without --check-directory
+    assert c4(common + ["--db", str(tmp_path / "b.sqlite"), "--out", str(second)]) == 0
+    again = {(r["npi"], r["tin"]): r["pair_status"] for r in csv.DictReader(open(second / "c4_ppo_check.csv"))}
+    assert again == {p: r["pair_status"] for p, r in before.items()}

@@ -209,9 +209,16 @@ Every rule, weight and threshold below is in `config/c4.yaml` to `config/c7.yaml
 python -m ptd_c4 run --workbook weights.xlsx                 # C2's file list, workbook codes only
 python -m ptd_c4 run --files a.json.gz --codes all           # any rate file, every billing code
 python -m ptd_c4 run --directory data/directory.csv          # payer directory as network evidence (see ptd_dir)
+python -m ptd_c4 run --directory data/directory.csv --directory-checks "data/directory/*.coverage.jsonl" \
+    --npis ppo_check_results.csv                              # only these NPIs (drop --npis for the whole file)
+python -m ptd_c4 run --workbook weights.xlsx --check-directory   # search every NPI on Health Net's site first
 python -m ptd_c4 run --files a.json --oon oon.json --oon-ppo-only   # allowed-amount file as evidence
 python -m ptd_c4 directory --fhir-base https://.../fhir      # a directory from a Plan-Net FHIR API instead
 ```
+
+### Checking every NPI on Health Net's site (`--check-directory`)
+
+After reading the rate file, C4 searches every NPI of its provider references (or just `--npis`) on findaprovider.healthnetcalifornia.com under the 2026 Group PPO network, with `--check-workers` browsers side by side (default 3, about 30 s per NPI per browser). Every `--save-every` NPIs (default 50) it rebuilds the directory table from what the site returned, re-tags the references and rewrites `c4_ppo_check.csv` with every NPI searched so far; the rate columns fill in when the rates are extracted at the end. Stopping is safe: rerunning the same command skips every NPI already searched. If a `c4_ppo_check.csv` already exists (in the output folder, or given with `--ppo-check-csv`), C4 takes the site's results from it instead of searching again: its listings become directory evidence (also written as `c4_directory_used.csv`, which C5 reads), and with `--check-directory` only NPIs missing from it are searched. `--no-ppo-check-csv` ignores it. `python -m ptd_run all --from c4 --check-directory ...` does the same and then runs C5 to C7 with the site's addresses.
 
 ### Reading a 700 MB file fast, in flat memory
 
@@ -286,6 +293,8 @@ TIN-only groups (no NPI) can't produce NPI rows. They are counted and logged.
 | `c4_provider_tags.csv` | NPI, TIN and tag, for C3's `--provider-tags` |
 | `c4_hypotheses.csv` | What each hypothesis scored, and whether it was used |
 | `c4_extraction_log.csv` | Rows dropped by reason, and how often each tie-break rule decided |
+| `c4_ppo_check.csv` | With `--directory`, `--directory-checks` or `--npis`. One row per NPI × TIN: the rate file's side (TIN name, references, network status, rates extracted) next to what Health Net's Find a Provider site returned (searched where and under which network, listing name, product, address, specialty, the name/TIN fallback) and a `verdict` |
+| `<check-out>_w<k>.jsonl`, `_directory.csv` | With `--check-directory`: the site's responses and coverage log per browser, and the directory table built from them (C5 reads it for addresses when run through `ptd_run`) |
 | `c4_results.xlsx`, `c4_run_summary.json`, `c4_run_log.txt` | Workbook with a sample of rates, counts, timings, log |
 | `c4_rates.csv.gz` | Only with `rates_csv: true`. Every rate as CSV; off by default because it is large and C6 writes the deliverable anyway. |
 
@@ -325,6 +334,22 @@ python -m ptd_run all --from c4 --directory data/directory.csv --workbook weight
 - **NPIs for listings that show none** (`build`): matched to C4/C5's providers from an earlier run (`--db`), or the NPI Registry by name + ZIP (`--npi-api`). First + last name **and** the same street site gives `npi_source = name+address`, which counts like a listed NPI. Name + ZIP alone (`name+zip`) could be a namesake, so C4 treats it as weak evidence. A name matching several providers gets no NPI.
 - **Which network a row is for** comes from `--network` (what you selected), or, for a generic search, from the networks the listing itself names. A generic "Health Net" listing makes a candidate at most. Capturing the HMO searches too (with `--network` naming them) adds evidence the other way.
 
+### Health Net's own site: `ptd_dir check`
+
+`https://findaprovider.healthnetcalifornia.com` (no login) is the California directory and can be reached from the cloud too. `check` drives it the way a person does, once per NPI: location = the NPI's own city (NPI Registry), network year, network **"PPO - Large Group/Small Group (Platinum, Gold, Silver, Bronze, GF Plans, HSA Compatible, HDHP)"** (product "HealthNet Commercial PPO", carrier "CA PPO Large and Small"), then the NPI in the search box. The site's search responses (`external-api.search.my.centene.com/pces/query`) are saved in the capture format, and `build` reads them with a parser for that schema:
+
+```bash
+# NPIs with extracted rates from an earlier C4 run (or --npis / --npi-file), a sample to start with
+python -m ptd_dir check --db out/rates.sqlite --rated-only --sample 200 --year 2026 --out data/directory/hn_check.jsonl
+python -m ptd_dir build --capture "data/directory/hn_check*.jsonl" --out data/directory.csv
+python -m ptd_run all --from c4 --directory data/directory.csv --workbook weights.xlsx
+```
+
+- A listing counts only when its network cycle is `Par` during the chosen year; a `Nonpar` listing is left out. Each row keeps the NPI, TIN, address, specialty and the listing's product/carrier (`listing_networks`).
+- `check` is resumable: `<out>.coverage.jsonl` records each NPI as `found` / `not_found` and is skipped on the next run. One NPI takes about 40 s; run several `check` processes on split NPI files to go faster.
+- Not finding an NPI is not evidence against PPO: the site finds only the NPI it stores (a hospital may bill under another NPI than the one listed), searches within 50 miles of the city, and behavioural-health providers are mostly not listed there.
+- An NPI listed as PPO confirms its reference only when it is that NPI's only reference in the file (see `directory` above). In the Health Net CA file most hospital NPIs sit in several references, which then stay candidates.
+
 ## C5: which address each NPI + TIN practises at
 
 ```bash
@@ -337,7 +362,7 @@ NPPES is self-reported and mostly stale, so C5 treats every source as a witness 
 
 1. **Gather candidates.** Each NPI's addresses come from NPPES (practice, mailing and the Practice Location Reference File), CMS Doctors & Clinicians (current Medicare enrolment, with the group's `org_pac_id`), the payer directory (with TIN when it has one), the [NPI Registry API](https://npiregistry.cms.hhs.gov/api-page), and the practice address of any Type 2 (organisation) NPI under the same TIN.
 2. **Standardise.** A local USPS Publication 28 standardiser (`address.py`: suffixes, directionals, unit designators, ordinal numbers, ZIP+4 trimmed) makes "123 North Main Street, Suite 4" and "123 N MAIN ST STE 4" the same address. Addresses are compared on **site** (number + street + ZIP5), so two suites in one building are one practice site.
-3. **Score each site** with a noisy-OR across independent source families: `p = 1 − Π(1 − best weight in family × recency)`. Sources in one family (all the NPPES variants) share their data, so only the best one counts. NPPES evidence decays with the record's age (half-life 3 years, floor 0.4). Weights: directory 0.75, CMS D&C 0.70, NPPES practice 0.45, mailing 0.10.
+3. **Score each site** with a noisy-OR across independent source families: `p = 1 − Π(1 − best weight in family × recency)`. Sources in one family (all the NPPES variants) share their data, so only the best one counts. NPPES evidence decays with the record's age (half-life 3 years, floor 0.4). Weights: directory 0.75, CMS D&C 0.70, directory listing of the same TIN 0.50 (only corroborates a site another source already gives), NPPES practice 0.45, mailing 0.10. C5 resolves every NPI + TIN of `c4_pairs`, so `--npis` in C4 limits C5 and C6 too.
 4. **Make it TIN-specific.**
    - *TIN consensus:* the share of the TIN's other NPIs placed at this site, each weighted by how strongly its own sources place it there (a fresh CMS address counts more than an old NPPES one). This boosts the site: `p ← 1 − (1 − p)(1 − 0.6 × share)`.
    - When most of the TIN practises at a site the NPI has no address for, that site becomes a candidate (`tin_consensus_only`). This is how NPIs with only a stale NPPES address still get the right one.

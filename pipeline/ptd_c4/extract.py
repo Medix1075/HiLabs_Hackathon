@@ -27,7 +27,9 @@ CONF_RANK = {"high": 3, "medium": 2, "low": 1}
 STATUS_RANK = {CONFIRMED_PPO: 3, PPO_CANDIDATE: 2, UNRESOLVED: 1}
 
 
-def build_pairs(con: sqlite3.Connection, file_id: int, include_statuses: list[str], log=print) -> dict:
+def build_pairs(con: sqlite3.Connection, file_id: int, include_statuses: list[str], log=print,
+                npis: set | None = None) -> dict:
+    """`npis`: keep only these NPIs (a trial run on a few providers); network tagging has already seen all."""
     q = (f"SELECT m.npi, m.tin, m.tin_type, m.ref_id, r.status FROM c4_ref_members m "
          f"JOIN c4_refs r ON r.file_id = m.file_id AND r.ref_id = m.ref_id "
          f"WHERE m.file_id = ? AND m.npi IS NOT NULL AND r.status IN ({','.join('?' * len(include_statuses))}) "
@@ -49,6 +51,8 @@ def build_pairs(con: sqlite3.Connection, file_id: int, include_statuses: list[st
             sig_rows.extend((file_id, sig, r) for r in rs)
 
     for npi, tin, ttype, ref, st in con.execute(q, (file_id, *include_statuses)):
+        if npis is not None and str(npi) not in npis:
+            continue
         if (npi, tin) != cur_key:
             close()
             cur_key, refs, tin_type = (npi, tin), {}, ttype

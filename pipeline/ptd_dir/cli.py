@@ -15,6 +15,11 @@ network (the Cigna-hosted copy works outside California).
   # 3. turn the captures into the directory table (NPIs found by name + address when not shown)
   python -m ptd_dir build --capture data/directory/*.jsonl --db out/rates.sqlite --out data/directory.csv
 
+  # Health Net's own site (findaprovider.healthnetcalifornia.com): search NPIs one by one under the
+  # 2026 Group PPO network, then build the table from those captures the same way
+  python -m ptd_dir check --db out/rates.sqlite --rated-only --sample 200 --year 2026 --out data/directory/hn_check.jsonl
+  python -m ptd_dir build --capture data/directory/hn_check.jsonl --out data/directory.csv
+
   # 4. use it
   python -m ptd_run all --from c4 --directory data/directory.csv --workbook ...
 
@@ -39,7 +44,7 @@ def _paths(patterns: list[str]) -> list[Path]:
     for p in patterns:
         hits = sorted(glob.glob(p))
         out += [Path(h) for h in hits] if hits else [Path(p)]
-    return [p for p in out if p.exists() and not p.name.endswith(".cookies.json")]
+    return [p for p in out if p.exists() and not p.name.endswith((".cookies.json", ".coverage.jsonl"))]
 
 
 def capture_cmd(args) -> int:
@@ -65,6 +70,53 @@ def targets_cmd(args) -> int:
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text("\n".join(vals) + "\n")
     print(f"[dir] {len(vals):,} {args.what} values -> {args.out}")
+    return 0
+
+
+def _check_npis(args) -> list:
+    """NPIs to check, as {npi, tin, tin_name} when the rate store knows the NPI's TIN (for the name fallback)."""
+    import random
+    import sqlite3
+
+    from ptd_c4.cli import read_npi_list
+
+    npis = read_npi_list((args.npis or []) + ([args.npi_file] if args.npi_file else []))
+    con = sqlite3.connect(args.db) if args.db and Path(args.db).exists() else None
+    if con is not None and not npis:
+        q = "SELECT DISTINCT npi FROM c4_ref_members"
+        if args.unconfirmed_only:
+            q = ("SELECT DISTINCT m.npi FROM c4_ref_members m JOIN c4_refs r ON r.file_id = m.file_id AND "
+                 "r.ref_id = m.ref_id WHERE r.status != 'CONFIRMED_PPO'")
+        if args.rated_only:  # only NPIs with extracted rates for the codes in scope: the ones the deliverable needs
+            q = (f"SELECT npi FROM ({q}) WHERE npi IN (SELECT p.npi FROM c4_pairs p JOIN c4_sig_rates s "
+                 "ON s.file_id = p.file_id AND s.sig_id = p.sig_id)")
+        npis = [str(n) for (n,) in con.execute(q + " ORDER BY 1") if n]
+        if args.sample and args.sample < len(npis):
+            npis = sorted(random.Random(args.seed).sample(npis, args.sample))
+    targets = [{"npi": n} for n in dict.fromkeys(npis)]
+    if con is not None:
+        cols = [r[1] for r in con.execute("PRAGMA table_info(c4_ref_members)")]
+        name = "tin_name" if "tin_name" in cols else "''"
+        for t in targets:  # the NPI's first TIN in the rate file, with its business name
+            row = con.execute(f"SELECT tin, {name} FROM c4_ref_members WHERE npi = ? ORDER BY ({name} = ''), tin "
+                              "LIMIT 1", (int(t["npi"]),)).fetchone()
+            if row:
+                t.update(tin=row[0], tin_name=row[1])
+        con.close()
+    return targets
+
+
+def check_cmd(args) -> int:
+    from .healthnet import check
+
+    npis = _check_npis(args)
+    if not npis:
+        print("no NPIs to check (give --npis, --npi-file or --db)", file=sys.stderr)
+        return 1
+    print(f"[dir] checking {len(npis):,} NPIs on Health Net Find a Provider under {args.network!r}")
+    st = check(npis, Path(args.out), network=args.network, year=args.year, location=args.location,
+               executable=args.browser, channel=args.channel, delay=args.delay, fallback=not args.no_fallback)
+    print("[dir] " + ", ".join(f"{k} {v:,}" for k, v in st.items()))
     return 0
 
 
@@ -122,6 +174,23 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--what", choices=["zip", "npi", "name"], default="zip")
     t.add_argument("--out", default="data/directory/targets.txt")
     t.set_defaults(func=targets_cmd)
+    k = sub.add_parser("check", help="search NPIs one by one on Health Net Find a Provider (network + year)")
+    k.add_argument("--npis", nargs="*", help="NPIs to check")
+    k.add_argument("--npi-file", help="file with NPIs: whitespace separated, or a CSV with an npi column")
+    k.add_argument("--db", help="rate store: check the NPIs of C4's provider references (and know their TINs)")
+    k.add_argument("--no-fallback", action="store_true", help="do not search NPIs the site misses by TIN name")
+    k.add_argument("--unconfirmed-only", action="store_true", help="with --db: skip references already CONFIRMED_PPO")
+    k.add_argument("--rated-only", action="store_true", help="with --db: only NPIs that have extracted rates")
+    k.add_argument("--sample", type=int, help="with --db: check a random sample of this many NPIs")
+    k.add_argument("--seed", type=int, default=20261017)
+    k.add_argument("--network", default="PPO - Large Group/Small Group", help="network option to choose (substring)")
+    k.add_argument("--year", help="network year (default: this year)")
+    k.add_argument("--location", help="search location for every NPI (default: each NPI's city, NPI Registry)")
+    k.add_argument("--channel", help="chrome or msedge (default: try both, then Playwright's Chromium)")
+    k.add_argument("--browser", help="path to a Chromium-based browser executable")
+    k.add_argument("--delay", type=float, default=1.0, help="seconds between NPIs")
+    k.add_argument("--out", default="data/directory/healthnet_check.jsonl")
+    k.set_defaults(func=check_cmd)
     b = sub.add_parser("build", help="captures -> directory table for C4/C5 (--directory)")
     b.add_argument("--capture", nargs="+", required=True, help="capture / replay JSONL files (globs allowed)")
     b.add_argument("--network", help="override the network name recorded at capture time")

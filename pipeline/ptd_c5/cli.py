@@ -28,7 +28,7 @@ from .fetch import extract_nppes, fetch, read_zip_county
 from .logic import write_logic
 from .address import standardize
 from .resolve import Resolver
-from .sources import directory_candidates, npi_api_lookup, read_dac, read_nppes, read_nppes_pl
+from .sources import directory_candidates, directory_tin_candidates, npi_api_lookup, read_dac, read_nppes, read_nppes_pl
 
 ADDRESS_FIELDS = ["npi", "tin", "rank", "address", "line1", "unit", "city", "state", "zip5", "county", "region",
                   "confidence", "verified", "families", "sources", "tin_consensus", "source_p", "evidence", "site_key"]
@@ -60,10 +60,13 @@ def run(args) -> int:
     if not table_exists(con, "c4_pairs"):
         print(f"No C4 rate store in {args.db}. Run C4 first (python -m ptd_c4 run).", file=sys.stderr)
         return 1
-    pairs = con.execute("SELECT DISTINCT npi, tin FROM c4_pairs WHERE sig_id IN (SELECT DISTINCT sig_id FROM "
-                        "c4_sig_rates) ORDER BY npi, tin").fetchall()
+    # every pair C4 kept, also those without rates for the codes in scope: their addresses are still asked for
+    # (a trial run on a few NPIs), and C6 only writes rows that have rates
+    pairs = con.execute("SELECT DISTINCT npi, tin FROM c4_pairs ORDER BY npi, tin").fetchall()
     npis = {p[0] for p in pairs}
-    log(f"[input] {len(pairs):,} NPI-TIN pairs with rates, {len(npis):,} NPIs, "
+    with_rates = con.execute("SELECT COUNT(DISTINCT npi || '|' || tin) FROM c4_pairs WHERE sig_id IN "
+                             "(SELECT sig_id FROM c4_sig_rates)").fetchone()[0]
+    log(f"[input] {len(pairs):,} NPI-TIN pairs ({with_rates:,} with rates), {len(npis):,} NPIs, "
         f"{len({p[1] for p in pairs}):,} TINs (from {args.db})")
 
     providers, dac_facts, cands, used = {}, {}, [], {}
@@ -85,6 +88,7 @@ def run(args) -> int:
         dac_facts, c = read_dac(args.dac, npis, cfg["_as_of"], log)
         cands += c
         used["dac"] = args.dac
+    directory = None
     if args.directory:
         c4cfg = load_c4_config()
         directory = load_directory(args.directory, load_c2_config(), c4cfg["network"]["ppo_labels"])
@@ -103,6 +107,10 @@ def run(args) -> int:
             cands += c
             if p:
                 used["npi_api"] = f"{len(p)} NPIs"
+    if directory is not None:
+        c = directory_tin_candidates(directory, pairs, cands, cfg["_as_of"])
+        cands += c
+        log(f"[c5]   directory, same TIN under another NPI: {len(c):,} addresses that confirm another source's site")
     if not used:
         log("[input] no address source given (--nppes, --dac, --directory, --npi-api): every pair stays unresolved. "
             "See `python -m ptd_c5 fetch`.")

@@ -21,6 +21,7 @@ import sys
 import threading
 import time
 import zipfile
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
@@ -253,6 +254,39 @@ def directory_candidates(directory, npis: set[int], as_of: date) -> list[dict]:
                           "detail": json.dumps({"tin": r.get("tin", ""), "network": r.get("network_name", ""),
                                                 "side": r.get("_side")})})
     return cands
+
+
+def directory_tin_candidates(directory, pairs: list[tuple], cands: list[dict], as_of: date) -> list[dict]:
+    """Directory sites of other NPIs with the pair's TIN (a hospital listed under another NPI than the
+    one it bills with). Only corroboration: a site counts for an NPI when another source already puts
+    that NPI at the same site (house number + street + ZIP), so a system's other campuses or agencies
+    under the same TIN never become its address."""
+    from .address import standardize
+
+    digits = lambda x: re.sub(r"\D", "", str(x or ""))
+    by_tin = defaultdict(list)
+    for r in directory.rows:
+        if r.get("tin") and r.get("address_line1") and r.get("_side") == "PPO":
+            by_tin[digits(r["tin"])].append(r)
+    sites = defaultdict(set)
+    for c in cands:
+        if c.get("line1"):
+            sites[c["npi"]].add(standardize(c["line1"], c.get("line2", ""), c.get("city", ""), c.get("state", ""),
+                                            c.get("zip", "")).site_key)
+    out, seen = [], set()
+    for npi, tin in pairs:
+        for r in by_tin.get(digits(tin), ()):
+            site = standardize(r["address_line1"], r.get("address_line2", ""), r.get("city", ""), r.get("state", ""),
+                               r.get("zip", "")).site_key
+            if str(r.get("npi")) == str(npi) or site not in sites.get(npi, ()) or (npi, site) in seen:
+                continue
+            seen.add((npi, site))
+            out.append({"npi": npi, "source": "directory_tin", "line1": r["address_line1"],
+                        "line2": r.get("address_line2", ""), "city": r.get("city", ""), "state": r.get("state", ""),
+                        "zip": r.get("zip", ""), "date": parse_date(r.get("last_updated")) or as_of,
+                        "detail": json.dumps({"tin": r.get("tin", ""), "listed_npi": str(r.get("npi") or ""),
+                                              "network": r.get("network_name", ""), "side": r.get("_side")})})
+    return out
 
 
 # ------------------------------------------------------------------ NPI Registry API
