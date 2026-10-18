@@ -129,3 +129,38 @@ def write(path: Path, rows: list[dict]) -> None:
         w = csv.DictWriter(fh, fieldnames=FIELDS, extrasaction="ignore")
         w.writeheader()
         w.writerows(rows)
+
+
+SITE_FOUND = ("FOUND_PPO_BY_NPI", "FOUND_PPO_NPI_OTHER_TIN")
+
+
+def from_csv(path) -> tuple[list[dict], dict[str, dict]]:
+    """Reuse an earlier c4_ppo_check.csv instead of searching the site again: the directory rows it
+    implies (each listing it found, and the other NPIs listed under the same TIN) and, per NPI, what
+    was searched (the same fields as a `ptd_dir check` coverage line)."""
+    rows, coverage = [], {}
+    with open(path, newline="", encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            npi = str(r.get("npi") or "").strip()
+            if not npi or r.get("site_checked") != "yes":
+                continue
+            net = r.get("network_searched", "")
+            coverage.setdefault(npi, {"npi": npi, "tin": _digits(r.get("tin")), "status": r.get("npi_search_result", ""),
+                                      "location": r.get("search_location", ""), "network": net,
+                                      "year": r.get("network_year", ""), "fallback_term": r.get("tin_fallback_term", "")})
+            base = {"network_name": net, "listing_networks": r.get("directory_listing", ""),
+                    "npi_source": "listed", "source": f"ppo_check:{Path(path).name}"}
+            if r.get("verdict") in SITE_FOUND:
+                tins = [t for t in r.get("directory_tin", "").split(" | ") if t] or [""]
+                addrs = [a for a in r.get("directory_addresses", "").split(" | ") if a] or [""]
+                for tin in tins:
+                    for a in addrs:
+                        parts = a.rsplit(", ", 2)
+                        line1, city, zip5 = (parts + ["", ""])[:3] if len(parts) == 3 else (a, "", "")
+                        rows.append({**base, "npi": npi, "tin": tin, "name": r.get("directory_name", ""),
+                                     "specialty": r.get("directory_specialty", ""), "address_line1": line1,
+                                     "city": city, "state": "CA" if city else "", "zip": zip5})
+            for other in [n for n in r.get("tin_fallback_npis", "").split(" | ") if n]:
+                rows.append({**base, "npi": other, "tin": _digits(r.get("tin")), "listing_networks": "",
+                             "name": "", "address_line1": "", "city": "", "state": "", "zip": ""})
+    return rows, coverage

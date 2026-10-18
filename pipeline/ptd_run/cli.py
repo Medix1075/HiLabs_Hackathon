@@ -195,10 +195,15 @@ def run_all(args) -> int:
               "--save-every", str(args.save_every)]
              + (["--check-year", args.check_year] if args.check_year else [])
              + (["--browser", args.browser] if args.browser else [])) if args.check_directory else []
-    if args.check_directory:  # C5 reads the addresses the site lists (with any --directory rows) from C4's table
-        args.c5_directory = str(Path(check_out).parent / (Path(check_out).name + "_directory.csv"))
-    else:
-        args.c5_directory = args.directory
+    check += (["--ppo-check-csv", args.ppo_check_csv] if args.ppo_check_csv else []) + \
+        (["--no-ppo-check-csv"] if args.no_ppo_check_csv else [])
+
+    def c5_directory():  # C5 reads the addresses the site lists (with any --directory rows) from C4's table
+        for p in ([Path(check_out).parent / (Path(check_out).name + "_directory.csv")] if args.check_directory else []) \
+                + [out / "c4" / "c4_directory_used.csv"]:
+            if p.exists():
+                return str(p)
+        return args.directory
     wb = ["--workbook", args.workbook] if args.workbook else []
     steps = {
         "c1": lambda: c1(["--html-file", args.html_file] if args.html_file else []),
@@ -221,7 +226,7 @@ def run_all(args) -> int:
         "c5": lambda: c5(["run", "--db", db, "--out", str(out / "c5")] + as_of
                          + sum(([f"--{k.replace('_', '-')}", str(getattr(args, k))] for k in
                                 ("nppes", "nppes_pl", "dac", "zip_county") if getattr(args, k)), [])
-                         + (["--directory", args.c5_directory] if args.c5_directory and Path(args.c5_directory).exists() else [])
+                         + (["--directory", c5_directory()] if c5_directory() else [])
                          + (["--npi-api", str(args.npi_api)] if args.npi_api is not None else [])),
         "c6": lambda: c6(["run", "--db", db, "--out", str(out / "c6")] + wb + (["--nucc", args.nucc] if args.nucc else [])),
         "c7": lambda: (c7(["run", "--db", db, "--out", str(out / "c7"), "--c6-out", str(out / "c6")] + wb
@@ -265,6 +270,9 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--directory-checks", nargs="+", help="C4: ptd_dir check coverage logs, for c4_ppo_check.csv")
     a.add_argument("--check-directory", action="store_true",
                    help="C4: search every rate-file NPI (or --npis) on Health Net's Find a Provider site; resumable")
+    a.add_argument("--ppo-check-csv", help="C4: reuse this c4_ppo_check.csv instead of searching its NPIs again "
+                   "(default: <out>/c4/c4_ppo_check.csv when it exists)")
+    a.add_argument("--no-ppo-check-csv", action="store_true", help="C4: ignore an existing c4_ppo_check.csv")
     a.add_argument("--check-out", help="C4: base path of the site's captures (default <data>/directory/hn_check_all)")
     a.add_argument("--check-workers", type=int, default=3, help="C4: browsers searching side by side")
     a.add_argument("--save-every", type=int, default=50, help="C4: rewrite c4_ppo_check.csv every N NPIs")

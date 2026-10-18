@@ -786,3 +786,35 @@ def test_c4_checks_every_npi_on_the_site_and_saves_the_table_as_it_goes(world, t
     saved.clear()
     assert c4(args) == 0                                                        # a rerun searches nothing again
     assert sum(len(open(p).read().splitlines()) for p in dircheck.coverage_paths(base)) == lines
+
+
+def test_c4_reuses_an_existing_ppo_check_table_instead_of_searching_again(world, tmp_path, monkeypatch):
+    """With a c4_ppo_check.csv from an earlier run, C4 takes the site's results from it: the same verdicts
+    and network statuses, and no NPI in it is searched again."""
+    from ptd_c4 import dircheck
+    monkeypatch.setattr(dircheck, "_worker", _fake_site)
+    monkeypatch.setattr(dircheck, "MP_CONTEXT", "fork")
+    monkeypatch.setattr(dircheck, "POLL_SECONDS", 0.05)
+    common = ["run", "--files", str(world["rate_file"]), "--workbook", str(world["workbook"]), "--workers", "1",
+              "--as-of", AS_OF]
+    first = tmp_path / "first"
+    assert c4(common + ["--db", str(tmp_path / "a.sqlite"), "--out", str(first), "--check-directory",
+                        "--check-out", str(tmp_path / "d1" / "hn"), "--save-every", "50"]) == 0
+    before = {(r["npi"], r["tin"]): r for r in csv.DictReader(open(first / "c4_ppo_check.csv"))}
+
+    def no_search(shard, out, kw):
+        raise AssertionError(f"searched {len(shard)} NPIs again")
+    monkeypatch.setattr(dircheck, "_worker", no_search)
+    second = tmp_path / "second"
+    assert c4(common + ["--db", str(tmp_path / "b.sqlite"), "--out", str(second), "--check-directory",
+                        "--check-out", str(tmp_path / "d2" / "hn"), "--ppo-check-csv", str(first / "c4_ppo_check.csv")]) == 0
+    assert dircheck.coverage_paths(tmp_path / "d2" / "hn") == []                 # nothing searched
+    after = {(r["npi"], r["tin"]): r for r in csv.DictReader(open(second / "c4_ppo_check.csv"))}
+    assert set(after) == set(before)
+    for k in ("verdict", "pair_status", "npi_search_result", "search_location", "directory_listing"):
+        assert {p: r[k] for p, r in after.items()} == {p: r[k] for p, r in before.items()}, k
+    assert (second / "c4_directory_used.csv").exists()
+    # the default: this output folder's own table, even without --check-directory
+    assert c4(common + ["--db", str(tmp_path / "b.sqlite"), "--out", str(second)]) == 0
+    again = {(r["npi"], r["tin"]): r["pair_status"] for r in csv.DictReader(open(second / "c4_ppo_check.csv"))}
+    assert again == {p: r["pair_status"] for p, r in before.items()}

@@ -160,6 +160,23 @@ def run(args) -> int:
     if args.directory:
         directory = load_directory(args.directory, c2cfg, cfg["network"]["ppo_labels"])
         log(f"[input] directory: {len(directory.rows):,} rows, {len(directory.by_npi):,} NPIs with a network side")
+    # An earlier PPO check table (default: this output folder's c4_ppo_check.csv) stands in for the site:
+    # its listings are directory evidence and its NPIs are not searched again.
+    base_rows = list(csv.DictReader(open(args.directory, encoding="utf-8"))) if args.directory and \
+        str(args.directory).lower().endswith(".csv") else []
+    prior_cov = {}
+    csv_in = args.ppo_check_csv or (str(out / "c4_ppo_check.csv") if not args.no_ppo_check_csv else None)
+    if csv_in and Path(csv_in).exists():
+        site_rows, prior_cov = ppo_check.from_csv(csv_in)
+        base_rows += site_rows
+        if base_rows:
+            used = out / "c4_directory_used.csv"
+            dircheck.write_table(used, base_rows)
+            directory = load_directory(used, c2cfg, cfg["network"]["ppo_labels"])
+        log(f"[input] PPO check table {csv_in}: {len(prior_cov):,} NPIs already searched on the site, "
+            f"{len(site_rows):,} listings reused (no new search for them)")
+    elif args.ppo_check_csv:
+        log(f"[input] PPO check table {args.ppo_check_csv} not found; ignored")
 
     db_path = Path(args.db)
     con = connect(db_path)
@@ -190,7 +207,8 @@ def run(args) -> int:
                    if codes is not None else "no code scope"))
             row["oon_files"] = _read_oon(con, file_id, t.get("oon_files") or [], cfg, log)
             if args.check_directory:
-                directory = _check_directory(args, con, file_id, meta, cfg, c2cfg, npis, directory, out, log)
+                directory = _check_directory(args, con, file_id, meta, cfg, c2cfg, npis, directory, out, log,
+                                             base_rows, prior_cov)
             t1 = time.time()
             network_reports[url] = tag_references(con, file_id, meta, cfg, c2cfg, directory, log)
             t2 = time.time()
@@ -244,8 +262,8 @@ def run(args) -> int:
     write_csv(out / "c4_extraction_log.csv", picks, ["rate_file_url", "kind", "key", "count"])
     check_rows = []
     checks = (args.directory_checks or []) + (dircheck.coverage_paths(Path(args.check_out)) if args.check_directory else [])
-    if directory or checks or npis is not None:
-        check_rows = ppo_check.build_rows(con, directory, ppo_check.read_coverage(checks), npis)
+    if directory or checks or prior_cov or npis is not None:
+        check_rows = ppo_check.build_rows(con, directory, {**prior_cov, **ppo_check.read_coverage(checks)}, npis)
         ppo_check.write(out / "c4_ppo_check.csv", check_rows)
         verdicts = Counter(r["verdict"] for r in check_rows)
         log(f"[c4]   PPO check table: {len(check_rows):,} NPI-TIN rows -> {out / 'c4_ppo_check.csv'}; "
@@ -276,13 +294,12 @@ def run(args) -> int:
     return status
 
 
-def _check_directory(args, con, file_id, meta, cfg, c2cfg, npis, directory, out, log):
+def _check_directory(args, con, file_id, meta, cfg, c2cfg, npis, directory, out, log, base_rows=(), prior_cov=None):
     """Search the file's NPIs on Health Net's site (see dircheck), saving c4_ppo_check.csv every
     --save-every NPIs. Returns the directory to tag the references with (the given one plus the site's)."""
     base = Path(args.check_out)
     table = base.parent / (base.name + "_directory.csv")
-    given = list(csv.DictReader(open(args.directory, encoding="utf-8"))) if args.directory and \
-        str(args.directory).lower().endswith(".csv") else []
+    given, prior_cov = list(base_rows), prior_cov or {}
     reader = dircheck.CaptureRows(base)
     state = {"directory": directory}
 
@@ -294,13 +311,13 @@ def _check_directory(args, con, file_id, meta, cfg, c2cfg, npis, directory, out,
         state["directory"] = load_directory(table, c2cfg, cfg["network"]["ppo_labels"])
         tag_references(con, file_id, meta, cfg, c2cfg, state["directory"], lambda *_: None)
         con.commit()
-        done = dircheck.checked_npis(dircheck.coverage_paths(base))
-        rows_out = ppo_check.build_rows(con, state["directory"], ppo_check.read_coverage(
-            (args.directory_checks or []) + dircheck.coverage_paths(base)), done if npis is None else done & npis)
+        done = dircheck.checked_npis(dircheck.coverage_paths(base)) | set(prior_cov)
+        cov = {**prior_cov, **ppo_check.read_coverage((args.directory_checks or []) + dircheck.coverage_paths(base))}
+        rows_out = ppo_check.build_rows(con, state["directory"], cov, done if npis is None else done & npis)
         ppo_check.write(out / "c4_ppo_check.csv", rows_out)
 
     todo_all = dircheck.targets(con, npis)
-    done = dircheck.checked_npis(dircheck.coverage_paths(base))
+    done = dircheck.checked_npis(dircheck.coverage_paths(base)) | set(prior_cov)
     todo = [t for t in todo_all if t["npi"] not in done]
     log(f"[c4]   directory check on Health Net Find a Provider ({args.check_network!r}, {args.check_year or 'this year'}): "
         f"{len(todo_all):,} NPIs, {len(todo_all) - len(todo):,} already searched, {len(todo):,} to go with "
@@ -336,6 +353,9 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--check-directory", action="store_true",
                    help="search every NPI of the rate file (or --npis) on Health Net's Find a Provider site and use "
                         "what it lists as network evidence; resumable")
+    r.add_argument("--ppo-check-csv", help="reuse this earlier c4_ppo_check.csv: its site results are evidence and its "
+                   "NPIs are not searched again (default: <out>/c4_ppo_check.csv when it exists)")
+    r.add_argument("--no-ppo-check-csv", action="store_true", help="ignore an existing c4_ppo_check.csv")
     r.add_argument("--check-out", default="data/directory/hn_check_all",
                    help="base path for the site's captures and coverage logs (<base>_w<k>.jsonl)")
     r.add_argument("--check-workers", type=int, default=3, help="browsers searching side by side (default 3)")
