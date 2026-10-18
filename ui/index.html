@@ -396,6 +396,11 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             <span>Rate Explorer</span>
           </button>
+          <button class="analyst-tab-btn" id="tabBtnSideBySideCompare" onclick="switchAnalystTab('sideBySideCompare')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+            <span>Side-by-Side Compare</span>
+            <span class="compare-counter-badge" id="compareTabBadge" style="display: none;">0</span>
+          </button>
           <button class="analyst-tab-btn" id="tabBtnEntityResolution" onclick="switchAnalystTab('entityResolution')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             <span>Facility &amp; Address Resolution</span>
@@ -488,12 +493,25 @@
           </div>
         </div>
 
+        <!-- Side-by-Side Floating Selection Bar (Shows when 1+ providers selected) -->
+        <div id="compareFloatingBar" class="compare-floating-bar" style="display: none;">
+          <div class="compare-bar-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+            <span><strong id="compareCountText">0 providers</strong> selected for side-by-side rate &amp; coinsurance comparison</span>
+          </div>
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <button class="neu-btn neu-btn-sm" onclick="clearCompareSelection()">Clear</button>
+            <button class="neu-btn neu-btn-primary neu-btn-sm" onclick="goToCompareTab()">Compare Side-by-Side &rarr;</button>
+          </div>
+        </div>
+
         <!-- Data Grid (Neumorphic Card) -->
         <div class="neu-card table-card">
           <div class="table-responsive">
             <table class="neu-table" id="ratesTable">
               <thead>
                 <tr>
+                  <th style="width: 44px; text-align: center;">Compare</th>
                   <th>Provider NPI &amp; Name</th>
                   <th>Tax ID (TIN)</th>
                   <th>Standardized Practicing Address</th>
@@ -516,6 +534,60 @@
             <button class="neu-btn neu-btn-sm" id="btnPrevPage" onclick="changePage(-1)">&larr; Previous</button>
             <span class="page-indicator" id="pageIndicator">Page 1 of 1</span>
             <button class="neu-btn neu-btn-sm" id="btnNextPage" onclick="changePage(1)">Next &rarr;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Side-by-Side Provider Rate Comparison & Shopping Module -->
+      <div id="analystTabSideBySideCompare" class="analyst-tab-content">
+        <div class="neu-card" style="margin-bottom: 1.5rem;">
+          <div class="card-header-clean">
+            <div class="header-text-group">
+              <span class="badge-category">HEALTH NET MEMBER &amp; CONTRACTING COMPARATOR</span>
+              <h3 class="card-title">Side-by-Side Provider Rate &amp; Out-of-Pocket Comparator</h3>
+              <p style="font-size: 0.86rem; color: var(--text-muted); margin-top: 0.25rem;">
+                Compare negotiated rates side-by-side for identical medical procedures across Centene California Commercial Group PPO network providers. View estimated patient coinsurance (20% PPO cost share) and calculate out-of-pocket savings to direct patients toward high-value, lower-cost providers.
+              </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <button class="neu-btn neu-btn-sm" onclick="resetCompareToDefaults()">Reset Comparison</button>
+              <button class="neu-btn neu-btn-sm" onclick="switchAnalystTab('rateExplorer')">+ Add More from Rate Explorer</button>
+            </div>
+          </div>
+
+          <!-- Procedure Quick Switcher -->
+          <div class="procedure-quick-switcher">
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 0.5rem;">Procedure / Code:</span>
+            <button class="proc-chip-btn active" id="procChip_99214" onclick="selectCompareProcedure('99214')">
+              <strong>CPT 99214</strong> • Office Visit Est Mod (30-39 min)
+            </button>
+            <button class="proc-chip-btn" id="procChip_93306" onclick="selectCompareProcedure('93306')">
+              <strong>CPT 93306</strong> • Echocardiogram Complete with Doppler
+            </button>
+            <button class="proc-chip-btn" id="procChip_99213" onclick="selectCompareProcedure('99213')">
+              <strong>CPT 99213</strong> • Office Visit Est Low Complexity
+            </button>
+            <button class="proc-chip-btn" id="procChip_93000" onclick="selectCompareProcedure('93000')">
+              <strong>CPT 93000</strong> • Electrocardiogram Routine ECG
+            </button>
+            <button class="proc-chip-btn" id="procChip_99203" onclick="selectCompareProcedure('99203')">
+              <strong>CPT 99203</strong> • New Patient Office Visit
+            </button>
+          </div>
+
+          <!-- Savings Callout Banner -->
+          <div class="savings-highlight-callout" id="compareSavingsBanner">
+            <div class="savings-callout-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <div class="savings-callout-text" id="compareSavingsText">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+
+          <!-- Side-by-Side Cards Grid -->
+          <div class="compare-grid-layout" id="compareCardsContainer">
+            <!-- Dynamically populated via JS -->
           </div>
         </div>
       </div>

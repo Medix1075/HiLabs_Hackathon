@@ -425,6 +425,8 @@ let currentFilteredData = [...PROVIDER_RATES_DATA];
 let currentPage = 1;
 const pageSize = 6;
 let selectedEntityProviderNpi = "100000001";
+let selectedCompareNpis = ["100000001", "100000006", "100000009"];
+let currentCompareProcedure = "99214";
 
 // =============================================================================
 let isBackendConnected = false;
@@ -463,6 +465,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   applyFilters();
   renderEntityGraph();
   renderBenchmarkVisualizer();
+  updateCompareBarUI();
+  renderSideBySideComparison();
 });
 
 // View Switcher (Executive vs Analyst)
@@ -497,6 +501,7 @@ function switchAnalystTab(tabName) {
   currentAnalystTab = tabName;
   const tabs = [
     { id: "tabBtnRateExplorer", panelId: "analystTabRateExplorer" },
+    { id: "tabBtnSideBySideCompare", panelId: "analystTabSideBySideCompare" },
     { id: "tabBtnEntityResolution", panelId: "analystTabEntityResolution" },
     { id: "tabBtnBenchmarkComparator", panelId: "analystTabBenchmarkComparator" },
     { id: "tabBtnNetworkRules", panelId: "analystTabNetworkRules" },
@@ -507,6 +512,7 @@ function switchAnalystTab(tabName) {
   tabs.forEach(tab => {
     const btn = document.getElementById(tab.id);
     const panel = document.getElementById(tab.panelId);
+    if (!btn || !panel) return;
     if (tab.id.toLowerCase().includes(tabName.toLowerCase())) {
       btn.classList.add("active");
       panel.classList.add("active");
@@ -520,6 +526,8 @@ function switchAnalystTab(tabName) {
     renderEntityGraph();
   } else if (tabName === "benchmarkComparator") {
     renderBenchmarkVisualizer();
+  } else if (tabName === "sideBySideCompare") {
+    renderSideBySideComparison();
   }
 }
 
@@ -667,7 +675,7 @@ function renderRatesTable(totalOverride) {
   if (pageItems.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-dim);">
+        <td colspan="10" style="text-align: center; padding: 2rem; color: var(--text-dim);">
           No providers or negotiated rates match your search criteria.
         </td>
       </tr>
@@ -678,9 +686,16 @@ function renderRatesTable(totalOverride) {
   tbody.innerHTML = pageItems.map(item => {
     const isPpo = item.status === "CONFIRMED_PPO";
     const tierClass = item.costIndex < 0.90 ? "tier-efficient" : (item.costIndex > 1.15 ? "tier-highcost" : "tier-market");
+    const isCompared = selectedCompareNpis.includes(item.npi);
 
     return `
       <tr>
+        <td class="compare-checkbox-cell">
+          <input type="checkbox" class="compare-checkbox" 
+                 ${isCompared ? "checked" : ""} 
+                 onchange="toggleCompareProvider('${item.npi}')" 
+                 title="Select to compare side-by-side">
+        </td>
         <td>
           <div class="table-provider-cell">
             <span class="provider-name">${item.name}</span>
@@ -710,7 +725,12 @@ function renderRatesTable(totalOverride) {
           </span>
         </td>
         <td>
-          <button class="neu-btn neu-btn-sm" onclick="openProviderModal('${item.npi}')">Inspect</button>
+          <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+            <button class="neu-btn neu-btn-sm" onclick="openProviderModal('${item.npi}')">Inspect</button>
+            <button class="btn-compare-action ${isCompared ? 'selected' : ''}" onclick="toggleCompareProvider('${item.npi}')">
+              ${isCompared ? 'Compared ✓' : '+ Compare'}
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -720,6 +740,280 @@ function renderRatesTable(totalOverride) {
 function changePage(direction) {
   currentPage += direction;
   renderRatesTable();
+}
+
+// =============================================================================
+// 5B. SIDE-BY-SIDE PROVIDER PRICE COMPARISON & SHOPPING MODULE
+// =============================================================================
+
+function toggleCompareProvider(npi) {
+  const idx = selectedCompareNpis.indexOf(npi);
+  if (idx >= 0) {
+    selectedCompareNpis.splice(idx, 1);
+  } else {
+    if (selectedCompareNpis.length >= 4) {
+      alert("You can compare up to 4 providers side-by-side. Please remove one first.");
+      return;
+    }
+    selectedCompareNpis.push(npi);
+  }
+  updateCompareBarUI();
+  renderRatesTable();
+  if (currentAnalystTab === "sideBySideCompare") {
+    renderSideBySideComparison();
+  }
+}
+
+function clearCompareSelection() {
+  selectedCompareNpis = [];
+  updateCompareBarUI();
+  renderRatesTable();
+  if (currentAnalystTab === "sideBySideCompare") {
+    renderSideBySideComparison();
+  }
+}
+
+function updateCompareBarUI() {
+  const bar = document.getElementById("compareFloatingBar");
+  const countText = document.getElementById("compareCountText");
+  const tabBadge = document.getElementById("compareTabBadge");
+  const count = selectedCompareNpis.length;
+
+  if (bar) {
+    bar.style.display = count > 0 ? "flex" : "none";
+  }
+  if (countText) {
+    countText.innerText = `${count} provider${count === 1 ? '' : 's'}`;
+  }
+  if (tabBadge) {
+    tabBadge.innerText = count.toString();
+    tabBadge.style.display = count > 0 ? "inline-block" : "none";
+  }
+}
+
+function goToCompareTab() {
+  switchView('analyst');
+  switchAnalystTab('sideBySideCompare');
+}
+
+function updateProcedureChips(code) {
+  const chipIds = ["99214", "93306", "99213", "93000", "99203"];
+  chipIds.forEach(c => {
+    const chip = document.getElementById(`procChip_${c}`);
+    if (chip) {
+      if (c === code) {
+        chip.classList.add("active");
+      } else {
+        chip.classList.remove("active");
+      }
+    }
+  });
+}
+
+function selectCompareProcedure(code) {
+  currentCompareProcedure = code;
+  updateProcedureChips(code);
+
+  const matchingSelected = selectedCompareNpis.filter(npi => {
+    const prov = PROVIDER_RATES_DATA.find(p => p.npi === npi);
+    return prov && prov.billingCode === code;
+  });
+
+  if (matchingSelected.length === 0) {
+    const availableForCode = PROVIDER_RATES_DATA
+      .filter(p => p.billingCode === code)
+      .map(p => p.npi);
+    selectedCompareNpis = availableForCode.slice(0, 3);
+    updateCompareBarUI();
+    renderRatesTable();
+  }
+
+  renderSideBySideComparison();
+}
+
+function resetCompareToDefaults() {
+  const availableForCode = PROVIDER_RATES_DATA
+    .filter(p => p.billingCode === currentCompareProcedure)
+    .map(p => p.npi);
+  selectedCompareNpis = availableForCode.slice(0, 3);
+  updateCompareBarUI();
+  renderRatesTable();
+  renderSideBySideComparison();
+}
+
+function removeCompareProvider(npi) {
+  selectedCompareNpis = selectedCompareNpis.filter(id => id !== npi);
+  updateCompareBarUI();
+  renderRatesTable();
+  renderSideBySideComparison();
+}
+
+function renderSideBySideComparison() {
+  const container = document.getElementById("compareCardsContainer");
+  const savingsBanner = document.getElementById("compareSavingsBanner");
+  const savingsText = document.getElementById("compareSavingsText");
+  if (!container) return;
+
+  // Find candidate items
+  let items = PROVIDER_RATES_DATA.filter(p => selectedCompareNpis.includes(p.npi));
+  let matchingItems = items.filter(p => p.billingCode === currentCompareProcedure);
+
+  if (matchingItems.length > 0) {
+    items = matchingItems;
+  } else if (items.length > 0) {
+    currentCompareProcedure = items[0].billingCode;
+    updateProcedureChips(currentCompareProcedure);
+    items = PROVIDER_RATES_DATA.filter(p => selectedCompareNpis.includes(p.npi) && p.billingCode === currentCompareProcedure);
+  } else {
+    items = PROVIDER_RATES_DATA.filter(p => p.billingCode === currentCompareProcedure);
+  }
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="compare-empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 0.75rem;"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <h3 style="font-size: 1.15rem; margin-bottom: 0.35rem;">No Providers Selected for Comparison</h3>
+        <p style="margin: 0.5rem 0 1.25rem 0; font-size: 0.88rem;">Select providers from the Rate Explorer or pick a procedure chip above.</p>
+        <button class="neu-btn neu-btn-primary neu-btn-sm" onclick="resetCompareToDefaults()">Load Recommended Providers</button>
+      </div>
+    `;
+    if (savingsBanner) savingsBanner.style.display = "none";
+    return;
+  }
+
+  // Sort ascending by price (lowest rate first)
+  items.sort((a, b) => a.rate - b.rate);
+
+  // Compute Out-of-Pocket Savings
+  if (savingsBanner && savingsText) {
+    if (items.length >= 2) {
+      savingsBanner.style.display = "flex";
+      const lowest = items[0];
+      const highest = items[items.length - 1];
+      const rateDiff = highest.rate - lowest.rate;
+      const oopDiff = rateDiff * 0.20; // 20% member coinsurance
+      const planDiff = rateDiff * 0.80; // 80% plan cost
+
+      if (rateDiff > 0) {
+        savingsText.innerHTML = `
+          <h4>Health Net Member Out-of-Pocket Savings: Save $${oopDiff.toFixed(2)} per visit</h4>
+          <p>By scheduling with <strong>${lowest.name}</strong> ($${lowest.rate.toFixed(2)}) instead of <strong>${highest.name}</strong> ($${highest.rate.toFixed(2)}) for procedure <strong>CPT ${currentCompareProcedure} (${lowest.codeDesc})</strong>, a Health Net member saves <strong>$${oopDiff.toFixed(2)}</strong> in direct out-of-pocket coinsurance ($${(lowest.rate * 0.20).toFixed(2)} vs $${(highest.rate * 0.20).toFixed(2)}), while Centene Health Net saves <strong>$${planDiff.toFixed(2)}</strong> in claims expense.</p>
+        `;
+      } else {
+        savingsText.innerHTML = `
+          <h4>Equitable Contract Rates Identified</h4>
+          <p>All selected providers have negotiated identical rates ($${lowest.rate.toFixed(2)}) under the California Commercial Group PPO schedule for CPT ${currentCompareProcedure}. Patient coinsurance is $${(lowest.rate * 0.20).toFixed(2)}.</p>
+        `;
+      }
+    } else {
+      savingsBanner.style.display = "flex";
+      const single = items[0];
+      savingsText.innerHTML = `
+        <h4>Single Provider Selected</h4>
+        <p>Currently viewing <strong>${single.name}</strong> ($${single.rate.toFixed(2)}). Select 1 or 2 more providers from the <a href="javascript:void(0)" onclick="switchAnalystTab('rateExplorer')" style="color: #0284c7; font-weight: 600;">Rate Explorer</a> to calculate comparative patient out-of-pocket savings.</p>
+      `;
+    }
+  }
+
+  // Render provider cards
+  container.innerHTML = items.map((item, idx) => {
+    const isLowest = idx === 0 && items.length > 1;
+    const isHighest = idx === items.length - 1 && items.length > 1;
+
+    let ribbonHtml = "";
+    if (isLowest) {
+      ribbonHtml = `<div class="compare-rank-ribbon rank-best-value"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> #1 Lowest Cost • Best Value</div>`;
+    } else if (isHighest) {
+      ribbonHtml = `<div class="compare-rank-ribbon rank-high-cost">#${idx + 1} Highest Cost</div>`;
+    } else {
+      ribbonHtml = `<div class="compare-rank-ribbon rank-mid-value">#${idx + 1} Mid-Range</div>`;
+    }
+
+    const deltaPct = ((item.rate - item.peerMedian) / item.peerMedian) * 100;
+    const deltaText = deltaPct <= 0 ? `${Math.abs(deltaPct).toFixed(1)}% below median` : `+${deltaPct.toFixed(1)}% above median`;
+    const deltaClass = deltaPct <= 0 ? "delta-cheaper" : "delta-more-expensive";
+
+    const coinsurance = item.rate * 0.20;
+    const planShare = item.rate * 0.80;
+
+    return `
+      <div class="compare-card-neu ${isLowest ? 'lowest-cost' : ''}">
+        <div class="compare-card-top-bar">
+          ${ribbonHtml}
+          <button class="compare-remove-btn" onclick="removeCompareProvider('${item.npi}')" title="Remove from comparison">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div style="margin-bottom: 0.85rem;">
+          <h3 style="font-size: 1.12rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.15rem;">${item.name}</h3>
+          <div style="font-size: 0.76rem; color: var(--text-dim); font-family: var(--font-mono);">NPI: ${item.npi} • ${item.npiType}</div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500; margin-top: 0.25rem;">${item.organization}</div>
+        </div>
+
+        <div class="compare-rate-hero">
+          <span class="compare-price-large">$${item.rate.toFixed(2)}</span>
+          <span class="compare-delta-tag ${deltaClass}">${deltaText}</span>
+        </div>
+        <div style="font-size: 0.74rem; color: var(--text-dim); margin-bottom: 0.85rem;">
+          Negotiated PPO Rate (Peer Median: $${item.peerMedian.toFixed(2)})
+        </div>
+
+        <!-- Patient Coinsurance Box -->
+        <div class="compare-patient-oop-box">
+          <span class="oop-label">Est. Member Coinsurance (20%)</span>
+          <span class="oop-val">$${coinsurance.toFixed(2)}</span>
+          <span class="oop-sub">Member pays $${coinsurance.toFixed(2)} • Health Net pays $${planShare.toFixed(2)}</span>
+        </div>
+
+        <!-- Details Breakdown -->
+        <div class="compare-details-list">
+          <div class="compare-detail-row">
+            <span class="k">Procedure</span>
+            <span class="v">CPT ${item.billingCode}</span>
+          </div>
+          <div class="compare-detail-row">
+            <span class="k">Specialty</span>
+            <span class="v">${item.specialty}</span>
+          </div>
+          <div class="compare-detail-row">
+            <span class="k">Practice Location</span>
+            <span class="v">${item.city}, ${item.state} ${item.zip}</span>
+          </div>
+          <div class="compare-detail-row">
+            <span class="k">Facility Address</span>
+            <span class="v" style="font-size: 0.76rem;">${item.address}</span>
+          </div>
+          <div class="compare-detail-row">
+            <span class="k">Cost Tier</span>
+            <span class="v"><span class="tier-badge ${item.costIndex < 0.90 ? 'tier-efficient' : (item.costIndex > 1.15 ? 'tier-highcost' : 'tier-market')}">${item.costIndex.toFixed(2)}x (${item.tier})</span></span>
+          </div>
+          <div class="compare-detail-row">
+            <span class="k">Address Quality</span>
+            <span class="v" style="color: #059669;">Verified (DAC + Census)</span>
+          </div>
+          <div class="compare-detail-row">
+            <span class="k">Network</span>
+            <span class="v" style="color: #0284c7;">CONFIRMED PPO</span>
+          </div>
+        </div>
+
+        <div class="compare-card-actions">
+          <button class="neu-btn neu-btn-sm" onclick="openProviderModal('${item.npi}')">Inspect Profile</button>
+          <button class="neu-btn neu-btn-primary neu-btn-sm" onclick="jumpToEntityResolution('${item.tin}')">View Facility Map</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function jumpToEntityResolution(tin) {
+  switchAnalystTab('entityResolution');
+  const select = document.getElementById("entityTinSelect");
+  if (select) {
+    select.value = tin;
+    renderEntityGraph();
+  }
 }
 
 // =============================================================================
